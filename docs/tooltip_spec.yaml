@@ -1,0 +1,461 @@
+# Hover and help contract for every chart and every KPI tile of the app.
+#
+# Read with docs/TOOLTIP_SPEC.md, which carries the reasoning chart by chart.
+# Chart builders assemble one pre-formatted string per mark and pass it as
+# customdata; the ordered `lines` below ARE that string, joined by line breaks.
+# A test checks each builder's fields, order and formats against this file.
+#
+# Hard rules, enforced by that test:
+#   * at most 8 lines per hover; the topic keywords count as 2 lines;
+#   * the first line is always the entity the mark stands for;
+#   * a line whose `when` is false is not drawn at all, never an empty label;
+#   * every field names a column the app carries;
+#   * a label states the perimeter (window, document types, counting basis)
+#     whenever it differs from the chart's own headline perimeter;
+#   * a figure below its floor is either withheld or daggered, never shown bare.
+
+version: 1
+
+formats:
+  text: "the value as stored, no transformation"
+  int_thousands: "whole number with a thousands separator, e.g. 1 234"
+  dec_1: "one decimal, e.g. 512.4 - fractional masses and fractional volumes"
+  vol_basis: "publication count on the counting basis in force: whole number under full counting, one decimal under fractional"
+  vol_pair: "the same measure on both bases, full first: '1 234 full - 512.4 fractional'"
+  pair_volumes: "one volume per institution, in slot order: '{name A} 120 - {name B} 84'"
+  pct_1dp: "share as a percentage with one decimal, e.g. 4.7%"
+  pct_1dp_dagger: "as pct_1dp, followed by a dagger when the denominator named in the line's note is under 10"
+  pct_signed_0dp: "signed percentage change, no decimal, e.g. +18% / -7%"
+  score_2dp: "two decimals, e.g. 1.31 - specialisation indexes, expansion, acceleration, frontier score"
+  fwci_pair_2dp: "'mean 1.31 - median 0.98 on 54 works', both to two decimals; a dagger follows the work count when it is under 10; the line is not drawn at all under 3"
+  rank_and_leader: "'world #4 of 200 - most works: {institution}' when the institution ranks in the world top 20 for the topic, otherwise 'most works worldwide: {institution}'"
+  partner_rank: "'{other institution} is {this institution} partner #7 here'"
+  owner_clause: "'in both top sets' when the topic is held by both, otherwise '{institution} only'"
+  joint_or_floor: "the joint publication count, or the fixed phrase 'joint count not available under 5 joint publications'"
+  keywords_2x5: "the topic's 10 keywords, comma-separated, as TWO lines of five - counts as 2 lines against the 8-line cap"
+  topic_name_flagged: "the topic name, followed by ' - catch-all topic: {exclusion label}' when the topic is on the catch-all list"
+  frontier_flag: "the fixed phrase 'in the global top quarter of emergence'"
+  year_label: "the year as it appears on the axis; the bonus year keeps its star"
+  pvalue_3dp: "'p 0.004', or 'p < 0.001' below that"
+  flag: "a fixed phrase, drawn only when its condition holds; carries no value"
+
+charts:
+
+  # --------------------------------------------------------------- Find bars
+  find_fields:
+    view: find
+    kind: bars
+    entity: field
+    lines:
+      - {field: field_name, label: "", format: text}
+      - {field: share, label: "share of classified output", format: pct_1dp}
+      - {field: vol_pair, label: "publications, whole run 2020-2025", format: vol_pair,
+         note: "vol_full and vol_frac at field grain, whole run, all document types"}
+      - {field: si, label: "specialisation index", format: score_2dp, when: "si is not null"}
+      - {field: fwci_eu, label: "FWCI_EU, articles and reviews 2020-2024", format: fwci_pair_2dp,
+         when: "n_covered >= 3", note: "fwci_taxa fwci_mean, fwci_median, n_covered at field grain"}
+      - {field: pp10_wd, label: "world top-decile share, articles and reviews 2020-2024", format: pct_1dp_dagger,
+         when: "n_covered_pp >= 1", note: "impact_taxa pp10_wd at field grain; denominator n_covered_pp"}
+
+  find_subfields:
+    view: find
+    kind: bars
+    entity: subfield
+    lines:
+      - {field: subfield_name, label: "", format: text}
+      - {field: field_name, label: "field", format: text}
+      - {field: share, label: "share of classified output", format: pct_1dp}
+      - {field: vol_pair, label: "publications, whole run 2020-2025", format: vol_pair,
+         note: "vol_full and vol_frac at subfield grain, whole run, all document types"}
+      - {field: si, label: "specialisation index", format: score_2dp, when: "si is not null"}
+      - {field: fwci_eu, label: "FWCI_EU, articles and reviews 2020-2024", format: fwci_pair_2dp,
+         when: "n_covered >= 3", note: "fwci_taxa at subfield grain"}
+      - {field: pp10_wd, label: "world top-decile share, articles and reviews 2020-2024", format: pct_1dp_dagger,
+         when: "n_covered_pp >= 1", note: "impact_taxa at subfield grain; denominator n_covered_pp"}
+
+  find_sdg:
+    view: find
+    kind: bars
+    entity: sdg
+    lines:
+      - {field: sdg_label, label: "", format: text}
+      - {field: share, label: "share of the institution's tagged output", format: pct_1dp,
+         note: "sdg share, denominated on the whole run 2020-2025"}
+      - {field: mass, label: "tagged mass, whole run 2020-2025", format: dec_1}
+      - {field: esi, label: "specialisation against Europe", format: score_2dp}
+      - {field: fwci_eu, label: "FWCI_EU, articles and reviews 2020-2024", format: fwci_pair_2dp,
+         when: "n_covered >= 3", note: "fwci_taxa at SDG grain"}
+      - {field: pp10_wd, label: "world top-decile share, articles and reviews 2020-2024", format: pct_1dp_dagger,
+         when: "n_covered_pp >= 1", note: "impact_taxa at SDG grain; denominator n_covered_pp"}
+
+  find_erc:
+    view: find
+    kind: bars
+    entity: erc
+    lines:
+      - {field: erc_label, label: "", format: text}
+      - {field: share, label: "share of the institution's classified output", format: pct_1dp,
+         note: "erc share, denominated on the whole run 2020-2025"}
+      - {field: mass, label: "classified mass, whole run 2020-2025", format: dec_1}
+      - {field: si, label: "specialisation against Europe", format: score_2dp}
+      - {field: fwci_eu, label: "FWCI_EU, articles and reviews 2020-2024", format: fwci_pair_2dp,
+         when: "n_covered >= 3", note: "fwci_taxa at ERC grain"}
+      - {field: pp10_wd, label: "world top-decile share, articles and reviews 2020-2024", format: pct_1dp_dagger,
+         when: "n_covered_pp >= 1", note: "impact_taxa at ERC grain; denominator n_covered_pp"}
+
+  # ------------------------------------------------------------- Find planes
+  find_plane_impact:
+    view: find
+    kind: scatter
+    entity: topic
+    lines:
+      - {field: topic_name, label: "", format: topic_name_flagged,
+         note: "topic_name, is_excluded, exclusion_reason_label"}
+      - {field: keywords, label: "", format: keywords_2x5, note: "the topic's 10 keywords"}
+      - {field: n_ar, label: "articles and reviews 2020-2024, full counting", format: int_thousands,
+         note: "inst_topic_impact n_ar - the horizontal axis"}
+      - {field: fwci_eu, label: "FWCI_EU", format: fwci_pair_2dp,
+         note: "inst_topic_impact fwci_mean, fwci_median, n_covered - the vertical axis; the plane places no topic under 3 covered works, so this line always draws"}
+      - {field: n_stars, label: "star papers", format: int_thousands, when: "n_stars >= 1",
+         note: "inst_stars n_stars - the bubble area"}
+      - {field: vol_pair_run, label: "whole run 2020-2025, all document types", format: vol_pair,
+         note: "topics_all vol_full and vol_frac - the topic's volume on the reader's own counting basis"}
+      - {field: world_rank_and_leader, label: "", format: rank_and_leader,
+         note: "topics_led rank (world top 20, all institutions) and the topic's rank-1 publisher name"}
+
+  find_plane_frontier:
+    view: find
+    kind: scatter
+    entity: topic
+    lines:
+      - {field: topic_name, label: "", format: topic_name_flagged}
+      - {field: keywords, label: "", format: keywords_2x5}
+      - {field: expansion, label: "expansion", format: score_2dp, note: "expansion_latest - the horizontal axis"}
+      - {field: acceleration, label: "acceleration", format: score_2dp, note: "acceleration_latest - the vertical axis"}
+      - {field: n_ar, label: "articles and reviews 2020-2024, full counting", format: int_thousands,
+         note: "inst_topic_impact n_ar - the bubble area, the same measure the other plane puts on its horizontal axis"}
+      - {field: frontier_standing, label: "", format: frontier_flag, when: "top25pct_frontier is true",
+         note: "top25pct_frontier - the outlined marks"}
+      - {field: world_rank_and_leader, label: "", format: rank_and_leader, when: "rank <= 20",
+         note: "topics_led rank and the topic's rank-1 publisher name"}
+
+  # --------------------------------------------------------- Find breakdowns
+  find_breakdown_global:
+    view: find
+    kind: bars
+    entity: series
+    lines:
+      - {field: series_label, label: "", format: text,
+         note: "an OpenAlex domain or a document type, whichever the control shows"}
+      - {field: vol, label: "publications, whole run 2020-2025", format: vol_basis}
+      - {field: share_of_total, label: "share of the institution's output", format: pct_1dp}
+
+  find_breakdown_yearly:
+    view: find
+    kind: bars
+    entity: year
+    lines:
+      - {field: series_label, label: "", format: text}
+      - {field: year, label: "year", format: year_label}
+      - {field: vol, label: "publications", format: vol_basis}
+      - {field: share_of_year, label: "share of that year's output", format: pct_1dp}
+
+  # ------------------------------------------------------------ Compare bars
+  compare_thematic_profile:
+    view: compare
+    kind: bars
+    entity: subfield
+    lines:
+      - {field: row_label, label: "", format: text}
+      - {field: group_label, label: "field", format: text, when: "group_label is not null"}
+      - {field: institution_name, label: "", format: text}
+      - {field: share, label: "share of publications", format: pct_1dp}
+      - {field: ref_value, label: "European mean share", format: pct_1dp}
+      - {field: vol_pair, label: "publications, whole run 2020-2025", format: vol_pair, note: "subfields vol_full and vol_frac, whole run - the same perimeter as the share"}
+      - {field: si, label: "specialisation index", format: score_2dp, when: "si is not null"}
+      - {field: low_volume, label: "", format: flag, when: "row is low volume",
+         note: "dagger phrase: rests on few publications a year, read with care"}
+
+  compare_thematic_impact:
+    view: compare
+    kind: bars
+    entity: subfield
+    lines:
+      - {field: row_label, label: "", format: text}
+      - {field: group_label, label: "field", format: text, when: "group_label is not null"}
+      - {field: institution_name, label: "", format: text}
+      - {field: pp10_wd, label: "world top-decile share, articles and reviews 2020-2024", format: pct_1dp}
+      - {field: ref_value, label: "world reference", format: pct_1dp}
+      - {field: n_covered_pp, label: "articles and reviews behind the share", format: int_thousands}
+      - {field: fwci_eu, label: "FWCI_EU, same window", format: fwci_pair_2dp, when: "n_covered >= 3",
+         note: "fwci_taxa fwci_mean, fwci_median, n_covered at subfield grain"}
+      - {field: low_volume, label: "", format: flag, when: "n_covered_pp < 10",
+         note: "dagger phrase: fewer than ten articles and reviews behind the share, read with care"}
+
+  compare_sdg:
+    view: compare
+    kind: bars
+    entity: sdg
+    lines:
+      - {field: row_label, label: "", format: text}
+      - {field: institution_name, label: "", format: text}
+      - {field: share, label: "share of the institution's tagged output", format: pct_1dp,
+         note: "denominated on the whole run 2020-2025"}
+      - {field: ref_value, label: "European mean share", format: pct_1dp}
+      - {field: vol_pair, label: "tagged publications, whole run 2020-2025", format: vol_pair,
+         note: "sdg mass on both bases, whole run - the same perimeter as the share"}
+      - {field: low_volume, label: "", format: flag, when: "row is low volume",
+         note: "dagger phrase: rests on few publications a year, read with care"}
+
+  # ---------------------------------------------------------- Compare topics
+  compare_topic_overlay:
+    view: compare
+    kind: scatter
+    entity: topic
+    lines:
+      - {field: topic_name, label: "", format: topic_name_flagged}
+      - {field: keywords, label: "", format: keywords_2x5}
+      - {field: expansion, label: "expansion", format: score_2dp}
+      - {field: acceleration, label: "acceleration", format: score_2dp}
+      - {field: pair_volumes, label: "publications 2020-2024, full counting", format: pair_volumes,
+         note: "vol_a and vol_b; their sum is the bubble area"}
+      - {field: vol_joint, label: "joint publications", format: joint_or_floor,
+         note: "collab_topic_vols vol; the floor phrase under 5 joint publications"}
+      - {field: owner, label: "", format: owner_clause,
+         note: "the colour channel: held by both top sets, or by one institution alone"}
+
+  compare_balance_bars:
+    view: compare
+    kind: bars
+    entity: topic
+    lines:
+      - {field: topic_name, label: "", format: topic_name_flagged}
+      - {field: keywords, label: "", format: keywords_2x5}
+      - {field: pair_volumes, label: "publications 2020-2024, full counting", format: pair_volumes,
+         note: "vol_a and vol_b - the two outer segments"}
+      - {field: vol_joint, label: "joint publications", format: joint_or_floor, note: "the middle segment"}
+      - {field: expansion, label: "expansion", format: score_2dp}
+      - {field: acceleration, label: "acceleration", format: score_2dp}
+      - {field: owner, label: "", format: owner_clause}
+
+  compare_topic_table:
+    view: compare
+    kind: table
+    entity: topic
+    columns:
+      - {field: topic_name, label: "Topic", format: text}
+      - {field: owner, label: "Held by", format: owner_clause}
+      - {field: keywords, label: "Keywords", format: text, note: "the same 10 keywords, comma-separated on one line"}
+      - {field: frontier_score, label: "Frontier score", format: score_2dp}
+      - {field: expansion, label: "Expansion", format: score_2dp}
+      - {field: acceleration, label: "Acceleration", format: score_2dp}
+      - {field: vol_a, label: "Publications, A", format: int_thousands, note: "2020-2024, full counting"}
+      - {field: vol_b, label: "Publications, B", format: int_thousands}
+      - {field: vol_joint, label: "Joint", format: joint_or_floor}
+      - {field: change_a, label: "Change, A", format: pct_signed_0dp, note: "own volume, 2023-2024 against 2020-2022"}
+      - {field: change_b, label: "Change, B", format: pct_signed_0dp}
+      - {field: rank_a, label: "World rank, A", format: int_thousands, note: "topics_led rank, blank past 20"}
+      - {field: rank_b, label: "World rank, B", format: int_thousands}
+      - {field: stars_a, label: "Star papers, A", format: int_thousands}
+      - {field: stars_b, label: "Star papers, B", format: int_thousands}
+      - {field: url_a, label: "A on OpenAlex", format: text}
+      - {field: url_b, label: "B on OpenAlex", format: text}
+      - {field: url_joint, label: "Joint on OpenAlex", format: text}
+
+  # ----------------------------------------------------- Compare relationship
+  compare_yearly_stack:
+    view: compare
+    kind: stack
+    entity: year
+    lines:
+      - {field: domain_name, label: "", format: text}
+      - {field: year, label: "year", format: year_label}
+      - {field: vol, label: "joint articles and reviews", format: int_thousands}
+      - {field: share_of_year, label: "share of that year's joint output", format: pct_1dp}
+
+  compare_reciprocity:
+    view: compare
+    kind: scatter
+    entity: pair_field
+    lines:
+      - {field: field_name, label: "", format: text}
+      - {field: share_a, label: "share of A's own publications", format: pct_1dp, note: "the vertical axis"}
+      - {field: share_b, label: "share of B's own publications", format: pct_1dp, note: "the horizontal axis"}
+      - {field: vol_joint, label: "joint publications, articles and reviews 2020-2024", format: int_thousands,
+         note: "collab_pair_fields vol - the bubble area"}
+      - {field: fwci_eu, label: "FWCI_EU of the joint papers", format: fwci_pair_2dp, when: "n_fwci >= 3",
+         note: "collab_pair_fields fwci_mean, fwci_median, n_fwci (works carrying an FWCI; n_covered counts the top-decile-eligible works, a slightly narrower set)"}
+      - {field: pp10_wd, label: "joint papers in the world top decile", format: pct_1dp_dagger,
+         note: "collab_pair_fields n_top10 over n_covered"}
+      - {field: n_stars_field, label: "joint star papers in this field", format: int_thousands}
+      - {field: partner_rank, label: "", format: partner_rank, when: "rank_in_a or rank_in_b is not null"}
+
+tiles:
+
+  # -------------------------------------------------------- Find header tiles
+  find_kpi_publications:
+    view: find
+    title: "Publications"
+    help_lines:
+      - "Every publication the institution is named on, 2020 to 2024. The line under the figure credits only the author share it holds."
+      - "A publication is an OpenAlex record of type article, review, book, book chapter or letter, carrying a DOI."
+      - "2025 is harvested as a bonus year and reported for volumes only, never in the impact figures."
+      - "Retracted records are counted in the totals and left out of the subject classification, so the subject panels rest on a slightly smaller set."
+
+  find_kpi_sdg_share:
+    view: find
+    title: "SDG-tagged share"
+    help_lines:
+      - "Share of the institution's eligible fractional mass carrying at least one hit from the SDG keyword vocabulary, whole run 2020 to 2025."
+      - "Eligibility excludes records the classifier cannot read: no usable text, or an untranslated language."
+      - "The SDG panel below names the goals the vocabulary does not cover, which are missing from every institution alike."
+
+  find_kpi_frontier_share:
+    view: find
+    title: "Frontier top-quartile share"
+    help_lines:
+      - "Share of the institution's frontier-scorable output sitting in topics in the global top quarter of emergence."
+      - "A topic carrying no frontier score is left out of both the numerator and the denominator, so this is a share of what can be scored, never a share of everything published."
+
+  find_kpi_pp10:
+    view: find
+    title: "PP10_WD"
+    help_lines:
+      - "Share of the institution's output in the world top decile of citations for its own subfield, year and document type."
+      - "Articles and reviews, 2020 to 2024; the bonus year is excluded."
+      - "The European baseline is used elsewhere on this page for the typical level; this measure alone is read against the world, for the excellence tail."
+
+  find_kpi_intl:
+    view: find
+    title: "International co-publications"
+    help_lines:
+      - "Share of the institution's publications 2020 to 2024, full counting, carrying at least one other institution based in another country."
+      - "Institutions with no recorded country are counted in the denominator and never treated as domestic."
+
+  find_kpi_company:
+    view: find
+    title: "Industrial co-publications"
+    help_lines:
+      - "Share of the institution's publications 2020 to 2024, full counting, carrying at least one company on the record."
+      - "The type is the one OpenAlex records for the partner, so an institute a company owns but OpenAlex types otherwise is not counted."
+
+  find_kpi_stars:
+    view: find
+    title: "Star papers"
+    help_lines:
+      - "Articles and reviews 2020 to 2024 among the world's most-cited works in their own topic and year, top one per cent."
+      - "The share beside the count is over the institution's own articles and reviews across the same window."
+      - "On a small denominator that share moves sharply; read the count first."
+
+  find_kpi_topics_led:
+    view: find
+    title: "Topics led"
+    help_lines:
+      - "Topics where the institution ranks in the world top 20 by publication volume, 2020 to 2024."
+      - "One pool, every institution type: a large multi-site research organisation leads many more topics than a single university, by construction."
+      - "The topic planes below ring the topics led and name each topic's leading publisher."
+
+  # ------------------------------------------------------------ Compare cards
+  compare_card_publications:
+    view: compare
+    title: "Publications"
+    help_lines:
+      - "2020 to 2024, full counting. In fractional counting: {frac}."
+      - "European median: {eu_median}."
+
+  compare_card_vol_change:
+    view: compare
+    title: "Change in mean annual volume"
+    help_lines:
+      - "Mean annual publications over 2023-2024, against the same average over 2020-2022."
+      - "European median: {eu_median}."
+
+  compare_card_fwci_eu:
+    view: compare
+    title: "FWCI_EU"
+    help_lines:
+      - "Mean field-weighted citation impact against the European baseline, articles and reviews 2020 to 2024, on {n} covered works."
+      - "Median of the same works: {median}. The mean is the headline because it keeps the highly-cited tail the median discards."
+      - "World top-decile share of the same output: {pp10}. That is the world-referenced reading of impact; this card is read against Europe."
+      - "European median of the mean: {eu_median}."
+
+  compare_card_pp10:
+    view: compare
+    title: "PP10_WD"
+    help_lines:
+      - "Share of 2020 to 2024 articles and reviews in the world top decile of citations for their own subfield, year and document type."
+      - "European median: {eu_median}."
+
+  compare_card_stars:
+    view: compare
+    title: "Star papers"
+    help_lines:
+      - "Share of 2020 to 2024 articles and reviews among the world's most-cited works in their own topic and year, top one per cent."
+      - "Count: {count}. European median: {eu_median}."
+
+  compare_card_topics_led:
+    view: compare
+    title: "Topics led"
+    help_lines:
+      - "Topics where the institution ranks in the world top 20 by publication volume, 2020 to 2024, across every institution type."
+      - "European median: {eu_median}."
+
+  compare_card_frontier_share:
+    view: compare
+    title: "Frontier share"
+    help_lines:
+      - "Share of 2020 to 2024 output sitting in the global top-quarter frontier topics."
+      - "European median: {eu_median}."
+
+  compare_card_sdg_share:
+    view: compare
+    title: "SDG-tagged share"
+    help_lines:
+      - "Share of output carrying at least one Sustainable Development Goal tag, whole run 2020 to 2025."
+      - "European median: {eu_median}."
+
+  compare_card_copub:
+    view: compare
+    title: "International & company co-publication"
+    help_lines:
+      - "International co-publication: {intl}, European median {intl_eu}."
+      - "Company co-publication: {company}, European median {company_eu}."
+      - "2020 to 2024, full counting."
+
+  # ------------------------------------------------- Compare relationship tiles
+  compare_tile_joint_publications:
+    view: compare
+    title: "Joint publications"
+    help_lines:
+      - "Articles and reviews the two institutions signed together, 2020 to 2024. Every other joint figure in this section uses that same window."
+      - "Counting every document type over the whole run, 2020 to 2025: {copubs_total}."
+      - "Under 5 joint publications a pair is too thin for the breakdowns below, which fall back to plain yearly totals."
+
+  compare_tile_joint_stars:
+    view: compare
+    title: "Joint star papers"
+    help_lines:
+      - "Joint articles and reviews 2020 to 2024 among the world's most-cited works in their own topic and year, top one per cent."
+      - "The link under the tile opens the pair's joint articles and reviews on OpenAlex, most cited first."
+
+  compare_tile_momentum:
+    view: compare
+    title: "Momentum"
+    help_lines:
+      - "Joint articles and reviews a year over 2023-2024 against 2020-2022, corrected for both institutions' own growth across the same windows."
+      - "The corrected rate is recentred on the median pair, so it reads against typical behaviour rather than against no change at all."
+      - "A rise or a fall is only called when a two-proportion test clears the 0.05 level; otherwise the tile says so."
+      - "Under 5 joint publications in the first window the base is too thin for a rate and none is shown."
+
+  compare_momentum_line:
+    view: compare
+    title: "Momentum evidence line"
+    help_lines:
+      - "Always visible under the momentum tile, one sentence, filled from the pair's own figures."
+      - "Numeric states (rise, fall, stable): '{c1} joint articles and reviews a year in 2020-2022, {c2} in 2023-2024 - {pct} once both institutions' own growth is taken out. {significance}'"
+      - "significance when a rise or a fall is called: 'The change is significant at the 0.05 level ({p}).'"
+      - "significance when it is not: 'The change is not significant at the 0.05 level ({p}).'"
+      - "State new: 'No joint articles or reviews in 2020-2022; {c2} a year since.'"
+      - "State dormant: '{c1} joint articles and reviews a year in 2020-2022; none since.'"
+      - "State thin base: 'Fewer than 5 joint articles and reviews in 2020-2022 - too thin a base for a rate.'"
+      - "State never co-published: 'These two institutions have no recorded joint publications.'"
