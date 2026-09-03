@@ -7,10 +7,11 @@ search -> one profile, sidebar taxonomy/basis selectboxes, 8 KPI tiles, one
 end-of-page workbook) -> Compare (two independent search slots, PINNED to
 best-fit/full, six sections in D2 order, one end-of-page workbook, a share
 box) -> Methods ("How it is built", 11 expanders + a note download). Every
-pair page / shortlist / ERC-panel / pooled-scatter / depth-radio /
+pair page / shortlist / pooled-scatter / depth-radio /
 per-section-download check from the pre-trim harness is DELETED, not
 ported: those surfaces do not exist in this app any more (the build plan
-D1/D5/D17, out-of-scope list).
+D1/D5/D17, out-of-scope list). The ERC profile panel on Find is IN scope
+and checked below (`check_find`'s ERC block).
 
 WHAT SURVIVES FROM THE PRE-TRIM HARNESS (mechanics only, re-verified live
 against this build): the subprocess launch/poll-wait server lifecycle (three
@@ -356,6 +357,21 @@ def check_find(page) -> None:
     _open_select(page, "basis")
     _pick_option(page, BASIS_LABELS["frac"])
     _settle(page, 2500)
+
+    # --- ERC profile panel (one of the six collapsed profile panels) -------
+    erc_summary = page.locator(".st-key-panel_erc summary")
+    check(erc_summary.count() == 1, "Find: the 'ERC profile' panel expander renders")
+    erc_summary.click(timeout=ACTION_TIMEOUT_MS)
+    _settle(page, 1500)
+    check("ERC profile" in _full_page_text(page), "Find: the opened ERC panel shows its title")
+    erc_traces = page.evaluate(
+        "(() => { const el = document.querySelector('.st-key-fig_erc .js-plotly-plot');"
+        " return el && el.data ? el.data.length : -1; })()")
+    check(erc_traces > 0, f"Find: the ERC panel's plotly figure renders with data (n_traces={erc_traces})")
+    sort_erc_options = page.locator(".st-key-sort_erc [data-testid='stRadioOption']")
+    check(sort_erc_options.count() == 2,
+          f"Find: the ERC panel's sort control renders (found {sort_erc_options.count()} options)")
+    _no_exception(page, "Find (ERC panel)")
 
     # --- lens tabs present and switchable -----------------------------------
     tabs = page.locator('[data-testid="stTab"]')

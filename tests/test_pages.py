@@ -335,17 +335,17 @@ def test_kpi_builders_render_missing_mark_when_the_p5_columns_are_absent():
 
 def test_find_profile_has_no_coverage_line():
     """L30 / VIZ_SPEC S2.12 RETIRED: the coverage caption is REMOVED from the
-    page, not shortened -- its items now live in the panel, tile or tab that
-    each one qualifies. The ERC-classified-share item is gone along with the
-    ERC panel that used to host it;
-    the catch-all item is still asserted present, where it moved to."""
+    page, not shortened -- its four items now live in the panel, tile or tab
+    that each one qualifies."""
     at = _find_app(seed_id=STRASBOURG).run()
     assert not at.exception, [str(e) for e in at.exception]
     page_text = " ".join(x.value for x in (*at.caption, *at.markdown, *at.info))
     fixed = _template_literal_segment(copy.FIND["COVERAGE_LINE"])
     assert fixed not in page_text, fixed
-    # .and the relocated catch-all item IS on the page, where it moved to.
+    # ...and the relocated items ARE on the page, where they were moved to.
+    erc_fixed = _template_literal_segment(copy.FIND["CAPTION_ERC"])
     catchall_fixed = _template_literal_segment(copy.FIND["CAPTION_TOPICS_CATCHALL"])
+    assert erc_fixed in page_text
     assert catchall_fixed in page_text
 
 
@@ -449,13 +449,10 @@ def test_top_subfields_panel_has_no_sort_control_and_cuts_at_thirty():
     assert not at.exception, [str(e) for e in at.exception]
     radio_keys = {r.key for r in at.radio}
     assert "sort_subfields" not in radio_keys, radio_keys
-    #  (FB handoff): the topics panel loses its sort control too
+    # the topics panel loses its sort control too --
     # `fig_topics` is always volume-ordered now, so the toggle was dead UI.
     assert "sort_topics" not in radio_keys, radio_keys
-    # "sort_erc" is gone with the ERC panel it toggled ( "ERC
-    # panels anywhere"); "sort_fields" is the one bar panel that still sorts.
-    assert {"sort_fields"} <= radio_keys, radio_keys
-    assert "sort_erc" not in radio_keys, radio_keys
+    assert {"sort_fields", "sort_erc"} <= radio_keys, radio_keys
     assert views_find.SUBFIELDS_TOP_N == 30
     expected = copy.FIND["PANEL_SUBFIELDS"].format(n=views_find.SUBFIELDS_TOP_N)
     assert expected in [e.label for e in at.expander], [e.label for e in at.expander]
@@ -493,20 +490,19 @@ def test_find_profile_has_wordcloud_image_and_breakdown_control():
     assert controls["breakdown_dim"] == copy.FIND["BREAKDOWN_DOMAIN"], controls
 
 
-def test_find_five_chart_panels_are_expanders_in_the_ruled_order():
+def test_find_six_chart_panels_are_expanders_in_the_ruled_order():
     """L17 block 5 / VIZ_SPEC S1.9: Fields, Top subfields, Top topics, Frontier
-    positioning, SDG profile -- in that order -- plus the post-filters
-    expander that heads the Benchmark section. ERC profile is GONE."""
+    positioning, SDG profile, ERC profile -- in that order -- plus the
+    post-filters expander that heads the Benchmark section."""
     at = _find_app(seed_id=STRASBOURG).run()
     assert not at.exception, [str(e) for e in at.exception]
     labels = [e.label for e in at.expander]
     expected = [copy.FIND[k].format(**views_find.PANEL_LABEL_ARGS.get(name, {}))
                 for name, k in (("fields", "PANEL_FIELDS"), ("subfields", "PANEL_SUBFIELDS"),
                                 ("topics", "PANEL_TOPICS"), ("frontier", "PANEL_FRONTIER"),
-                                ("sdg", "PANEL_SDG"))]
+                                ("sdg", "PANEL_SDG"), ("erc", "PANEL_ERC"))]
     assert labels[:len(expected)] == expected, labels
     assert copy.FIND["POSTFILTERS_EXPANDER"] in labels, labels
-    assert copy.FIND["PANEL_ERC"] not in labels, labels
 
 
 def test_find_sidebar_holds_scenario_controls_only():

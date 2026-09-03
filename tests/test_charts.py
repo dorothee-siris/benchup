@@ -130,6 +130,22 @@ def sdg_df(seed_id) -> pd.DataFrame:
     return s[["sdg_idx", "sdg_number", "sdg_label", "share", "esi", "mass"]].reset_index(drop=True)
 
 
+@pytest.fixture(scope="module")
+def erc_df(seed_id) -> pd.DataFrame:
+    e = pd.read_parquet(DATA / "erc.parquet")
+    e = e[e["institution_id"] == seed_id].copy().reset_index(drop=True)
+    # PE1-11, LS1-9, SH1-8 in panel_idx order (the ERC 2024/25 structure); the
+    # authoritative resource is `erc_panels.csv` -- reconstructed here only so
+    # this test does not depend on a file another module owns.
+    order = [("PE", i) for i in range(11)] + [("LS", i) for i in range(9)] + \
+            [("SH", i) for i in range(8)]
+    e["erc_domain"] = [order[i][0] for i in e["panel_idx"]]
+    e["panel_code"] = [f"{d}{n + 1}" for d, n in (order[i] for i in e["panel_idx"])]
+    e["panel_label"] = e["panel_code"]
+    return e[["panel_idx", "panel_code", "panel_label", "erc_domain",
+              "share", "si", "mass"]]
+
+
 # ---------------------------------------------------------------------------
 # Builders render on real frames
 # ---------------------------------------------------------------------------
@@ -406,6 +422,19 @@ def test_fig_sdg_uses_the_numbered_label_when_present(sdg_df):
     )
 
 
+def test_fig_erc_uses_the_three_erc_hues_grouped_by_domain(erc_df):
+    fig = C.fig_erc(erc_df)
+    bars = _bar_traces(fig)
+    assert len(bars[0].x) == len(erc_df) == 28
+    assert set(bars[0].marker.color) == set(P.ERC_DOMAIN_COLORS.values())
+    # taxonomy order = PE block, then LS, then SH
+    codes = list(bars[0].y)
+    doms = [c[:2] for c in codes]
+    assert doms == sorted(doms, key=lambda d: P.ERC_DOMAIN_ORDER.index(d))
+    # no OA domain hue leaks into an ERC-coloured chart (coexistence rule)
+    assert not (set(bars[0].marker.color) & set(P.OA_DOMAIN_COLORS.values()))
+
+
 def test_breakdown_pair_global_and_grouped(fields_df):
     labels = [P.OA_DOMAIN_COLORS and n for n in ("Life", "Social", "Physical", "Health")]
     totals = [float(fields_df[fields_df["domain_id"] == d]["vol_full"].sum())
@@ -625,6 +654,21 @@ def test_fig_topics_never_wraps_the_longest_labels_in_the_app(topics_df):
     # a wide-enough gutter is reserved to hold it (belt-and-braces alongside
     # test_fig_share_si_automargin_and_reserved_margin_grow_for_long_labels)
     assert fig.layout.margin.l > C.GUTTER_MARGIN_MIN_PX
+
+
+def test_fig_erc_reuses_the_same_folded_gutter_mechanism(erc_df):
+    """ERC panel labels run up to 66 chars in the real app (`panel_label` here
+    is the short `panel_code` since `erc_panels.csv` is a different module's,
+    but the mechanism under test is family-agnostic: `fig_erc` delegates to
+    `fig_share_si`, so whatever labels arrive get the same treatment)."""
+    fig = C.fig_erc(erc_df)
+    assert fig.layout.yaxis.automargin is True
+    assert len(fig.layout.yaxis.ticktext) == len(erc_df)
+    assert all(P.INK_SECONDARY in t for t in fig.layout.yaxis.ticktext)
+    # ERC/SDG delegate to fig_share_si without passing `wrap`, so they inherit
+    # its default -- no chart drawn by this module wraps a label any more
+    # unless a future caller explicitly opts back in.
+    assert not any("<br>" in t for t in fig.layout.yaxis.ticktext)
 
 
 # ---------------------------------------------------------------------------

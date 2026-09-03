@@ -226,6 +226,11 @@ def _sdg_frame(iid: str) -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner=False, max_entries=24)
+def _erc_frame(iid: str) -> pd.DataFrame:
+    return profile_data.erc_table(SC.bundle()["ctx"], iid)
+
+
+@st.cache_data(show_spinner=False, max_entries=24)
 def _wordcloud_inputs(iid: str, tree: str, basis: str) -> tuple[dict, dict]:
     """`({subfield_name: weight}, {subfield_name: domain_id})` -- plain dicts,
     so `wordcloud_png.render_wordcloud_png` (itself cache_data) can hash them."""
@@ -651,6 +656,21 @@ def _profile_cards(card: dict, row, bundle: dict) -> None:
     tiles.kpi_tile(cols[len(specs) + 1], KPI_LED_LABEL, led_value, led_sub, help=led_help)
 
 
+def _erc_share(card: dict, row) -> float | None:
+    """The ERC-classified share the ERC panel caption reports. A RATIO of two
+    card fields, computed once so the caption reads a value rather than an
+    expression.
+
+    The numerator is on the WHOLE-RUN mass basis (2020-2025), so its
+    denominator must be the whole-run `total_frac`, not the 2020-2024 window
+    (which printed 109.1 % for Strasbourg). `data_contract.yaml`
+    index.erc_classified_mass_frac carries the corrected formula."""
+    erc, tot = card["erc_classified_mass_frac"], row.get("total_frac")
+    if erc is None or tot is None or pd.isna(tot) or float(tot) <= 0:
+        return None
+    return erc / float(tot)
+
+
 def _profile_wordcloud(iid: str, ctl: dict) -> None:
     """VIZ_SPEC S2.13 /: a raster UNDER the identity block, in the left
     half of the profile row -- it illustrates what the institution works on, so
@@ -977,13 +997,33 @@ def _panel_sdg(iid: str, ctl: dict, card: dict) -> None:
         _basis_caption(copy.FIND["FRACTIONAL_ONLY_PANEL"], warning=True)
 
 
-# The five panels of VIZ_SPEC S1.9 block 5, in their fixed order. The key is
+def _panel_erc(iid: str, ctl: dict, card: dict) -> None:
+    """VIZ_SPEC S2.20: one row per ERC evaluation panel, coloured by its ERC
+    DOMAIN (three hues that share nothing with the OpenAlex four -- a different
+    taxonomy of the same output), grouped PE -> LS -> SH under the taxonomy
+    sort, which is this panel's default."""
+    df = _erc_frame(iid)
+    if df.empty:
+        st.caption(copy.FIND["PANEL_EMPTY"])
+        return
+    sort = _sort_control("erc", default=SORT_TAXONOMY)
+    st.plotly_chart(charts.fig_erc(df, sort=sort), width="stretch", key="fig_erc")
+    # The ERC-classified share sits in this caption, where the panel it
+    # qualifies is on screen; the SI reading note is folded into its `?`.
+    st.caption(copy.FIND["CAPTION_ERC"].format(n_panels=f"{len(df):,}",
+                                               erc_share=_pct(card.get("_erc_share"))),
+               help=copy.FIND["CAPTION_SI"])
+    # Same whole-run, six-year basis as the SDG panel above (`erc.parquet`
+    # carries no year filter either -- data_contract.yaml erc.parquet.mass /
+    # index.erc_classified_mass_frac). Disclosure only, basis unchanged.
+    _basis_caption(copy.FIND["RATIO_WHOLE_RUN_BASIS"].format(
+        window=SDG_ERC_WINDOW_LABEL, corpus=CORPUS_WINDOW_LABEL))
+    if ctl["basis"] == "full":
+        _basis_caption(copy.FIND["FRACTIONAL_ONLY_PANEL"], warning=True)
+
+
+# The six panels of VIZ_SPEC S1.9 block 5, in their fixed order. The key is
 # BOTH the expander's session-state key and the widget key suffix.
-#
-# The ERC panel is GONE ( "Out of scope: ERC panels
-# anywhere" -- `lib/charts.py:fig_erc`, C2's file, is retired along with
-# it; the L4/L5 ERC-based ranking LENSES in the Benchmark section below are
-# untouched, a different feature the scope note does not name).
 #
 # A panel whose TITLE states its own cut takes its arguments from here rather
 # than typing the number into copy.py (L10): R2/L34's "Top {n} subfields" is the
@@ -996,6 +1036,7 @@ PANELS = (
     ("topics", "PANEL_TOPICS", _panel_topics),
     ("frontier", "PANEL_FRONTIER", _panel_frontier),
     ("sdg", "PANEL_SDG", _panel_sdg),
+    ("erc", "PANEL_ERC", _panel_erc),
 )
 
 
@@ -1022,12 +1063,13 @@ def _render_profile(bundle: dict, subs: dict, seed_id: str, ctl: dict) -> dict:
     """VIZ_SPEC S1.9 / -6 -- the profile as a 2 + 2 split. Row 1 in two
     halves (the SIX KPI cards as a 2 x 3 grid | identity with the wordcloud
     UNDER it), row 2 full width (a titled section holding one control, one chip
-    legend and the height-matched breakdown pair), then the five collapsed
+    legend and the height-matched breakdown pair), then the six collapsed
     panels. Returns the seed card, which the L2f tab intro and the export path
     both read after the profile has rendered."""
     ctx = bundle["ctx"]
     card = seed_card(ctx, seed_id, subs, bundle["catchall"])
     row = ctx["index_by_id"].loc[seed_id]
+    card["_erc_share"] = _erc_share(card, row)
     st.header(copy.FIND["PROFILE_HEADER"])
     with st.container(border=True, key="profile"):
         c_cards, c_identity = st.columns(PROFILE_ROW1_WIDTHS)

@@ -123,7 +123,7 @@ For every topic, this tool ranks the world's publishers twice: once across every
 type, and once restricted to universities alone (`app/data/topic_leaders.parquet`, `pool` in
 `{all, education}`). Both leaderboards run up to 200 institutions deep, articles and reviews
 only, 2020 to 2024, pulled live from OpenAlex on the day the leader list was built (measured live
-as the maximum `rank` on the shipped table; `pipeline/23_world_leaders.py`).
+as the maximum `rank` on the shipped table.
 
 The two leaderboards exist because a single ranking across every institution type favours large,
 multi-site research and technology organisations by construction: a body that runs many
@@ -137,7 +137,7 @@ own pool, so a reader never mistakes one leaderboard's tenth place for the other
 
 A star paper is one of the world's most-cited works within its own topic and publication year:
 the top 1% by citations, articles and reviews only, 2020 to 2024, pulled live from OpenAlex on
-the day the star list was built (`pipeline/24_star_papers.py`, k = max(1, ceil(0.01 x count)) per
+the day the star list was built (k = max(1, ceil(0.01 x count)) per
 topic x year, sorted pull). A tie sitting exactly on the cutoff, beyond the number the cut
 allows, is left out rather than included.
 
@@ -190,7 +190,7 @@ shared frontier topics, shared specialisations, and more (`copy.LENS_DISPLAY_COD
 Every lens shows its top 50 candidates (`app/config.yaml` `depth.max`, fixed since the 30/50 depth
 radio was retired); the full ranking is always computed underneath, and can be searched or
 downloaded whatever the display cutoff. Concordance counts how many of the lenses defined for a
-seed place a given candidate inside their own top-30 (`app/config.yaml` `concordance_N`), a
+seed place a given candidate inside their own top-50 (`app/config.yaml` `concordance_N`), a
 measure of how many independent readings agree rather than a score of its own: it adds no
 candidate the lenses do not already find on their own.
 

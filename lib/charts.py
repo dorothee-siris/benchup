@@ -994,12 +994,19 @@ def fig_sdg(df: pd.DataFrame, *, sort: str = "taxonomy", gutter: bool = True) ->
 
 
 # ---------------------------------------------------------------------------
-# 5. The yearly-breakdown PAIR: global horizontal bars + per-year GROUPED bars
-#    (V4 trim, 2026-09-03: `fig_erc` deleted here -- ERC panels are
-#    out of scope everywhere in the V4 app, "Out of scope".
-#    `fig_share_si`'s own `family="erc"` support is left in place: it is
-#    generic plumbing shared with "oa"/"sdg"/"doctype", not an ERC-specific
-#    builder, and removing it would not delete any reachable code.)
+# 5. ERC profile -- panels grouped by ERC domain, share + SI
+# ---------------------------------------------------------------------------
+def fig_erc(df: pd.DataFrame, *, sort: str = "taxonomy", gutter: bool = True) -> go.Figure:
+    """The ERC panel view: one row per ERC evaluation panel, coloured by its ERC
+    DOMAIN (three hues -- `palette.ERC_DOMAIN_COLORS`), share on the left and SI
+    on the right, `sort="taxonomy"` grouping the panels by domain in the fixed
+    PE -> LS -> SH order. The weak-panel caveat (some panels are thinly
+    populated) is the caller's caption, not a mark on the chart."""
+    return fig_share_si(df, family="erc", sort=sort, gutter=gutter)
+
+
+# ---------------------------------------------------------------------------
+# 6. The yearly-breakdown PAIR: global horizontal bars + per-year GROUPED bars
 # ---------------------------------------------------------------------------
 def fig_breakdown_global(
     labels: Sequence[str],
