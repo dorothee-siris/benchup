@@ -1,6 +1,6 @@
 """
 tests/test_invariants_data.py -- deterministic data invariants over the REAL
-`app/data/*.parquet` artefacts. No fixtures, no mocks, no fabricated data.
+`app/data/*.parquet` tables. No fixtures, no mocks, no fabricated data.
 Every check is a vectorised pandas pass over a raw parquet table (or two),
 never through a page-layer function -- so this file stays correct across a
 UI rewrite as long as the underlying tables keep their contract shape.
@@ -32,7 +32,7 @@ from lib.engine import load_substrates, load_context
 
 APP_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = APP_DIR / "data"
-FWCI_DIR = APP_DIR.parent / "data" / "interim" / "fwci"  # pipeline-internal, NOT deployed (data_contract.yaml)
+FWCI_DIR = APP_DIR.parent / "data" / "interim" / "fwci"  # build-internal, NOT deployed (data_contract.yaml)
 
 STRASBOURG, IFPEN, GDANSK, ISCTE, SORBONNE, ETH = (
     "I68947357", "I265217849", "I40413290", "I110026055", "I39804081", "I35440088")
@@ -107,7 +107,7 @@ def test_ordering_n_top10_le_n_covered_le_vol_full_tables():
 
 # ============================================================================
 # item 3 -- FWCI: citation-weighted stratum-mean == 1 (skips if the
-# pipeline-internal reference tables are not present locally)
+# build-internal reference tables are not present locally)
 # ============================================================================
 
 _FWCI_FILES_PRESENT = (FWCI_DIR / "fwci_ref.parquet").exists() and (FWCI_DIR / "fwci_work.parquet").exists()
@@ -193,7 +193,7 @@ def test_momentum_vocabulary_and_stat_rules():
 
 def test_collab_topic_vols_pair_set_matches_qualifying_pairs():
     """Vectorised (merge-based, never a Python set-of-15M-tuples loop).
-    Tolerance <=5 mirrors the pipeline's own disclosed edge case: a
+    Tolerance <=5 mirrors a disclosed upstream edge case: a
     qualifying pair whose every joint work lacks a primary topic never
     enters a topic-grain table at all (~0.07% of works corpus-wide)."""
     cp = pd.read_parquet(DATA_DIR / "collab_pairs.parquet", columns=["a", "b", "core_total"])
@@ -254,8 +254,8 @@ def test_cross_view_pin_field_vol(ctx):
 
 # ============================================================================
 # item 7 -- new-table anchors (world leaders / star papers / institution
-# FWCI_EU) -- Ifremer field 11, cross-checked against the pipeline's own
-# golden values (progress/P5.md, P6.md, pipeline/README.md step 19)
+# FWCI_EU) -- Ifremer field 11, cross-checked against the upstream build's own
+# golden values.
 # ============================================================================
 
 def test_impact_taxa_ifremer_field11_anchor():
@@ -279,8 +279,8 @@ def test_fwci_taxa_ifremer_field11_anchor():
 def test_index_star_leader_fwci_columns_present():
     """The 8 columns P3/P4/P5/P6 (world leaders, star papers, institution
     FWCI_EU) add to `index.parquet` -- present, correctly typed, and (for
-    the two anchor institutions the pipeline itself verified) matching the
-    values recorded in progress/P5.md and progress/P6.md."""
+    the two anchor institutions the upstream build itself verified) matching
+    reference values recorded during that verification."""
     idx = pd.read_parquet(DATA_DIR / "index.parquet")
     expected_dtypes = {
         "n_stars": "int32", "star_share": "float32",

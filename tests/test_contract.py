@@ -4,7 +4,7 @@ Covers: contract_check.check() clean (every declared file/column/dtype/key prese
 undeclared drop); fields/subfields shares sum to 1; erc.share sums <= 1; sdg.share per-row
 bounds; topics_dim exclusion reason-code coverage; index PP confidence-interval ordering;
 umbrella_supplement.csv shape. The type-override identity check moved with
-overrides/type_overrides.csv to the private pipeline tree, which the app no longer reads.
+overrides/type_overrides.csv to a private build tree, which the app no longer reads.
 """
 from __future__ import annotations
 
@@ -122,8 +122,8 @@ def test_doctype_by_year_keys_unique_and_typed() -> None:
 
 def test_doctype_by_year_sum_matches_index_by_year() -> None:
     """Class-1 invariant, spot-checked on 3 institutions from the deployed app/data/ (the full
-    7,557 x 6 = 45,342-cell check is `python pipeline/09c_doctype_by_year.py --check`, run by
-    the manager separately -- this test is the CI-speed subset)."""
+    7,557 x 6 = 45,342-cell check is run separately as part of the upstream build --
+    this test is the CI-speed subset)."""
     dt = _read("doctype_by_year.parquet")
     idx = _read("index.parquet")
 

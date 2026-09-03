@@ -170,7 +170,7 @@ def test_topics_table_rank_volume_follows_basis(ctx, subs_full):
 @pytest.mark.parametrize("seed_id", YEARLY_SEEDS)
 def test_yearly_by_domain_matches_index_by_year(ctx, subs_bestfit, seed_id):
     """Sigma over domains per year vs index.vol_full_by_year_this_run.
-    MEASURED (progress/R1_B.md): `yearly_by_domain` reproduces topics_all's
+    MEASURED: `yearly_by_domain` reproduces topics_all's
     own per-topic vol_full/vol_frac columns EXACTLY (verified by a direct
     Sigma over topics_all with no domain join) but topics_all itself is
     systematically a FEW WORKS SHORT of the index's by-year bookkeeping

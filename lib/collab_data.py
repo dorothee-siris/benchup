@@ -144,7 +144,7 @@ def _collab_pair_slice(ctx: dict, table: str, a: str, b: str) -> pd.DataFrame:
 # ============================================================================
 # The Collaborate v2 sections over ONE pair (a, b), from the `collab_pairs.
 # parquet` / `collab_pair_fields.parquet` / `collab_pair_domain_year.parquet`
-# pair artefacts. Every table keys on (a, b) with `a` the LEXICOGRAPHICALLY
+# pair files. Every table keys on (a, b) with `a` the LEXICOGRAPHICALLY
 # SMALLER institution_id (the tables' OWN convention) -- every function below
 # accepts (a, b) in the CALLER's own order and re-orients whatever it reads
 # back, so a caller never has to know or care which of its two ids happens to
@@ -152,7 +152,7 @@ def _collab_pair_slice(ctx: dict, table: str, a: str, b: str) -> pd.DataFrame:
 # ============================================================================
 
 def _load_collab_pairs(ctx: dict, a: str, b: str) -> pd.DataFrame:
-    """: `collab_pairs.parquet` v2's row for this ONE
+    """Reads `collab_pairs.parquet` v2's row for this ONE
     pair only, duckdb-pushed and ctx-cached per pair by
     `_collab_pair_slice` -- never the 3.58M-row whole table. Columns:
     ALL a<b indexed-institution pairs with >=1 co-published work 2020-2025,
@@ -160,7 +160,7 @@ def _load_collab_pairs(ctx: dict, a: str, b: str) -> pd.DataFrame:
     per WT_2BR3.md SS0 -- NOT a typo), `core_total`/`c1`/`c2` (CORE-AR,
     articles+reviews 2020-2024), `n_top10`/`n_covered`/`n_sdg`/`fwci_median`
     (CORE-AR), `rank_in_a`/`rank_in_b` (recomputed on CORE-AR, ranks computed
-    before any floor), `mom_class`/`mom_rr`/`mom_p` (SS2.3, pipeline-
+    before any floor), `mom_class`/`mom_rr`/`mom_p` (SS2.3, already
     classified), plus `erc_top_panel`/`erc_top_panel_n`/`erc_labelled_n`
     carried forward on their CURRENT basis (WT_2BR3.md SS0 gap g: moved here
     from collab_pair_topics v1, the pair-level ERC header now has a schema
@@ -169,18 +169,18 @@ def _load_collab_pairs(ctx: dict, a: str, b: str) -> pd.DataFrame:
 
 
 def pair_domain_year(ctx: dict, a: str, b: str) -> pd.DataFrame:
-    """/: `collab_pair_domain_year.parquet`'s rows
+    """Reads `collab_pair_domain_year.parquet`'s rows
     for this ONE pair only, duckdb-pushed and ctx-cached like every table
     above -- never the whole file. Columns: (a, b, domain_id, year, vol),
     CORE-AR 2020-2024, qualifying pairs only (core_total >= 5, same floor
-    as `collab_pairs`; `pipeline/22_pair_domain_year.py`'s own rollup of
-    the P7 pair x field x year tables via `topics_dim`'s bestfit field ->
+    as `collab_pairs`; the offline build's own rollup of
+    the qualifying pair x field x year tables via `topics_dim`'s bestfit field ->
     domain map). Powers the Relationship block's joint-publications-by-
     domain stacked chart. Empty (right columns, from the file's own schema)
     when the pair never qualified -- Sigma(vol) over all rows for a
     qualifying pair equals that pair's `collab_pairs.core_total` exactly
-    (verified per pair in `tests/test_collab_data.py` and the pipeline
-    step's own acceptance script)."""
+    (verified per pair in `tests/test_collab_data.py` and the
+    build step's own acceptance script)."""
     return _collab_pair_slice(ctx, "collab_pair_domain_year", a, b)
 
 
@@ -297,7 +297,7 @@ FIELD_BREAKDOWN_NOTE = (
 
 
 def _load_collab_pair_fields(ctx: dict, a: str, b: str) -> pd.DataFrame:
-    """: `collab_pair_fields.parquet` v2's rows for this
+    """Reads `collab_pair_fields.parquet` v2's rows for this
     ONE pair only, duckdb-pushed and ctx-cached -- never the 3.57M-row whole
     table. Pair x field, UNCAPPED (every field the pair has any joint mass
     in), bestfit tree only, same a<b/floor-5 qualifying-pair convention as
@@ -359,9 +359,9 @@ def _mom_num(v) -> float:
 
 
 def momentum_display(mom_class, mom_rr, mom_p, c1, c2, facts: dict) -> tuple[str, str, str]:
-    """SS2.3's 9-case Lorraine momentum display ladder -- a PURE formatting
+    """SS2.3's 9-case momentum display ladder -- a PURE formatting
     function over an ALREADY-CLASSIFIED pair/field/topic row (`mom_class`/
-    `mom_rr`/`mom_p` are pipeline outputs from `collab_pairs`/
+    `mom_rr`/`mom_p` are upstream outputs from `collab_pairs`/
     `collab_pair_fields`/`collab_pair_topics` v2; this function never
     reclassifies, and `c1`/`c2`/`facts` are accepted for signature parity
     with the brief and future message-text branches but are not needed by
@@ -427,8 +427,8 @@ RECIPROCITY_COLS = ["field_id", "field_name", "domain_id", "domain_name", "x", "
 
 
 def reciprocity_frame(ctx: dict, subs: dict, a: str, b: str) -> pd.DataFrame:
-    """"Strategic reciprocity by field" (SS1.6, Lorraine port, HONEST
-    both-sides variant per the brainstorm root-cause note -- Lorraine's own
+    """"Strategic reciprocity by field" (SS1.6, ported from an earlier SIRIS
+    Streamlit tool, HONEST both-sides variant -- that tool's own
     x-axis builder divides pair co-works by the PARTNER's total, which is in
     tension with its own copy; BenchUp implements the version that matches
     what the chart actually claims to show): per field with joint CORE-AR

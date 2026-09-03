@@ -21,12 +21,12 @@ def _scale_guard_multiplier(seed_total: float) -> float:
 def apply_filters(rows, *, seed_row, types=None, countries=None, exclude_own_country=False,
                    size_range=None, scale_guard=False, family_min=None, family_scores=None):
     """Predicates only, opt-in, evaluated in this order. `scale_guard`'s ratio
-    test -- `max(a,b)/min(a,b) <= m` -- is the same scale-guard form as
-    `evals/campaign_v2/recall_v2.py:722`, m from `_scale_guard_multiplier`
+    test -- `max(a,b)/min(a,b) <= m` -- is the same scale-guard form the
+    reference implementation uses, m from `_scale_guard_multiplier`
     banded on the SEED's size. `family_min` thresholds `family_scores`
     (an institution_id -> L0 score dict, e.g. `engine.family_overlap_scores`
     zipped with `ctx["inst_ids"]`) at >= `family_min` (config.yaml
-    family_filter_threshold, M5.12)."""
+    family_filter_threshold)."""
     seed_total = float(seed_row["total_full_2020_2024"])
     seed_country = str(seed_row["country_code"])
     m = _scale_guard_multiplier(seed_total)

@@ -175,11 +175,11 @@ def test_no_marker_pattern_anywhere_in_a_rendered_metric_bars_figure():
 
 # ============================================================================
 # E6 -- gutter=True/False build from the same frame, differ only in the
-# gutter mechanism. BenchUp V4 trim: the pre-trim page built a
+# gutter mechanism. An earlier page built a
 # CSS-media-query dual variant (`views_compare._metric_chart`, since
-# deleted) for every section; C3's page calls `charts_compare.two_tab_bars`
-# a single time per chart (`gutter=True` always -- render-proof at 390 px
-# is C3's own Playwright script, `progress/C3_renders/`), so the CONTRACT
+# deleted) for every section; this page calls `charts_compare.two_tab_bars`
+# a single time per chart (`gutter=True` always -- render-proofed at 390 px
+# with a Playwright script), so the CONTRACT
 # this guards is narrower now: the two `gutter=` values must still agree on
 # every bar value, whichever one a caller picks.
 # ============================================================================

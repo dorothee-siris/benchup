@@ -1,10 +1,10 @@
 """tests/test_repack.py -- dtype contract gate for the deployed app data.
 
-Pins the RAM-fit repack (`pipeline/20_repack_app_data.py`) as a standing contract on
+Pins the RAM-fit repack (an offline build step) as a standing contract on
 every deployed `app/data/*.parquet`: ID/label columns load as `category`, no `float64`
 column survives anywhere, and `impact_fields.parquet` stays gone. Data-driven, no
 fixtures -- reads app/data/ directly, so it
-automatically covers every new table the pipeline adds at the top level of app/data/
+automatically covers every new table the upstream build adds at the top level of app/data/
 (no per-table edit needed here when a table is added, only the count pin below).
 """
 from __future__ import annotations

@@ -1,8 +1,8 @@
-# Memory stress harness (BUILD_PLAN.md D12, Stream T1)
+# Memory stress harness
 
-Permanent gate for the RAM fit the whole V4 trim exists to buy: Streamlit Community
-Cloud hard-caps a deployed app's container at **2.7 GB**. D11 rebuilt the engine so
-exactly ONE (taxonomy, counting-basis) scenario substrate dict is resident at a time
+Permanent gate for the RAM fit the app's architecture exists to buy: Streamlit Community
+Cloud hard-caps a deployed app's container at **2.7 GB**. The engine keeps
+exactly ONE (taxonomy, counting-basis) scenario substrate dict resident at a time
 (`lib/engine/scenario_cache.py`, `max_entries=1`); this harness is the thing that
 actually proves that holds up under real, sustained, concurrent use — not just a
 bare-process cycle.
@@ -11,30 +11,30 @@ bare-process cycle.
 
 | phase | what it drives | how |
 |---|---|---|
-| **A** | the measured crash path (BUILD_PLAN.md Trigger paragraph): open an institution, cycle basis and taxonomy, visit Compare, come back, download a workbook | one continuous Playwright browser context, deterministic script, waits for Streamlit's own "running" indicator to clear between steps |
+| **A** | the measured crash path: open an institution, cycle basis and taxonomy, visit Compare, come back, download a workbook | one continuous Playwright browser context, deterministic script, waits for Streamlit's own "running" indicator to clear between steps |
 | **B** | sustained concurrent multi-user load | N browser contexts (`--sessions`, default 3) in parallel threads, each running a seeded-random action loop for `--minutes` (default 10) with only fixed 300–1500 ms pauses — **no waiting for spinners**, so it genuinely outruns what a careful user would do |
 | **C** | the engine in isolation, no browser/server at all | `cycle_scenarios.py`: one bare Python process calls `scenario_cache.bundle()` then `get()` for all six (tree, basis) scenarios in sequence |
 
 Every 0.5 s, a background thread samples the **Streamlit server's own python.exe**
 `WorkingSetSize` (via `ops/rss_probe.py`, stdlib ctypes — never the Playwright/
-Chromium client process) — the same method `V3/evals/gate_2E/gate_2E_rss.md`
+Chromium client process) — the same method an earlier stress harness
 established. Samples are tagged with the phase running at that moment.
 
 **Pass line:** peak RSS across every measured phase `< 1,800 MB` (half the 2.7 GB
-cap — the same D11/D12 ceiling `tests/test_ram_budget.py::test_scenario_cycle` uses
+cap — the same ceiling `tests/test_ram_budget.py::test_scenario_cycle` uses
 for its own, narrower, bare-process budget) **and** the server never dies (its PID
 stays openable throughout, and one final page load after everything succeeds).
 
-**Known finding (2026-09-03, `progress/T1.md` has the full trace):** at the full
+**Known finding:** at the full
 acceptance duration (`--minutes 8`, 3 sessions) the app currently **FAILS** this
 gate — peak 2,511 MB, driven by a late-window burst of concurrent `/Compare`
 requests for many distinct institution pairs (Compare's own page-level
-`st.cache_data` caches, not the scenario cache this stream's D11 fix targets:
+`st.cache_data` caches, not the scenario cache the engine redesign targets:
 Compare is pinned to one scenario throughout). Shorter runs (4 min) pass
 comfortably and reproducibly (~1,600 MB peak, two independent runs agree within
 2%) — the failure is duration/concurrency-dependent. This is the gate correctly
-finding a real issue, not a harness defect; the fix is outside this stream's
-fence (page-level cache bounds, C1/E1's files).
+finding a real issue, not a harness defect; the fix is page-level cache bounds
+elsewhere in the app.
 
 ## Running it
 
@@ -54,9 +54,9 @@ Args (`run_stress.py`):
 | `--phases` | `A,B` | comma list from `A,B,C` — C is a separate bare process shelled out to `cycle_scenarios.py` |
 | `--out` | `V4/evals/stress/` | report + CSV destination |
 
-A single command times out at 10 minutes in some harnesses (this stream's own build
-brief caps Bash calls at 10 min) — keep `--minutes ≤ 8` per invocation, or run it as
-a background process and poll. The manager's own gate run uses `--minutes 10`.
+A single command times out at 10 minutes in some harnesses — keep `--minutes ≤ 8`
+per invocation, or run it as a background process and poll. A full gate run uses
+`--minutes 10`.
 
 Phase C alone, standalone (no server, seconds not minutes):
 
@@ -102,7 +102,7 @@ spawned server, so whatever `BENCHUP_SCENARIO_ENTRIES` is set to in the CALLING
 shell reaches it unchanged — this is the whole mechanism, no code path here treats
 the two runs differently.
 
-**Measured (2026-09-03, `progress/T1.md` has the full tables):**
+**Measured:**
 
 | | entries=1 | entries=3 |
 |---|---|---|
@@ -122,8 +122,8 @@ live while the new one builds) that dominates the PEAK reading under
 `entries=1`'s constant forced eviction+rebuild churn. This is a genuine,
 explainable property of chaos over a small bounded state space, not a harness
 gap — checked for a fixable coverage issue first (phase B already spends ~1/6 of
-its actions on scenario switches) per BUILD_PLAN.md's own instruction to fix the
-harness before doubting the app; none was found. **Trust phase C (and phase A)
+its actions on scenario switches), fixing the harness before doubting the app;
+none was found. **Trust phase C (and phase A)
 for this specific claim; don't expect phase B's peak to move the same direction.**
 
 ## A Windows gotcha this harness works around
@@ -140,9 +140,9 @@ run, a **silent false PASS**. `run_stress.py` resolves the real PID by asking
 **both** PIDs (the launched one and the resolved one, if different) so nothing is
 ever left orphaned. See the module docstring / `_find_listening_pid` for detail.
 
-## Selector choices (role/text, not test ids — see BUILD_PLAN.md fence note)
+## Selector choices (role/text, not test ids)
 
-This stream owns no page file, so every interaction goes through Playwright role or
+This harness owns no page file, so every interaction goes through Playwright role or
 label locators confirmed live against the running app (not guessed from source):
 
 - Nav: `get_by_role("link", name="Open Find peers")` / `"Open Compare"` / `"Open How
@@ -168,8 +168,8 @@ label locators confirmed live against the running app (not guessed from source):
   exception box title. A websocket disconnect has no equally reliable DOM signal;
   any Playwright exception raised mid-action is counted as a phase-B failure too.
 - Compare deep link: `?compare=A,B` (`lib/selection.py::deeplink`) — used directly
-  via `page.goto`, never by typing into the slot search boxes (BUILD_PLAN.md T1
-  spec: "never type into the slot widgets, whose labels may still change").
+  via `page.goto`, never by typing into the slot search boxes (the spec here is:
+  "never type into the slot widgets, whose labels may still change").
 
 If any of these break on a future page edit, re-probe the running app rather than
 guessing from source — `probe_selectors.py`-style throwaway scripts (not checked
@@ -177,7 +177,7 @@ in) are how the ones above were confirmed.
 
 ## Seeds
 
-The same 12 institutions `V4/evals/goldens/README.md` (Stream T0) already vetted
+The same 12 institutions the reference goldens already vetted
 for type/size variety — this harness never re-derives its own sample:
 
 ```
@@ -202,5 +202,5 @@ I4210142177  Pfizer-University of Granada-Junta de Andalucía Centre for Genomic
 - `cycle_scenarios.py` — phase C, standalone, no server.
 - This file.
 
-Reports and samples live in `V4/evals/stress/` (outside `app/`, per BUILD_PLAN.md
-§3.0 file ownership — this folder owns them, not `app/`).
+Reports and samples live in `V4/evals/stress/` (outside `app/` — this folder
+owns them, not `app/`).

@@ -240,10 +240,9 @@ FIND = {
     "SEED_PICK_LABEL": "Institution to profile",
     "SEED_PROMPT": "Add an institution using the sidebar search to see its benchmark.",
 
-    # ---- what a publication is (R2 / L29; every clause verified against
-    # pipeline/01b_harvest_eu27_aug.py l.10-14, app/config.yaml l.42-43,
-    # pipeline/agg/attribution.py l.1-16 and pipeline/agg/enriched_corpus.py
-    # `classify_grey_state` l.792-798 -- citations in progress/R2_C.md).
+    # ---- what a publication is (every clause verified against the
+    # upstream harvest and classification logic, cross-checked against
+    # `app/config.yaml`).
     "PUBLICATIONS_TOOLTIP": (
         "A publication here is an OpenAlex record of type article, review, book, book chapter or "
         "letter, carrying a DOI and published between {y0} and {y1}. {bonus_year} is harvested as a "
@@ -563,10 +562,9 @@ FIND = {
         "The large figure counts every publication the institution is named on. The figure under "
         "it credits only the author share it holds, which is the fairer basis for comparing "
         "institutions of different sizes and the basis most of this page uses."),
-    # E1/E3 (`evals/press_audit_2D.md` S2 "PP(top10%)
-    # tile label + help"): PP10_WD's own suffix plus the FIXED two-axes
-    # explainer E3 asks every impact tooltip to carry. This is the FIRST
-    # (and, on this page, only) mention of "the European baseline" -- the E1
+    # PP10_WD's own suffix plus the FIXED two-axes
+    # explainer every impact tooltip carries. This is the FIRST
+    # (and, on this page, only) mention of "the European baseline" -- the
     # ruled wording, spelled out in full here and shortened everywhere else
     # the app repeats it.
     "KPI_PP_HELP_R2": (
@@ -859,13 +857,13 @@ def _lens_concordance_table() -> str:
     return "\n\n".join(lines)
 
 
-#  /: the impact-interval coverage sentence, hoisted to
-# module level so the Compare page can reuse the SAME wording next wave
-# rather than a second hand-typed caption ( CP row,
-# "impact intervals with stated coverage"). `ci_coverage` and `n_bootstrap`
+# The impact-interval coverage sentence, hoisted to
+# module level so the Compare page can reuse the SAME wording
+# rather than a second hand-typed caption ("impact intervals with stated
+# coverage"). `ci_coverage` and `n_bootstrap`
 # are plain facts (config.yaml methods_facts / source_manifest.json), never
 # typed in here; `tests/test_pages_methods.py` pins the coverage number
-# against the pipeline function it is actually read off.
+# against the function it is actually read off.
 
 # FWCI_NOT_AVAILABLE_LINE (-11(c) / MU3) DELETED (TEV-U wave 3, MT
 # sweep casualty #4): FWCI is a real, always-attempted column now (ruling 4,

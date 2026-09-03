@@ -172,8 +172,8 @@ def test_undefined_lens_shows_template(undefined_l2f_seed):
 
 def test_type_filter_empties_a_lens_list():
     """DEVIATION from the brief's exact wording ("set a type filter to a
-    type absent from the seed's L1 top-50"): measured directly (see
-    progress/2A_G.md) -- for I40413290/L1, EVERY institution type has at
+    type absent from the seed's L1 top-50"): measured directly --
+    for I40413290/L1, EVERY institution type has at
     least 76 candidates somewhere in the full positive-score ranking (not
     just the top 50), so no single-type filter empties the list. A narrow
     total-works size_range does reliably empty it (apply_filters(.,

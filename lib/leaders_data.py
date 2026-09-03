@@ -1,8 +1,8 @@
 """
-app/lib/leaders_data.py -- BenchUp V4,.
+app/lib/leaders_data.py.
 
-Pure-function duckdb-pushdown slice loaders over the four tables
-`pipeline/25_leader_star_kpis.py` writes -- `topic_leaders.parquet`,
+Pure-function duckdb-pushdown slice loaders over the four tables the
+upstream build writes -- `topic_leaders.parquet`,
 `inst_stars.parquet`, `pair_stars.parquet`, `topics_led.parquet` -- scoped to
 whatever handful of topics/institutions a caller actually needs. Same idiom
 as `lib/collab_data.py:_collab_pair_slice`: a shared, memory-bounded duckdb

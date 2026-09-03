@@ -2,13 +2,13 @@
 app/lib/engine/substrates.py -- population context + per-scenario substrate
 loader.
 
-Ports `evals/campaign/gen_lists_recall.py`'s `load_everything` and its
-`build_*_substrate` family, plus `evals/campaign_v2/gen_lists_v2.py`'s L0
+Ports the recall reference implementation's `load_everything` and its
+`build_*_substrate` family, plus the ranking reference implementation's L0
 substrate and `build_catchall_811_share`. Arithmetic is copied, not rewritten;
-every deviation is listed in VENDORED_engine.md. The two that matter here:
+every deviation is documented inline. The two that matter here:
 
   * `topics_all` is read with FIVE columns only (`inst_key, topic_id,
-    share_frac, vol_frac, vol_full`) -- /: the full
+    share_frac, vol_frac, vol_full`) -- the full
     frame is 533 MB deep, 366 MB of it object strings. `institution_id` is
     therefore NOT available, so the L3/F1 dense matrices are filled by integer
     position (inst_key -> row, topic_id -> column) instead of
@@ -21,38 +21,38 @@ every deviation is listed in VENDORED_engine.md. The two that matter here:
 
   * `basis` is threaded through every shape-grain lens (L0/L1/C1 pick
     share_frac vs share_full; L3/F1 use share_frac vs a vol_full-normalised
-    share). ERC/SDG artefacts (L4-L7) are fractional-only and carry
+    share). ERC/SDG outputs (L4-L7) are fractional-only and carry
     `basis_applies=False`.
 
 Population order is `index.parquet` row order (= `inst_key` ascending =
-`institution_id` ascending), asserted at load (L14). Every matrix is reindexed
+`institution_id` ascending), asserted at load. Every matrix is reindexed
 to it, so the stable argsort tie-break in `lenses.py` is reproducible.
 
-  (D11/E2): `build_substrates` -- the per-scenario dense
+`build_substrates` -- the per-scenario dense
 matrix ASSEMBLY that used to live here -- moved to
-`pipeline/21_scenario_substrates.py`, which now writes every (tree, basis)
-scenario to `app/data/scenarios/` offline. This module keeps `load_context`
+an offline build that now writes every (tree, basis)
+scenario to `app/data/scenarios/` before deployment. This module keeps `load_context`
 (population + topic-grain arrays, cheap, still built live) and gains
 `load_substrates(ctx, tree, basis)`, which returns the IDENTICAL dict
-`build_substrates` used to (same keys, dtypes, shapes, memory order
-`tests/test_scenarios.py` proves it against the pipeline step's own
+`build_substrates` used to (same keys, dtypes, shapes, memory order --
+`tests/test_scenarios.py` proves it against the offline build's own
 in-process build) by reading the precomputed files instead. `derive_shapes`
 (`.derive`) is kept in the app package even though nothing on the live pages
 calls it any more -- `tests/test_engine_identity.py` tests it directly as the
 reference build the shipped scenario substrates must reproduce exactly.
 
-Tree/basis-invariant blocks (D11 architecture note) are cached at module
+Tree/basis-invariant blocks are cached at module
 level, lazily, keyed by basis (topic-share matrix) or unconditionally (the
 ERC/SDG common blocks) -- loaded once per process, shared across every
 scenario switch, never re-read from disk per (tree, basis) call.
 
-DATA-CONTRACT SIZE PASS (2026-09-03, coordinator follow-up: `app/data/scenarios`
-measured 544.9 MB against a 400 MB whole-`app/data` contract cap). Three
-on-disk format changes, all detailed at their call sites (`_load_topic_share`,
-`_load_frame`) and in `pipeline/21_scenario_substrates.py`'s own module
+A data-contract size pass (`app/data/scenarios`
+measured 544.9 MB against a 400 MB whole-`app/data` contract cap) prompted
+three on-disk format changes, all detailed at their call sites (`_load_topic_share`,
+`_load_frame`) and in the offline build's own module
 docstring, which is the authoritative writer-side rationale:
   1. l3's topic-share matrix moved from a dense (split, mmap'd) `.npy` pair
-     to a sparse (rows, cols, vals) triplet -- **D11 DEVIATION**: the
+     to a sparse (rows, cols, vals) triplet -- **DEVIATION**: the
      original hard rule ("load with mmap_mode='r' for the two topic
      matrices") no longer applies, there is nothing dense on disk to map;
      the reconstructed in-RAM array is still bit-identical in dtype/shape/
@@ -61,7 +61,7 @@ docstring, which is the authoritative writer-side rationale:
   2. l0/l1/l2f moved from `np.savez` to `np.savez_compressed` -- transparent
      to every reader here, `np.load` handles both identically.
   3. `fields_df`/`subfields_df` are consolidated once per TREE when the
-     pipeline step's own empirical check proves the two bases differ ONLY
+     offline build's own empirical check proves the two bases differ ONLY
      in `si` (true for `subfields_df` on every tree, and for `fields_df` on
      `original`/`conservative` but NOT `bestfit`, whose `frac` build reads
      the shipped table while `full` reads a `derive_shapes` build)
@@ -86,8 +86,8 @@ TOPICS_DIM_COLS = ["topic_id", "subfield_id", "subfield_name", "field_id", "fiel
                    "domain_id", "domain_name", "is_excluded", "top25pct_frontier",
                    "original_subfield_id", "conservative_subfield_id", "bestfit_subfield_id"]
 
-# L4-L7 read ERC/SDG artefacts, which the pipeline only ever ships on the
-# fractional basis -- the basis toggle does not apply to them (L5 of the plan).
+# L4-L7 read ERC/SDG outputs, which the upstream build only ever ships on the
+# fractional basis -- the basis toggle does not apply to them.
 BASIS_APPLIES = {"L0": True, "L1": True, "C1": True, "L3": True, "F1": True, "L2f": True,
                  "L4": False, "L5": False, "L6": False, "L7": False}
 
@@ -110,16 +110,15 @@ def load_context(data_dir) -> dict:
     inst_ids = index_df["institution_id"].tolist()
     id_pos = {iid: i for i, iid in enumerate(inst_ids)}
 
-    # /A6 (R2-E): institutions flagged `pool_excluded` (a funder
+    # Institutions flagged `pool_excluded` (a funder
     # surfacing as a performer, or a duplicate-institution row a canonical id
     # already covers) are never removed from the population -- their own data,
-    # SI denominators and baselines stay exactly as they are (A6 forbids
-    # re-aggregation) -- but they must never come back as a CANDIDATE in a
+    # SI denominators and baselines stay exactly as they are (re-aggregation
+    # is forbidden) -- but they must never come back as a CANDIDATE in a
     # lens ranking, the concordance or the aspirational views. Rather than a
     # per-lens filter, every lens (`lenses.rank_all`'s shared `_emit`) and
     # `rank_map` read this ONE position set. `pool_excluded` lands on
-    # index.parquet later this phase (pipeline writes it to the
-    # pipeline's own artefact; PC deploys it to `app/data/`) -- until then the
+    # index.parquet once the upstream build ships it -- until then the
     # column is simply absent and every position set is empty, a no-op.
     if "pool_excluded" in index_df.columns:
         pool_excluded_positions = frozenset(
@@ -173,21 +172,21 @@ def load_context(data_dir) -> dict:
 
 
 # -------------------------------------------------- precomputed scenarios
-# Everything below reads `pipeline/21_scenario_substrates.py`'s output from
+# Everything below reads the offline build's output from
 # `<data_dir>/scenarios/`. Tree/basis-invariant blocks are cached at module
-# level (D11: "loaded once and shared, not re-read per scenario") -- this is
+# level ("loaded once and shared, not re-read per scenario") -- this is
 # a plain per-process cache, not an LRU: there are only 2 bases and 1 common
 # block, so nothing needs eviction. `load_substrates` itself is NOT cached
 # here (that whole-dict cache, `max_entries=1` behind a lock, is
-# `lib/engine/scenario_cache.py`, wave 2 -- ).
+# `lib/engine/scenario_cache.py`).
 
 _TOPIC_SHARE_CACHE: dict[str, np.ndarray] = {}
 _COMMON_CACHE: dict | None = None
 
-# R2 (stress phase B FAIL, STRESS_2026-09-03_1354.md -- final RSS 2412 MB,
-# peak 3477 MB, ratchets with additional scenario swaps even revisiting
-# already-seen combos): bare-process measurement (progress/R2.md) proved the
-# ratchet is native heap fragmentation from repeatedly re-reading and
+# A stress test surfaced a RAM ratchet under repeated scenario swapping
+# (final RSS 2412 MB, peak 3477 MB, growing with additional scenario swaps
+# even when revisiting already-seen combos): a bare-process measurement
+# proved the ratchet is native heap fragmentation from repeatedly re-reading and
 # re-deserialising `fields_df`/`subfields_df` inside `_load_frame` below --
 # NOT a reference leak (a per-object weakref proof over every array/frame in
 # `subs` showed every piece IS correctly freed by Python each swap) and NOT
@@ -205,14 +204,14 @@ _COMMON_CACHE: dict | None = None
 # only 7 such files across all 6 (tree, basis) scenarios (`mode=="shared"`:
 # `frac`/`full` for `original` and `conservative` share ONE file each --
 # size-pass item 3 -- so 2 trees x 1 file + `bestfit`'s own frac/full x
-# 2 tables = 2+4=... measured 7 distinct paths, see progress/R2.md), the
-# SAME closed, fixed universe the D11 architecture note already reasons
-# about for l3/l4-l7. A 3-thread bare-process simulation of phase B's own
-# `scenario_combo` action (144 total `SC.get()` calls, random (tree,basis)
-# each, matching phase B's actual per-run volume) grew RSS 448->1235 MB
+# 2 tables = 2+4=... measured 7 distinct paths), the
+# SAME closed, fixed universe the module-level caching note above already
+# reasons about for l3/l4-l7. A 3-thread bare-process simulation of a
+# concurrent-session workload (144 total `SC.get()` calls, random (tree,basis)
+# each, matching the app's actual per-run volume) grew RSS 448->1235 MB
 # with the OLD always-re-read design; this fix measured a FLAT 1100.9 MB
 # plateau after the first full 6-scenario cycle, zero further growth over
-# 24 additional swaps (progress/R2.md). A whole-block cache (also caching
+# 24 additional swaps. A whole-block cache (also caching
 # l0/l1/l2f and the POST-rename/drop frame, not just the raw read) was
 # tried first and ALSO fully killed the ratchet, but plateaued 433 MB
 # higher (1533.8 MB) for no further benefit -- the npz blocks and the
@@ -221,7 +220,7 @@ _COMMON_CACHE: dict | None = None
 # `scenario_cache.py`'s own `_get_cached`/`max_entries` knob here: bumping
 # THAT to 3 (one slot per concurrent session) was tried too and made things
 # WORSE (1462 MB peak) -- `st.cache_resource`'s own post-build LRU re-admits
-# the pre-D12 brief double-residency window once `_SCENARIO_ENTRIES != 1`.
+# the earlier double-residency window once `_SCENARIO_ENTRIES != 1`.
 # This cache is a plain dict with no eviction (not `st.cache_resource`), so
 # it carries none of that risk -- `_get_cached`'s own `max_entries=1`/
 # evict-before-build logic is completely unchanged and still governs which
@@ -253,10 +252,10 @@ def _load_topic_share(ctx: dict, basis: str) -> np.ndarray:
     tree-INVARIANT (confirmed against the pre-move `build_substrates`: the
     computation never touches `tree`).
 
-    DATA-CONTRACT SIZE PASS (2026-09-03, coordinator follow-up): stored as a
+    A data-contract size pass: stored as a
     sparse (rows, cols, vals) int16/int16/float32 triplet on disk (~27 MB/
-    basis, down from ~136.5 MB dense) -- `pipeline/21_scenario_substrates.py`'s
-    module docstring, size-pass item 1, has the full rationale and the D11
+    basis, down from ~136.5 MB dense) -- the offline build's own
+    module docstring, size-pass item 1, has the full rationale and the
     mmap-rule deviation this required. Reconstructed here with the EXACT
     same allocate-then-scatter recipe the old dense build used
     (`np.zeros(shape, dtype=np.float32, order="F"); m[rows, cols] = vals`),
@@ -313,13 +312,13 @@ def _load_frame(scenarios_dir: Path, info: dict) -> pd.DataFrame:
     `mode == "shared"`: the file is `frames_common/<tree>/<table>.parquet`,
     written ONCE per tree with `si` split into `si_frac`/`si_full` (the two
     bases were proven cell-for-cell identical on every OTHER column at
-    persist time -- `pipeline/21_scenario_substrates.py:_frame_diff_ignoring`).
+    persist time -- verified by the offline build's own `_frame_diff_ignoring`).
     Reconstruction: rename `info["si_col"]` back to `si`, drop the other
     variant, reorder columns to `info["column_order"]` (recorded verbatim
     from the original in-process frame) -- byte-identical to the
     un-consolidated frame, `check_dtype=True`/`check_categorical=True` safe.
 
-    R2: the RAW read (before the shared-mode rename/drop) is cached forever
+    The RAW read (before the shared-mode rename/drop) is cached forever
     in `_FRAME_RAW_CACHE`, keyed by the physical path string -- `mode ==
     "shared"` info dicts for `frac` and `full` carry the IDENTICAL `path`
     (one file backs both bases), so this collapses what used to be two full
@@ -369,9 +368,9 @@ def load_substrates(ctx: dict, tree: str = DEFAULT_TREE, basis: str = DEFAULT_BA
     """Loader replacement for the old `build_substrates(ctx, tree, basis)`:
     SAME return shape (same 10 lens keys, `tree`/`basis`/`basis_applies`),
     same dtypes, shapes, memory order (`tests/test_scenarios.py` proves it
-    cell-for-cell against the pipeline step's own in-process build). Reads
-    `pipeline/21_scenario_substrates.py`'s precomputed
-    `<data_dir>/scenarios/` tree instead of rebuilding from `topics_all`
+    cell-for-cell against the offline build's own in-process build). Reads
+    the offline build's precomputed
+    `<data_dir>/scenarios/` tree instead of rebuilding from `topics_all` --
     the app never rebuckets that table again."""
     scenario = _load_scenario_block(ctx, tree, basis)
     topic_share = _load_topic_share(ctx, basis)

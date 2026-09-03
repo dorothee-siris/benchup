@@ -1,17 +1,16 @@
 """
-tests/test_decisions_log_rules.py -- BenchUp V4 trim,: two decisions-log
-rules this stream's own page/copy carry out, named explicitly in
- (the "Decisions log" table) and in this stream's own
-brief.
+tests/test_decisions_log_rules.py -- two decisions-log
+rules this app's own page/copy carry out, named explicitly in
+the "Decisions log" table and in the build brief.
 
-REWRITTEN for the trim: the pre-trim file tested
-`compare_data.metric_frame`'s V4-column contract, `JOINT_TOPICS_COLS`,
-`METRICS`/`LEVELS` -- every one of those names is DELETED with
-own rewrite (`progress/C1.md`'s deletion map: the whole N-institution
+An earlier version of this file tested
+`compare_data.metric_frame`'s old-column contract, `JOINT_TOPICS_COLS`,
+`METRICS`/`LEVELS` -- every one of those names is DELETED with its
+own rewrite (the whole N-institution
 "Compare by" matrix, ERC, the pooled frontier scatter). Nothing there
 survives to re-test; `tests/test_compare_data.py`
-and `tests/test_compare_golden_anchors.py` (this stream's own top-up) already cover the
-DATA layer for the new API in depth. What remains genuinely C3's own is the
+and `tests/test_compare_golden_anchors.py` already cover the
+DATA layer for the new API in depth. What remains genuinely relevant here is the
 VIEW-level disclosure of two decisions-log rules:
 
   1. "Joint volume per shared-frontier topic shown only for pairs with

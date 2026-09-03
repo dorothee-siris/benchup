@@ -1,7 +1,7 @@
 """
 tests/find_profile_identity.py -- acceptance step 5.
 
-For the 12 seeds in V4_ROOT/evals/goldens/v3_find_profile.json, recomputes the
+For the 12 seeds in the reference profile golden, recomputes the
 SIX legacy profile-header KPI values through this stream's OWN code path
 (`lib.engine.scenario_cache.bundle` / `.get`, the same objects
 `views_find._render_profile` -> `_card_specs` reads) on the default scenario

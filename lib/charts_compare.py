@@ -48,7 +48,7 @@ with `yearly_domain_stack`, the same figure stacked by OpenAlex domain.
 `LOW_VOLUME_PATTERN_SOLIDITY`) lost their one remaining caller (`fig_pulse`)
 and are deleted with it -- the hatch-fill mechanism was already retired from
 every OTHER bar in this module, so no hatch remnant survives anywhere in the
-file now. Grep proof for every deletion above is pasted in `progress/C2.md`.
+file now.
 
 THE FOUR BUILDERS THIS STREAM ADDS
 -----------------------------------
@@ -762,40 +762,38 @@ def two_tab_bars(
 # 3. mirror_frontier -- the shared-frontier mirror (D5)
 # ---------------------------------------------------------------------------
 JOINT_FLOOR = 5
-# The P7 qualifying floor (`core_total >= 5`, 's own decisions
-# log 2026-09-03): below it `collab_topic_vols` carries no row for the pair
-# and `vol_joint` arrives NaN.
+# The qualifying floor (`core_total >= 5`): below it `collab_topic_vols`
+# carries no row for the pair and `vol_joint` arrives NaN.
 HOVER_JOINT = "joint"
 HOVER_JOINT_UNAVAILABLE = "joint count not available under {floor} joint publications"
 TOP_DECILE_GLYPH = "\N{BLACK DIAMOND}"
 MIRROR_LINK_TARGET = "_blank"
 
 MIRROR_LABEL_WRAP_WIDTH = 20
-# C2 follow-up (manager, 2026-09-03): Streamlit gives Python no viewport
+# Streamlit gives Python no viewport
 # width, so this chart cannot offer a caller-decided `gutter=False`-style
-# narrow-width switch the way `fig_metric_bars` does (CHROME_CONTRACT.md
-# SS10.7) -- a topic name has to fit SOME fixed budget at every width.
+# narrow-width switch the way `fig_metric_bars` does -- a topic name has to
+# fit SOME fixed budget at every width.
 # **Measured, not estimated** (`yaxis.automargin=True` GROWS the configured
 # margin to fit whatever text arrives, so it -- not a character-count
 # formula -- is the real ceiling that decides the plot area's width): a
-# character-length sweep against the live Playwright render
-# (`progress/C2_renders/render_c2.py`'s own harness) found the plot area
-# collapses toward zero above ~26 chars/line at 390 px and plateaus at its
-# `MIRROR_MARGIN_CAP_PX`-bound maximum at 22 chars/line and below. Twenty
+# character-length sweep against the live Playwright render found the plot
+# area collapses toward zero above ~26 chars/line at 390 px and plateaus at
+# its `MIRROR_MARGIN_CAP_PX`-bound maximum at 22 chars/line and below. Twenty
 # keeps comfortable headroom under that knee for glyphs wider than the
-# probe's own monospaced test characters -- UNCHANGED by the C2 follow-up-2
-# three-line widening below, because automargin cares about the WIDEST
+# probe's own monospaced test characters -- UNCHANGED by the three-line
+# widening below, because automargin cares about the WIDEST
 # LINE, not how many lines a label has.
 MIRROR_LABEL_MAX_LINES = 3
-# C2 follow-up 2 (manager, 2026-09-03): raised from two -- real OpenAlex
+# Raised from two -- real OpenAlex
 # topic names run 25-60 chars ("Geological and Geochemical Analysis") and
 # were losing their meaning cut to two 20-char lines. Verified this does
 # NOT reopen the 390 px fix above: `MIRROR_LABEL_WRAP_WIDTH` (the widest any
 # ONE line can be) is unchanged, and automargin's left-margin need is driven
 # by line WIDTH, not line COUNT -- re-measured on the live render after this
-# change, `progress/C2.md`.
+# change.
 MIRROR_LABEL_CHAR_BUDGET = 60
-# C2 follow-up 2: the ellipsis decision is keyed on the ORIGINAL name's own
+# The ellipsis decision is keyed on the ORIGINAL name's own
 # character count, never on how many lines greedy word-wrap happens to need
 # a <= 60 char name that still does not fit `MIRROR_LABEL_MAX_LINES`
 # lines under strict word-boundary wrapping (word lengths tile imperfectly)
@@ -809,29 +807,30 @@ MIRROR_MARGIN_CAP_PX = 180
 # past this value whenever the tick text still needs more room, so this
 # number only binds once `MIRROR_LABEL_WRAP_WIDTH` has already kept the
 # text short enough that it does not need to (measured together on the live
-# render -- `progress/C2_renders/render_c2.py` -- as one system, not two
+# render as one system, not two
 # independent settings). At 390 px total viewport width, minus the render
 # harness's own 16 px page padding on both sides and the chart's `r`/`b`
-# margins, 180 px of left margin leaves > 120 px for the bars -- the C2
-# follow-up's own acceptance floor. Re-confirmed unchanged after follow-up 2
-# (three lines, still 20 chars wide each): `progress/C2.md`.
+# margins, 180 px of left margin leaves > 120 px for the bars -- the
+# acceptance floor set for this fix. Re-confirmed unchanged after the
+# three-line widening (three lines, still 20 chars wide each).
 ELLIPSIS = "\N{HORIZONTAL ELLIPSIS}"
 
 MIRROR_THREE_LINE_FACTOR = 3.0
-# Manager follow-up 2026-09-03: a genuine, real-topic-name overlap survived
+# A genuine, real-topic-name overlap survived
 # to the live page ("Ocean Acidification / Effects and / Responses" running
 # into the next row) at both 1280 and 390 px -- found on the REAL render,
 # not the synthetic harness. Measured directly (Playwright, `.ytick`
-# bounding boxes against the real Compare page, T0 anchor pair, "Show all"):
+# bounding boxes against the real Compare page, an anchor institution pair,
+# "Show all"):
 # a 3-line row's own rendered text is 47.2 px tall; `_mirror_row_height`'s
 # OLD formula (linearly extrapolating `charts.WRAP_ROW_FACTOR`'s 2-line
 # increment, +0.7x ROW_PX per additional line) gave a pitch of ~42.2 px
 # a 5.0 px deficit. Plotly CENTRES each row's text in its uniform slot, so
 # two ADJACENT 3-line rows each overflow 2.5 px toward the other -- exactly
 # the measured 5.0 px overlap, at every 3-line-then-3-line boundary in the
-# real 44-topic render (16 such rows, T0 anchor pair). The 2-line case is
-# UNCHANGED and was never the problem (measured 31.6 px text against a
-# ~30.6 px pitch, comfortably positive gaps throughout) -- this constant
+# real 44-topic render (16 such rows in the anchor pair set). The 2-line
+# case is UNCHANGED and was never the problem (measured 31.6 px text against
+# a ~30.6 px pitch, comfortably positive gaps throughout) -- this constant
 # governs ONLY the 3-line pitch, calibrated to the SAME live measurement
 # with real headroom (18 px x 3.0 = 54 px pitch against a measured 47.2 px
 # need, ~6.8 px margin) rather than a formula extrapolated from a different
@@ -843,8 +842,8 @@ def _wrap_topic_label(text, width: int = MIRROR_LABEL_WRAP_WIDTH,
                       char_budget: int = MIRROR_LABEL_CHAR_BUDGET) -> list[str]:
     """Greedy word-wrap (never splits a word), up to `max_lines` (three)
     the ONE place in this module that can shorten a label, and even then
-    ONLY past `char_budget` (sixty) characters of the ORIGINAL name (C2
-    follow-up 2: real OpenAlex topic names run 25-60 chars and must survive
+    ONLY past `char_budget` (sixty) characters of the ORIGINAL name (real
+    OpenAlex topic names run 25-60 chars and must survive
     whole). There is no Streamlit-side viewport width to condition a
     per-width switch on here (`mirror_frontier`'s own docstring) -- see
     `CHROME_CONTRACT.md` SS13.8. Returns a LIST of raw (unescaped) lines, so
@@ -945,15 +944,15 @@ def mirror_frontier(
     y-axis ticks carry `<a href="{url_joint}" target="_blank">{topic_name}
     {glyph}</a>` via plotly's own pseudo-html tick text (already exploited
     elsewhere in this file for `<span style>`; verified here by rendering and
-    clicking in `progress/C2_renders/render_c2.py`). A long name wraps onto
+    clicking through the page). A long name wraps onto
     at most two lines (`_wrap_topic_label`, ellipsis beyond); **measured
     fact:** plotly renders each WRAPPED LINE as its own SVG `<tspan>`, and
     re-wraps this module's ONE `<a>.</a>` source markup into ONE anchor
     PER LINE at draw time (both carrying the identical `href` this module
     wrote) -- so either line is independently clickable and both open the
     same URL, even though the SOURCE string here is a single tag spanning
-    both lines. Confirmed in `progress/C2_renders/render_c2.py`'s own click
-    check, which clicks whichever line the anchor locator resolves to."""
+    both lines. Confirmed by a live click-through check,
+    which clicks whichever line the anchor locator resolves to."""
     required = ("topic_id", "topic_name", "url_joint", "vol_a", "vol_b",
                "vol_joint", "expansion", "acceleration")
     for col in required:
@@ -1059,8 +1058,7 @@ def mirror_frontier(
     # `plain` already holds the WRAPPED (<= two-line) text, so
     # `_gutter_margin_px` measures the longest WRAPPED line, not the whole
     # un-wrapped name -- `MIRROR_MARGIN_CAP_PX` is a belt-and-braces ceiling
-    # on top of that (C2 follow-up: mirror_frontier@390px was unusable
-    # before this fix, `progress/C2.md`).
+    # on top of that (mirror_frontier@390px was unusable before this fix).
     margin_l = min(C._gutter_margin_px(plain), MIRROR_MARGIN_CAP_PX)
     # A SECOND part of that same fix, found while reading the FIXED render:
     # a wrapped row needs MORE than one row's worth of vertical space, same
@@ -1142,7 +1140,7 @@ def yearly_domain_stack(frame: pd.DataFrame) -> go.Figure:
     fig.update_layout(barmode="stack")
 
     # The annotation's `x` is the category's INTEGER INDEX, never its string
-    # label -- measured live (progress/C2.md): `add_annotation(x="2020",.)`
+    # label -- measured live: `add_annotation(x="2020",.)`
     # against a `type="category"` axis collapses every category to one slot
     # and strands the annotation off past the plot's right edge on this
     # pinned plotly (5.24.1), the same class of annotation-positioning quirk
@@ -1172,8 +1170,8 @@ def yearly_domain_stack(frame: pd.DataFrame) -> go.Figure:
 
 
 # ---------------------------------------------------------------------------
-# 5. reciprocity_bars -- "strategic reciprocity by field" (D7), adapted from
-#    's views_collab._reciprocity_chart + collab_data.reciprocity_frame
+# 5. reciprocity_bars -- "strategic reciprocity by field", adapted from an
+#    earlier iteration's views_collab._reciprocity_chart + collab_data.reciprocity_frame
 # ---------------------------------------------------------------------------
 GUTTER_HEADER_JOINT = "Joint publications"
 AX_RECIPROCITY = "Share of each institution's own output in the field"
@@ -1183,9 +1181,10 @@ RECIPROCITY_HOVER_RANK = "{other_name} is {this_name}'s partner #{rank} here"
 
 
 def reciprocity_bars(frame: pd.DataFrame, names: Sequence, colors: Sequence) -> go.Figure:
-    """"Strategic reciprocity by field" (D7). ADAPTED from 's
+    """"Strategic reciprocity by field". Adapted from an earlier iteration's
     `views_collab._reciprocity_chart` + `collab_data.reciprocity_frame`
-    (BenchUp, itself a Lorraine "Zoom partenaire" port): the ORIGINAL drew
+    (itself ported from an earlier SIRIS Streamlit tool's "Zoom partenaire"
+    view): the ORIGINAL drew
     one bubble per field on a `x` = field's share of B's own corpus, `y` =
     the same for A, area = joint volume, colour = OA domain SCATTER, with a
     dotted equal-weight diagonal.

@@ -47,9 +47,9 @@ WINDOW_START, WINDOW_END = CFG["window"]
 NAME_LINK_MODE = "fragment"
 WORKS_LINK_FALLBACK_LABEL = "See works ↗"
 
-# The OpenAlex works deep link carries the harvest's own filters (L23) and lives
+# The OpenAlex works deep link carries the harvest's own filters and lives
 # in ONE place, lib/links.py. The import-time
-# fallback was dropped once lib/links.py landed (progress/R1_F2.md NEEDS_CHANGE).
+# fallback was dropped once lib/links.py landed.
 from lib.links import works_url as _works_link
 
 # D9: the shared 0-100 progress-column idiom.
@@ -66,8 +66,7 @@ from lib.links import works_url as _works_link
 # `score` column), and this ONE printf format string is shared by every such
 # column in the app so they render identically. `views_find.py`'s Aspirational
 # `L1 overlap` column (line ~1476) is the other live call site -- CHROME-F does
-# not own that file; the one-line swap it needs is recorded in
-# `progress/2C_CHROME-F.md`.
+# not own that file.
 PCT_PROGRESS_FORMAT = "%.1f%%"
 
 

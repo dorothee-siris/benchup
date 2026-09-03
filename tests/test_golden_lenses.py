@@ -1,8 +1,8 @@
 """
 Golden regression for `lib/engine`.
 
-The 37 files in `tests/golden/lists/` are `evals/campaign_v2/gen_lists_v2.py`'s
-own output -- the lists that were externally graded (519 peers, SPEC S0). The
+The 37 files in `tests/golden/lists/` are the ranking reference implementation's
+own output -- the lists that were externally graded (519 peers). The
 engine must reproduce them exactly: same tie-inclusive top-50 per lens, same
 scores to 6 dp, same undefined/reason, same concordance, same
 aspirational-by-impact pool and order, same seed card.

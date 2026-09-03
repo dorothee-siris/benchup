@@ -1,6 +1,6 @@
 """
-Landing page. Nav cards are enumerated from pages/ at runtime (Lorraine Menu.py
-pattern): a dimension is a live st.page_link once a file matching its word exists under
+Landing page. Nav cards are enumerated from pages/ at runtime (a pattern
+shared with an earlier SIRIS Streamlit tool): a dimension is a live st.page_link once a file matching its word exists under
 pages/.
 
  (BenchUp trim, D1): three cards in narrative order (Find -> Compare -> Methods)
@@ -66,7 +66,7 @@ st.markdown("---")
 # source stamp) so no digit is typed here.
 _manifest = manifest()
 _stamp = (_manifest.get("source_manifest_generated_at") or _manifest.get("generated_at")
-          or _manifest.get("deployed_at"))  # deploy.py MANIFEST vs source_manifest keys
+          or _manifest.get("deployed_at"))  # the deploy step's MANIFEST vs source_manifest keys
 st.caption(copy.FIND["DATA_CAPTION"].format(
     n_institutions=f"{len(index()):,}", sep=SEP,
     date=data_date_label(_stamp, NA_MARK)))

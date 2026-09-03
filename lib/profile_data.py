@@ -54,7 +54,7 @@ ERC_COLS = ["panel_idx", "panel_code", "panel_label", "erc_domain", "share", "si
 # is the "no SI mark at zero volume" ERC fix, triage #9). These are a PROFILE
 # DISPLAY rule only; the ratified lens floor (`trees_agg.G6_FLOOR` = 30, same
 # number, different purpose) lives in `derive.py`'s own scenario-assembly
-# pipeline untouched.
+# step untouched.
 SI_FLOOR_SOLID = 30.0
 SI_FLOOR_THIN = 10.0
 
@@ -307,10 +307,10 @@ def yearly_by_domain(ctx: dict, iid: str, tree: str) -> pd.DataFrame:
 
     # topics_all only holds works that carry a
     # primary topic, so Sigma over domains runs a few works short of the index's
-    # own by-year totals (measured up to 0.23 %, progress/R1_B.md). The yearly
+    # own by-year totals (measured up to 0.23 %). The yearly
     # breakdown is SWAPPABLE with the document-type view, whose totals ARE the
     # index totals -- so the residual is carried as an explicit
-    # "Unclassified" domain (id 0, Lorraine's UNCLASSIFIED_DOMAIN_ID convention)
+    # "Unclassified" domain (id 0, the shared UNCLASSIFIED_DOMAIN_ID convention)
     # and both views sum to the same number per year. Never negative: a
     # float32 rounding excess is clipped at 0.
     row = ctx["index_by_id"].loc[iid]

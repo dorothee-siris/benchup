@@ -1,11 +1,11 @@
 """
 tests/golden_ranklists_check.py -- acceptance: exact
-rank-list identity against `V4/evals/goldens/v3_ranklists.json`
-( reference numbers, `rank_all` on 's `build_substrates`).
+rank-list identity against the reference rank-list golden
+(reference numbers, `rank_all` on the reference version's `build_substrates`).
 
 Reproduces every (seed, scenario, lens) top-50 EXACTLY -- same institution_id
 order, same scores -- via `load_context` + `load_substrates` +
-`lib.engine.lenses.rank_all` (this stream's disk-backed replacement for the
+`lib.engine.lenses.rank_all` (this module's disk-backed replacement for the
 build_substrates call the golden was generated from). No tolerance: this is
 the SAME arithmetic run through a different (offline-precomputed) substrate
 path, so a mismatch of any size is a real regression, not float noise.

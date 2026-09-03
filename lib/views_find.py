@@ -83,7 +83,7 @@ from lib.wordcloud_png import render_wordcloud_png
 
 # The C1 lens restricts L1 to the seed's top-N subfields; N is a bare literal
 # inside lib/engine/lenses.py:build_c1_for_seed (`np.argsort(.)[:20]`), which
-# is vendored file and gives it no name. Read here ONCE so no
+# is a ported file and gives it no name. Read here ONCE so no
 # rendered string ever types it.
 CORE_TOP_N = 20
 
@@ -209,9 +209,9 @@ def _yearly_domain_frame(iid: str, tree: str) -> pd.DataFrame:
 
 @st.cache_data(show_spinner=False, max_entries=24)
 def _yearly_doctype_frame(iid: str) -> pd.DataFrame:
-    """The R1 doc-type artefact, sliced to one institution. Neither tree- nor
+    """The document-type table, sliced to one institution. Neither tree- nor
     basis-scoped: a document type has no taxonomy tree, and the table ships
-    both bases (progress/R1_S5.md S9). `doc_type` is a CATEGORY dtype in the
+    both bases. `doc_type` is a CATEGORY dtype in the
     parquet -- cast to str here, once, so no downstream `.map` ever meets a
     categorical (Assembly Line gotcha)."""
     df = doctype_by_year()
@@ -327,7 +327,7 @@ def _footer_meta(bundle: dict, workbook_kwargs: dict | None = None) -> None:
     st.markdown("---")
     st.markdown(f"**{copy.VERDICT_LINE}**")
     mf = manifest()
-    # ops/deploy.py writes `source_manifest_generated_at` / `deployed_at`; the
+    # The deploy step writes `source_manifest_generated_at` / `deployed_at`; the
     # pre-staged source_manifest.json writes `generated_at`. The SOURCE stamp is
     # preferred here (it dates the harvest, which is what "data from" claims);
     # `deployed_at` only dates the copy into app/data/.
@@ -792,10 +792,11 @@ def _profile_breakdown(iid: str, ctl: dict, bundle: dict) -> None:
     # sub-column ~260 px of plot at 1280 px -- a width at which category labels
     # clip and value ticks rotate to vertical. The wordcloud has moved up into
     # row 1, so the pair now owns the FULL section width and each panel gets
-    # ~600 px, comfortably past that failure point; side by side is what the
-    # Lorraine lab card does and what makes the two reads comparable at a
+    # ~600 px, comfortably past that failure point; side by side is what an
+    # earlier SIRIS Streamlit tool's lab card does and what makes the two
+    # reads comparable at a
     # glance. Streamlit stacks the two columns anyway below its own small
-    # breakpoint, so the 390 px behaviour is exactly R1's.
+    # breakpoint, so the 390 px behaviour is exactly as before.
     #
     #  adds the height MATCH. The two builders size themselves from
     # different rules -- the global one from its row count (six domains ->
@@ -915,8 +916,7 @@ def _frontier_modes() -> tuple[str, str]:
 
 
 def _panel_frontier(iid: str, ctl: dict, card: dict) -> None:
-    """VIZ_SPEC S2.18 / R2 L33, rewired by the FB handoff
-    (`progress/2BR_FB.md`): Expansion x Acceleration, bubble area = volume on
+    """Expansion x Acceleration, bubble area = volume on
     the current basis, colour = domain, an INK outline on a top-quartile
     topic. TWO modes behind one segmented control -- the seed's topics by
     volume, or every topic in the global top quartile of emergence (NOT a
@@ -1044,8 +1044,8 @@ def _profile_panels(iid: str, ctl: dict, card: dict) -> None:
     """The six panels are COLLAPSED by default (VIZ_SPEC S1.9) but their bodies
     run every rerun -- `st.expander` folds the display, never the execution.
 
-    A lazy gate was built and REJECTED on a measurement (progress/R1_E2.md,
-    verify-before-building item b): Streamlit 1.61.1's `st.expander` does take
+    A lazy gate was built and REJECTED on a measurement (a
+    verify-before-building check): Streamlit 1.61.1's `st.expander` does take
     a `key=` and does publish its open/closed state into `st.session_state`,
     but that state RESETS to the coded `expanded=` on the very next rerun, so
     a body gated on it would blank itself the moment the reader touched any
@@ -1277,8 +1277,8 @@ def _lens_intro(lens: str, ranking: dict, subs: dict, basis: str, bundle: dict,
     if lens == "L2f":
         st.caption(copy.FIND["EV_L2F"].format(
             value=f"{card['n_eligible_subfields_L2f']:,}"))
-    # Manager fix 2026-08-29 (inspection R2, I-2): the per-lens coverage lines the
-    # spec asks for (L8) -- ERC-classified share on the ERC lenses, SDG-tagged
+    # The per-lens coverage lines the
+    # spec asks for -- ERC-classified share on the ERC lenses, SDG-tagged
     # share on the SDG lenses, frontier share on F1, catch-all share on L3 -- were
     # authored in copy.py (EV_ERC/EV_SDG/EV_FRONTIER/EV_CATCHALL) but never wired
     # once R2 retired the profile coverage line. Each is a statement about the
@@ -1426,8 +1426,7 @@ def _aspirational_frame(rows: list[dict], *, score_key: str = "lens_score_L1_ove
             "size_full": _count(r.get("total_full_2020_2024")),
             "size_frac": _count(r.get("total_frac_2020_2024")),
             "pp": _pct(r.get("pp_top10_frac")),
-            # D9 (locale fix, CHROME-F recipe in progress/2C_CHROME-F.md
-            # S1): pre-scaled 0-100, the SAME transform `lib/ranked.py:format_rows`
+            # A locale fix: pre-scaled 0-100, the SAME transform `lib/ranked.py:format_rows`
             # applies to its own `score` column -- `_render_aspirational_table`'s
             # ProgressColumn reads this already-scaled value.
             "score": _pct100(r[score_key]), "institution_id": iid})
@@ -1465,10 +1464,10 @@ def _render_aspirational_table(df: pd.DataFrame) -> list:
             "size_full": st.column_config.TextColumn(copy.FIND["COL_SIZE_FULL"]),
             "size_frac": st.column_config.TextColumn(copy.FIND["COL_SIZE_FRAC"]),
             "pp": st.column_config.TextColumn(copy.FIND["COL_PP"]),
-            # D9 fix: was the banned locale-sensitive ProgressColumn
-            # `format=` keyword (see CHROME_CONTRACT.md S9), which renders
+            # A locale fix: was the banned locale-sensitive ProgressColumn
+            # `format=` keyword, which renders
             # through the HOST BROWSER LOCALE
-            # confirmed comma-decimal live (progress/2C_CHROME-F.md S1). The
+            # confirmed comma-decimal live. The
             # shared `ranked.pct_progress_column` builder is printf-style
             # ("%.1f%%"), period-decimal regardless of locale; its column
             # expects the value pre-scaled 0-100, which `_aspirational_frame`
@@ -1485,13 +1484,13 @@ def _render_aspirational(bundle: dict, rankings: dict, filters: dict, seed_row,
     """VIZ_SPEC S2.5, kept in L1-overlap order unless the analyst asks for a PP
     sort -- which is a control, never the default.
 
-     mode B: when V0 (`aspirational`) returns NO row for this seed
-    a seed near the impact ceiling of its own look-alike pool, ETH Zurich in
-    the R2 campaign (`evals/aspirational_R2/REPORT.md` S2/S3.1) -- the same
+    Mode B: when the base aspirational ranking returns NO row for this seed --
+    a seed near the impact ceiling of its own look-alike pool, ETH Zurich is
+    one such case -- the same
     L1 pool is shown instead, reordered by frontier alignment
-    (`engine.aspirational_frontier`, ported from that REPORT's A-frontier
-    definition), labelled explicitly so a reader never mistakes it for V0's
-    impact-qualified list. The PP sort toggle stays V0-only: the fallback is
+    (`engine.aspirational_frontier`, ported from the earlier A-frontier
+    definition), labelled explicitly so a reader never mistakes it for the
+    base ranking's impact-qualified list. The PP sort toggle stays base-ranking-only: the fallback is
     already sorted by the ONE score it exists to show."""
     st.caption(copy.FIND["ASP_FRAME_INTRO"])
     st.caption(copy.FIND["ASP_INTRO"])
@@ -1557,11 +1556,11 @@ def _lens_guide(lenses: list) -> None:
     (verified against the installed package's own
     `.agents/skills/developing-with-streamlit/references/markdown.md`: eight
     named colours plus `primary`, no arbitrary hex, no `unsafe_allow_html` on
-    `st.expander`). `lib/palette.py` is file this wave and ships
+    `st.expander`). `lib/palette.py` is out of scope here and ships
     no reusable "alert" token for a widget label; adding one would be a new
     hex under a different name, which the plan forbids as surely as a raw
-    literal would be -- flagged in `progress/2BR_FC.md` for VS/G to reconcile
-    against a true `palette.py` token when a future wave allows unsafe HTML
+    literal would be -- left for a future pass to reconcile
+    against a true `palette.py` token when unsafe HTML is allowed
     here (e.g. rendering the title via `st.markdown` above a keyless
     container instead of the native expander label)."""
     with st.expander(f":red[{copy.FIND['LENS_INTRO_HEADER']}]", expanded=False, key="lens_guide"):

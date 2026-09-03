@@ -205,9 +205,8 @@ def _render_cards(ctx: dict, ids: list[str], names: dict, slots: dict) -> pd.Dat
 
 
 # ---------------------------------------------------------------------------
-# 2/3. Thematic shape (D3) and SDG profile (D4) -- the SAME two_tab_bars
-#    call, differing only in the source frame and `grouped_by_field`
-#    (`progress/C1.md` S4's own translation note owns the exact rename).
+# 2/3. Thematic shape and SDG profile -- the SAME two_tab_bars
+#    call, differing only in the source frame and `grouped_by_field`.
 # ---------------------------------------------------------------------------
 
 def _shape_long(df: pd.DataFrame, tab: str, *, grouped: bool, id_col: str, label_col: str) -> pd.DataFrame:

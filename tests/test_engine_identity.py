@@ -2,7 +2,7 @@
 Tier-A identity + budget test for `lib/engine`.
 
 `derive_shapes` is the app's only shape source, so it must reproduce the
-shipped `subfields.parquet` / `fields.parquet` that `pipeline/agg/trees_agg.py`
+shipped `subfields.parquet` / `fields.parquet` that the upstream `trees_agg.py`
 built from the raw corpus -- for all three trees -- and its shares must sum to
 1 per institution on every (tree, basis) scenario the UI can select.
 
@@ -46,7 +46,7 @@ BUDGET_PEAK_RSS_GB = 1.85
 
 def peak_rss_gb() -> float | None:
     """PeakWorkingSetSize via GetProcessMemoryInfo -- stdlib ctypes only
-    (copied from evals/campaign_v2/gen_lists_v2.py:get_peak_rss_gb)."""
+    (copied from the ranking reference implementation's get_peak_rss_gb)."""
     try:
         import ctypes.wintypes as wt
 
@@ -185,9 +185,9 @@ def test_shares_sum_to_one(tree, basis):
 
 
 def test_budgets():
-    """ : `build_substrates` (in-app, per-scenario
+    """`build_substrates` (in-app, per-scenario
     rebucketing) was replaced by `load_substrates` (reads
-    `pipeline/21_scenario_substrates.py`'s precomputed `app/data/scenarios/`)
+    the offline build's precomputed `app/data/scenarios/`)
     this budget now covers `load_context` + `load_substrates`, not a live
     rebuild. Assertions unchanged (brief: "keep their assertions")."""
     t0 = time.time()

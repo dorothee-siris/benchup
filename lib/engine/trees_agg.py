@@ -1,8 +1,8 @@
 """
-R4 — tree-dependent `fields` (26) / `subfields` (252) tables (REFINEMENT_PLAN.md
-S1 R4 row, S7/S8/S9; METHODS_FAISCEAU.md S6). One row per (institution, field-or-
-subfield, tree), tree in {original, conservative, bestfit} (pipeline/agg/
-taxonomy_trees.py, read-only import). A work's per-tree subfield is looked up
+Tree-dependent `fields` (26) / `subfields` (252) tables. One row per
+(institution, field-or-subfield, tree), tree in {original, conservative,
+bestfit} (ported from the upstream taxonomy_trees.py, read-only import).
+A work's per-tree subfield is looked up
 from its (ORIGINAL-tree, D6-basis) `primary_topic_id` via that tree's own
 topic->subfield map -- so re-tree-ing only changes which BUCKET a work's mass
 lands in, never which works exist or how much mass they carry (institution
@@ -20,9 +20,9 @@ topic always resolves to a subfield under every tree, `is_excluded` never
 removes it from this table; exclusion only ever touches frontier denominators,
 computed elsewhere).
 ENGINE PORT: only the docstring, `TREES`,
-`G6_FLOOR` and `subfield_to_field_map` are vendored -- the corpus-grain
+`G6_FLOOR` and `subfield_to_field_map` are ported in -- the corpus-grain
 builders (`build_subfields`/`build_fields`, `topic_to_subfield_maps`,
-`_pack_year_columns`) stay in the pipeline; the app derives shapes from the
+`_pack_year_columns`) stay upstream; the app derives shapes from the
 topic-grain master via `derive.derive_shapes` instead.
 """
 from __future__ import annotations

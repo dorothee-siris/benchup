@@ -1,13 +1,12 @@
 """
-app/lib/wordcloud_png.py -- the subfield wordcloud as PNG BYTES
-(.2 L17 block 4, VIZ_SPEC.md S2.13).
+app/lib/wordcloud_png.py -- the subfield wordcloud as PNG BYTES.
 
-Copied in from Lorraine `Streamlit/pages/2_(factory)_Laboratoires.py:
-render_lab_wordcloud_png` (lines 505-537), including the two things that
+Copied in from an earlier SIRIS Streamlit tool's
+`render_lab_wordcloud_png`, including the two things that
 implementation exists to fix:
 
-  * it returns PNG **bytes**, never a resident matplotlib figure -- the
-    pass-5 leak Lorraine's own docstring records was one figure pinned per
+  * it returns PNG **bytes**, never a resident matplotlib figure -- a
+    known leak that tool's own docstring records was one figure pinned per
     render for the whole session, because `plt.close` was never called.
     `WordCloud.to_array` -> `PIL.Image` -> `io.BytesIO` touches no pyplot
     state at all, so there is nothing to leak;
@@ -24,9 +23,10 @@ even the background is `palette.SURFACE`, the same white every figure paints
 (`tests/test_palette.py` walks `lib/`).
 
 `wordcloud==1.9.6` (pinned in requirements.txt, wheel + render verified on
-this env-app / Python 3.12) is the one new runtime dependency R1 adds; PIL
-arrives transitively with it. Both are imported INSIDE the function, Lorraine's
-own pattern, so an environment without them degrades to `None` -- the caller
+this env-app / Python 3.12) is the one new runtime dependency this module
+adds; PIL arrives transitively with it. Both are imported INSIDE the function, a
+pattern shared with an earlier SIRIS Streamlit tool, so an environment without
+them degrades to `None` -- the caller
 renders the empty-state line -- instead of failing the whole page at import.
 """
 from __future__ import annotations
@@ -45,7 +45,7 @@ DEFAULT_WIDTH = 900
 DEFAULT_HEIGHT = 420
 DEFAULT_MAX_WORDS = 120
 
-# WordCloud tuning, Lorraine's values verbatim.
+# WordCloud tuning, values kept verbatim from an earlier SIRIS Streamlit tool.
 PREFER_HORIZONTAL = 0.9   # mostly horizontal words: a rotated label is slower to read
 RELATIVE_SCALING = 0.5    # font size tracks frequency at half strength (the library's
                            # own recommended middle ground between rank and count)

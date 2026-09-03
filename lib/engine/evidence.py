@@ -23,8 +23,8 @@ Formula (per lens, mirroring `lenses.rank_all`'s own branch exactly):
                      frontier share, not by Sigma_j min) -- not named
                      explicitly in the plan's C1 sentence, but the identical
                      shape of the formula, so mirrored the same way rather
-                     than left inconsistent (documented in progress/R1_B.md
-                     as an interpretation, not a literal instruction).
+                     than left inconsistent (an interpretation, not a
+                     literal instruction).
                  Bounded by construction: min_j <= seed_j always, and denom is
                  either Sigma_j min_j (>= any one term) or a seed-only mass
                  that is itself the sum of the seed_j values the min_j terms

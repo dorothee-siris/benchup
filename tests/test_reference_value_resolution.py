@@ -1,18 +1,17 @@
-"""tests/test_reference_value_resolution.py -- cross-cutting guard for E8 (BenchUp V4
-trim): every reference-carrying frame resolves `ref_value` through a real
+"""tests/test_reference_value_resolution.py -- cross-cutting guard:
+every reference-carrying frame resolves `ref_value` through a real
 source, and a genuine 0.0 reference survives end to end -- data layer
 through the chart layer -- rather than being silently read as "missing"
 anywhere along the way (`_add_reference`'s own docstring promise:
 `np.isfinite`, never truthiness).
 
-REWRITTEN for the trim: the pre-trim `compare_data.metric_frame`/
+An earlier version of this file probed the retired `compare_data.metric_frame`/
 `fwci_ref_label`/`pp_ref_label`/`UNAVAILABLE_REASON`/`FWCI_REF_LABEL`/
-`PP_REF_LABEL`/four-grain `LEVELS` (field/subfield/erc/sdg) API this file
-used to probe is DELETED with own rewrite (`progress/C1.md`'s
-own deletion map) -- Compare now offers exactly two grains (subfield, sdg)
-through `top_subfields`/`sdg_frame`, and carries no "reference label
-sentence" hooks at all (C3's captions are built directly from `copy.py`
-templates, not through a compare_data-side label builder). `tests/
+`PP_REF_LABEL`/four-grain `LEVELS` (field/subfield/erc/sdg) API -- every one
+of those names is DELETED with its own rewrite -- Compare now offers exactly
+two grains (subfield, sdg) through `top_subfields`/`sdg_frame`, and carries
+no "reference label sentence" hooks at all (captions are built directly from
+`copy.py` templates, not through a compare_data-side label builder). `tests/
 test_compare_data.py` already golden-tests the
 `eu_mean_share`/`eu_mean_pp10_wd` VALUES against `share_refs.parquet`/
 `impact_taxa.parquet` in depth; this module keeps only the TWO checks that

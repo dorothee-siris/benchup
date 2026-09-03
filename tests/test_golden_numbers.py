@@ -1,6 +1,6 @@
 """
 tests/test_golden_numbers.py -- hand-derived golden pins over REAL
-`app/data/*.parquet` artefacts. Every number below is
+`app/data/*.parquet` tables. Every number below is
 derived IN THE TEST (comments show the arithmetic), from raw parquet reads
 that do NOT import the function under test's own helper -- never copied from
 a manager probe or a progress-note table. Where a live app function is then
@@ -48,7 +48,7 @@ def ctx():
 # (a) IFPEN Decision Sciences sdg_share -- derived by hand from sdg_fields.
 # parquet + fields.parquet directly (never `_sdg_share_field_frame`'s own
 # code). A prior manager probe measured 0.6197 (fractional basis) on the
-# live artefacts; this derivation is independent and only cross-checks
+# live data; this derivation is independent and only cross-checks
 # against that number as a sanity anchor, not a copied source.
 # ============================================================================
 
@@ -89,7 +89,7 @@ def test_ifpen_decision_sciences_sdg_share_hand_derived():
 # ============================================================================
 # (b) Strasbourg x CNRS pair core_total + field 31 row (vol/n_top10/n_covered)
 # recomputed from collab_pairs.parquet/collab_pair_fields.parquet directly,
-# cross-referenced to evals/golden_2BR3.json's OpenAlex-VERIFIED numbers.
+# cross-referenced to the reference-figures golden's OpenAlex-VERIFIED numbers.
 # ============================================================================
 
 def test_strasbourg_cnrs_core_total_and_physics_field_recomputed(ctx):
@@ -170,7 +170,7 @@ def test_momentum_down_class_hand_derived_with_z_test(ctx):
     assert candidate == "down"
     assert final_class == "down"
 
-    # cross-check against the shipped, pipeline-classified row
+    # cross-check against the shipped, upstream-classified row
     assert str(prow["mom_class"]) == final_class == "down"
     np.testing.assert_allclose(float(prow["mom_rr"]), rr, rtol=1e-5)
     np.testing.assert_allclose(float(prow["mom_p"]), pval, rtol=1e-3)

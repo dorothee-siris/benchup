@@ -355,8 +355,7 @@ def test_no_digit_ban_violations():
     """The regression itself. A real violation here is an APPLICATION defect
     (a static string in pages/Menu.py/lib/{views_find,ranked,filters,badges}.py
     or lib/copy.py that types a digit the digit-ban forbids) -- owns
-    the test, not the fix ( dispatch contract); see
-    progress/2A_G.md for what this run found."""
+    the test, not the fix (a dispatch contract)."""
     tokens = load_allowlist()
     violations = [(loc, s) for loc, s in all_scoped_strings() if has_digit_violation(s, tokens)]
     if violations:

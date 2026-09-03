@@ -1,17 +1,17 @@
 """
-tests/stress/run_stress.py -- BUILD_PLAN.md D12 / Stream T1: the permanent memory
+tests/stress/run_stress.py -- the permanent memory
 stress gate. Drives the REAL Streamlit app (one `streamlit run Menu.py` server,
 headless) through a deterministic crash-path replay (phase A) and randomised
 concurrent chaos (phase B) while sampling the server's own python.exe RSS every
-0.5s, then reports peak/mean/final per phase against the D11 ceiling (< 1,800 MB,
+0.5s, then reports peak/mean/final per phase against the ceiling (< 1,800 MB,
 half the 2.7 GB Community Cloud cap) and "the server never died".
 
-Method follows `V3/evals/gate_2E/gate_2E_rss.md` (read-only reference): sample the
+Method follows an earlier stress harness's approach: sample the
 STREAMLIT SERVER'S OWN python.exe (not the Playwright/Chromium client) via
 `ops/rss_probe.py` (stdlib ctypes, no psutil -- it is not a dependency of this
 app and must not become one for a test-only need).
 
-PID resolution (verified empirically before trusting it, see progress/T1.md):
+PID resolution (verified empirically before trusting it):
 `subprocess.Popen([PYTHON, "-m", "streamlit", "run", ...])` does NOT give the
 real server's PID on this Windows box -- `proc.pid` stays a ~5 MB launcher for
 the process lifetime while Streamlit's own bootstrap spawns a SEPARATE CHILD
@@ -70,11 +70,11 @@ from rss_probe import process_rss_mb  # noqa: E402
 PYTHON = sys.executable
 CYCLE_SCRIPT = STRESS_DIR / "cycle_scenarios.py"
 
-PEAK_CEILING_MB = 1800.0  # D11/D12: half the 2.7 GB Community Cloud cap
+PEAK_CEILING_MB = 1800.0  # half the 2.7 GB Community Cloud cap
 
 # ---------------------------------------------------------------- seeds -----
-# The same 12 institutions T0's goldens use (V4/evals/goldens/README.md "Seed
-# selection") -- 5 fixed anchors + 7 already vetted for type/size variety, so
+# The same 12 institutions the reference goldens use --
+# 5 fixed anchors + 7 already vetted for type/size variety, so
 # this harness never re-derives its own sample from index.parquet. Search text
 # is the exact `display_name` (see search.py: a whole-field match is ALWAYS
 # "exact" priority, so a full legal name reliably auto-selects with one hit --
@@ -98,8 +98,7 @@ SEED_IDS = [s[0] for s in SEEDS]
 
 # lib/copy.py TREE_LABELS / BASIS_LABELS values (the format_func text the
 # sidebar selectboxes actually render -- read live off lib/copy.py, not
-# guessed; confirmed against the running app before this script was written,
-# see progress/T1.md).
+# guessed; confirmed against the running app before this script was written).
 TREE_OPTION_LABELS = [
     "OpenAlex taxonomy as published",
     "Repaired taxonomy (conservative)",
@@ -177,7 +176,7 @@ def start_server(port: int, log_path: Path) -> subprocess.Popen:
     resolves the real one when it does).
 
     stdout/stderr go to a FILE, never `subprocess.PIPE` left undrained: the
-    app's own pipeline code prints during every scenario build (confirmed --
+    app's own build-time code prints during every scenario build (confirmed --
     `cycle_scenarios.py`'s "[substrates] _load_topic_share(...)" lines), and
     repeatedly cycling basis/taxonomy (exactly what phase A does) produces
     enough of it to fill an unread pipe's OS buffer. Once full, the
@@ -185,7 +184,7 @@ def start_server(port: int, log_path: Path) -> subprocess.Popen:
     request past that point stalls or the accept loop itself stops turning,
     which reads exactly like "the server died" downstream (timeouts, then
     `ERR_CONNECTION_REFUSED`). Measured hitting this on the very first
-    version of this script (progress/T1.md) -- a file has no such buffer
+    version of this script -- a file has no such buffer
     limit, and doubles as a server log worth keeping on a FAIL."""
     log_f = open(log_path, "w", encoding="utf-8", errors="replace")
     return subprocess.Popen(

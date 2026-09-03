@@ -1,6 +1,6 @@
 """
-Centralized data loading with Streamlit caching (adapted from Lorraine
-Streamlit/lib/data_cache.py). Every path is __file__-relative, so the app runs
+Centralized data loading with Streamlit caching (adapted from an earlier
+SIRIS Streamlit tool's data_cache.py). Every path is __file__-relative, so the app runs
 identically regardless of the launch cwd. `@st.cache_resource` loads each table once
 and shares it across pages/reruns for the life of the process.
 
@@ -142,8 +142,8 @@ def sdg_year() -> pd.DataFrame:
 
 @st.cache_resource
 def manifest() -> dict:
-    """Deploy-time MANIFEST.json if ops/deploy.py has run, else the pre-staged
-    source_manifest.json ( Data flow: MANIFEST/source_manifest fallback)."""
+    """Deploy-time MANIFEST.json if the deploy step has run, else the pre-staged
+    source_manifest.json (MANIFEST/source_manifest fallback)."""
     path = DATA_DIR / "MANIFEST.json"
     if not path.is_file():
         path = DATA_DIR / "source_manifest.json"

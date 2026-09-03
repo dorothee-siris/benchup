@@ -1,13 +1,13 @@
 """
-app/lib/engine/l2_vectors.py -- vendored subset of `pipeline/agg/l2_variants.py`: only the per-cell public API `l2_vectors` and the
+app/lib/engine/l2_vectors.py -- a subset of the upstream `l2_variants.py`, ported in: only the per-cell public API `l2_vectors` and the
 three private helpers it calls (`_apply_variant`, `_raw_scenario`,
-`_dense_from_scenario`), copied VERBATIM. The 11-candidate campaign runner, the
+`_dense_from_scenario`), copied VERBATIM. The 11-candidate reference runner, the
 binomial-thinning stability test, the self-test and the CLI stay upstream.
 
 See the upstream module docstring for the candidate definitions; the app only
 ever uses variant "f" (paper-count floor 30), which is L2f. Deviations from the
 source are limited to the import block (relative imports, no sys.path surgery)
-and are listed in VENDORED_engine.md.
+and are documented inline.
 """
 from __future__ import annotations
 
@@ -78,7 +78,7 @@ def _apply_variant(
 def _raw_scenario(topics_all_path: str, topics_dim_path: str, tree: str, basis: str, exclude_811: bool):
     """derive_shapes(., g6_floor=0.0) -- unfloored substrate shared by every
     candidate (eligibility is decided in THIS module, independently of
-    derive.py's own G6 floor). Cached: the whole campaign calls this exactly
+    derive.py's own G6 floor). Cached: the whole reference run calls this exactly
     once per (tree, basis, exclude_811) scenario, regardless of how many of
     the 11 candidates are run against it."""
     subfields_df, _ = derive_shapes(

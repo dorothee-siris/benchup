@@ -1,8 +1,7 @@
 """
-app/lib/links.py -- outbound OpenAlex/ROR deep links (.2
-L23): the works link now carries the SAME server-side filters the harvest
-itself used (`pipeline/01b_harvest_eu27_aug.py` lines 10-14), not just the
-publication-year window the pre-R1 card link had.
+app/lib/links.py -- outbound OpenAlex/ROR deep links: the works link
+carries the SAME server-side filters the harvest itself used, not just the
+publication-year window an earlier card link had.
 """
 from __future__ import annotations
 
@@ -18,7 +17,8 @@ def works_url(institution_id: str, *, years: tuple[int, int] | None = None,
     """`https://openalex.org/works?filter=authorships.institutions.id:{id},
     publication_year:{y0}-{y1},type:t1|t2|.,has_doi:true` -- defaults from
     CFG (`window`, `corpus_types`, `openalex_filters.has_doi`); `|` is
-    percent-encoded (`quote(filter_str, safe=":,-")`, Lorraine pattern) so the
+    percent-encoded (`quote(filter_str, safe=":,-")`, a pattern shared with
+    an earlier SIRIS Streamlit tool) so the
     link survives copy/paste and markdown rendering unbroken."""
     y0, y1 = years if years is not None else CFG["window"]
     type_list = types if types is not None else CFG["corpus_types"]

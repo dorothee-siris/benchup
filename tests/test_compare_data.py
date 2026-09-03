@@ -1,7 +1,7 @@
 """
 tests/test_compare_data.py -- lib/compare_data.py acceptance tests.
 
-Anchors are `V4/evals/goldens/v3_compare_anchors.json` -- every value this module
+Anchors are the reference-figures golden -- every value this module
 claims is EQUAL to is checked against that file directly, not against a
 hand-typed number, so a future data refresh re-proves the same identity
 rather than silently drifting from a frozen constant.
@@ -11,8 +11,7 @@ is float32 on disk; the golden file stores `float(np.float32_value)`
 (float64-widened, not re-rounded) and this module performs the identical
 float32->float64 widening, so `atol=1e-6` is generous headroom over the
 float32 ULP at these magnitudes, not a loosened bar (re-verified against
-`rtol=0` with a scratch sweep before this tolerance was picked, see
-progress/C1.md).
+`rtol=0` with a scratch sweep before this tolerance was picked).
 
 Run: python -m pytest tests/test_compare_data.py -q
 """

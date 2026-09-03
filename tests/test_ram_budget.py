@@ -112,7 +112,7 @@ DATAFRAME_LOADERS = ["index", "fields", "subfields", "topics_dim", "erc", "sdg",
 # is a 12-of-29-column SUBSET (`substrates.TOPICS_DIM_COLS`), a genuinely
 # different object -- aliasing it would silently drop columns some caller
 # expects. Established by `pd.testing.assert_frame_equal` per table before
-# this stream aliased anything (progress/E1.md); the identity assertions
+# this suite aliased anything; the identity assertions
 # below are the PERMANENT version of that one-time proof.
 ALIASED_TABLES = {"index": "index_df", "fields": "fields_df", "subfields": "subfields_df",
                   "erc": "erc_df", "sdg": "sdg_df"}
@@ -338,7 +338,7 @@ def test_scenario_cycle():
           tracking one of THOSE instead would make this proof vacuous (it
           would never go dead, cache or no cache).
 
-    Confirmed empirically before writing this test (progress/E1.md) that
+    Confirmed empirically before writing this test that
     `st.cache_resource`'s LRU eviction genuinely frees the evicted value in
     BARE mode -- no real Streamlit server, the same "missing
     ScriptRunContext" condition this whole test file already runs under (a
@@ -434,19 +434,19 @@ def test_compare_pairs_sweep():
 
 REPEATED_CYCLE_N_SWAPS = 12
 REPEATED_CYCLE_SEED = 3
-# Measured post-fix (progress/R2.md): 12 random swaps against an already-
+# Measured post-fix: 12 random swaps against an already-
 # warm process (this test runs last, after test_compare_pairs_sweep) show
 # ~0-2 MB drift, noise-level -- ~75x headroom under this budget. Pre-fix
 # (bare-process repro, same call pattern): +134 MB over 24 swaps in a
 # SEQUENTIAL 6-item cycle, and +786 MB peak over 144 swaps in a 3-thread
-# concurrent simulation of phase B's actual scenario_combo volume -- this
-# budget is generous on purpose so it fails loudly on ANY regression of the
-# fix, not just a return to the full pre-fix magnitude.
+# concurrent simulation of the stress harness's actual scenario-switch
+# volume -- this budget is generous on purpose so it fails loudly on ANY
+# regression of the fix, not just a return to the full pre-fix magnitude.
 REPEATED_CYCLE_GROWTH_BUDGET_MB = 150.0
 
 
 def test_repeated_scenario_cycle_no_ratchet():
-    """R2 (stress phase B FAIL, STRESS_2026-09-03_1354.md: peak 3477 MB,
+    """A stress-test finding (peak 3477 MB,
     final 2412 MB -- the FINAL reading exceeding the peak-ceiling-sized
     ratio proves RETAINED growth across the run, not just a transient
     spike). 12 consecutive `scenario_cache.get()` calls, RANDOM (tree,
@@ -455,7 +455,7 @@ def test_repeated_scenario_cycle_no_ratchet():
     re-rolled independently on every swap) -- asserts RSS after swap 12
     does not exceed RSS after swap 3 + REPEATED_CYCLE_GROWTH_BUDGET_MB.
 
-    Root cause (bare-process isolation, progress/R2.md): `_load_frame`
+    Root cause (bare-process isolation): `_load_frame`
     (`lib/engine/substrates.py`) re-reads and re-deserialises
     `fields_df`/`subfields_df` from parquet/pickle on every scenario swap,
     which left ~2-4 MB/swap of native heap fragmentation the OS never

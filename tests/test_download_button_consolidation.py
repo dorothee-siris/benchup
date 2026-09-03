@@ -1,18 +1,18 @@
-"""tests/test_download_button_consolidation.py -- cross-cutting guard for E7 (BenchUp V4
-trim): ALL per-section download buttons removed, ONE "Download this view
+"""tests/test_download_button_consolidation.py -- cross-cutting guard:
+ALL per-section download buttons removed, ONE "Download this view
 (Excel)" / "Download this comparison" button at the very end of each of
-Find/Compare. REWRITTEN for the trim: the earlier standalone pair-view page does
-not exist in V4 (`lib/views_collab.py` is gone, D1 "out of scope") -- swept
+Find/Compare. An earlier standalone pair-view page does
+not exist any more (`lib/views_collab.py` is gone, out of scope) -- swept
 out of `VIEW_FILES` and its own sheet-count test retired; Find now ships
-FOURTEEN sheets (D9's own topics-led/star-papers addition, `progress/E2.md`
-"workbook 14 sheets"), and Compare ships EXACTLY SEVEN (D2's brief item 6:
+FOURTEEN sheets (the topics-led/star-papers addition,
+"workbook 14 sheets"), and Compare ships EXACTLY SEVEN (
 cards, subfields, SDG, positioning, shared frontier, relationship yearly,
-reciprocity -- no Methods sheet this time, unlike the pre-trim page).
+reciprocity -- no Methods sheet this time, unlike an earlier page).
 
 This module is the ONE place that sweeps every `views_*.py` file TOGETHER,
 plus every OTHER `lib/*.py` module, in a single assertion -- so a future
 edit to any one file that reintroduces a second button is caught here even
-if that stream's own test file is not the one touched.
+if the file responsible is not the one touched.
 
 VACUITY, per module: every assertion is followed by an in-memory mutation
 that makes the identical check fail.
@@ -110,7 +110,7 @@ def test_compare_workbook_builder_returns_exactly_seven_sheets():
 
 
 def test_find_workbook_sheet_count_matches_the_all_lenses_plus_leaders_contract():
-    """Find 14 (D9's own addition, `progress/E2.md` "workbook 14 sheets"):
+    """Find 14 (the topics-led/star-papers addition, "workbook 14 sheets"):
     Profile + Overview + Aspirational (three fixed `copy.FIND["XLSX_SHEET_`
     sheets) + one per `ALL_LENSES` + ONE more, the topics-led/star-papers
     sheet (`_leaders_sheet_frame`, named by its own module constant, not the

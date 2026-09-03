@@ -25,8 +25,8 @@ Five claims, one section each:
 
   3. ASPIRATIONAL MODE B. `aspirational_frontier` reorders the SAME
      L1 pool by F1 score (never drops or adds a candidate), ties keep the
-     pool's own L1 order, and a real V0-empty seed (ETH Zurich, per
-     `evals/aspirational_R2/REPORT.md`) still returns rows from it on this
+     pool's own L1 order, and a real seed whose base ranking returns no
+     row (ETH Zurich) still returns rows from it on this
      snapshot.
 
   4. NAME-AS-LINK (A10). `ranked.works_link_named` embeds the display name as
@@ -56,9 +56,9 @@ from lib.ranked import _rank_under_text, works_link_named
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 
-ROMANIAN_MINISTRY = "I4210092262"           # pool_excluded per pipeline/11_apply_type_overrides.py
+ROMANIAN_MINISTRY = "I4210092262"           # pool_excluded upstream
 PROBE_SEEDS = ["I40413290", "I103320735", "I76903346"]   # Gdansk + two large-index institutions
-ETH_ZURICH = "I35440088"                    # V0-empty per evals/aspirational_R2/REPORT.md S2
+ETH_ZURICH = "I35440088"                    # base-ranking-empty seed
 
 
 @pytest.fixture(scope="module")
@@ -132,11 +132,10 @@ POOL_EXCLUDED_IDS = {ROMANIAN_MINISTRY, "I4210164678", "I4210125590"}   # PC dep
 
 
 def test_pool_excluded_positions_reflects_the_deployed_column(ctx):
-    """2BR_G re-check (this wave): PC's deploy has landed `pool_excluded` on
-    `app/data/index.parquet` (it had not, when FC wrote this file -- see the
-    superseded docstring above and progress/2BR_FC.md's own "0 affected this
-    wave, G re-checks after PC's deploy" note). Exactly the 3 flagged ids
-    (P4's ledger: Romanian Ministry + the Shell UK / INESC duplicate rows)."""
+    """A re-check: the deploy has landed `pool_excluded` on
+    `app/data/index.parquet` (it had not, when an earlier pass wrote this
+    file -- see the superseded docstring above). Exactly the 3 flagged ids
+    (Romanian Ministry + the Shell UK / INESC duplicate rows)."""
     want = frozenset(ctx["id_pos"][i] for i in POOL_EXCLUDED_IDS)
     assert ctx["pool_excluded_positions"] == want
 
@@ -232,7 +231,7 @@ def test_aspirational_frontier_excludes_the_pool_excluded_id_for_free(ctx, subs)
 
 
 def test_v0_empty_seed_has_a_populated_frontier_fallback(ctx, subs):
-    """ETH Zurich per evals/aspirational_R2/REPORT.md S2: V0 (`aspirational`)
+    """ETH Zurich: the base ranking (`aspirational`)
     returns no row on this snapshot, and the mode-B fallback must not be
     empty too (else there is nothing for `_render_aspirational` to fall back
     to and the seed would need a different probe)."""

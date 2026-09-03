@@ -29,8 +29,8 @@ WINDOW_START, WINDOW_END = CFG["window"]
 @pytest.fixture(scope="module")
 def engine():
     ctx = load_context(DATA_DIR)
-    # V4 trim: `build_substrates` moved out of the app
-    # package into `pipeline/21_scenario_substrates.py`; `load_substrates`
+    # `build_substrates` moved out of the app
+    # package into an offline build step; `load_substrates`
     # returns the identical dict from the precomputed `data/scenarios/` files
     # (same keys/dtypes/shapes -- `lib/engine/substrates.py`'s own docstring).
     subs = load_substrates(ctx)

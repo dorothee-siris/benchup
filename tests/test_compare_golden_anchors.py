@@ -1,14 +1,14 @@
 """
-tests/test_compare_golden_anchors.py -- BenchUp V4 trim, golden-anchor top-up
+tests/test_compare_golden_anchors.py -- golden-anchor top-up
 for the page-facing figures `tests/test_compare_data.py` does not itself reach.
 
-REWRITTEN for the trim: the pre-trim file recomputed `impact_index`/
+An earlier version of this file recomputed `impact_index`/
 `coverage`/`trends_subfields`/`collab_data.gaps` -- every one of those
-functions is DELETED (E12, stays the archive; `progress/C1.md`'s own
-deletion map). What survives from its own method ("every number below comes
+functions is DELETED and stays only in the archive.
+What survives from its own method ("every number below comes
 from a DIFFERENT computation path than the function under test, straight
-off the parquet") is the METHOD, applied to the NEW figures Streams P3/P4/
-P5 landed this build and C1's own anchor suite golden-tests only at the
+off the parquet") is the METHOD, applied to the NEW figures this build
+landed. This suite golden-tests only at the
 DATA-FRAME level, never independently re-derived from the raw leader/star
 parquets the way this file's own predecessor re-derived `impact`/`trends`
 from `index.parquet`/`topics_all.parquet` by hand:

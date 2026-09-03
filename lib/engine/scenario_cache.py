@@ -46,7 +46,7 @@ shared, not re-read per scenario"): nothing to do here -- `substrates.py`
 already caches them at ITS OWN module level (`_TOPIC_SHARE_CACHE` keyed by
 basis for l3/f1, `_COMMON_CACHE` unconditionally for l4-l7), independent of
 whatever wraps `load_substrates`. Confirmed by reading `substrates.py`
-before writing this module (progress/E1.md).
+before writing this module.
 """
 from __future__ import annotations
 

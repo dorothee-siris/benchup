@@ -85,8 +85,8 @@ def _page_strings(at: AppTest) -> str:
 # nothing renders before a subject is chosen, a choice is never made
 # silently -- read off a live query instead of a shared shortlist. "Ifremer"
 # (one hit, I154202486) and "Strasbourg" (multiple hits, STRASBOURG first)
-# are real queries against the deployed search index, not typed literals
-# see progress/E2.md for the probe that picked them.
+# are real queries against the deployed search index, not typed literals --
+# confirmed live before this test was written.
 
 IFREMER = "I154202486"
 
@@ -144,7 +144,7 @@ def test_a_multi_hit_query_needs_an_explicit_pick():
     # ids -- the pick below is made by POSITION, which is also what a reader
     # does; "Strasbourg" ranks STRASBOURG first (exact match beats every
     # other Strasbourg-named institution, `lib.search`'s own priority order,
-    # confirmed live against the deployed index -- see progress/E2.md).
+    # confirmed live against the deployed index).
     assert "Strasbourg" in pick.options[0], pick.options[0]
 
     pick.select_index(0).run()

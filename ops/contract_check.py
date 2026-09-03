@@ -1,7 +1,7 @@
 """ops/contract_check.py -- validates a directory of tables against docs/data_contract.yaml.
 
-Pattern adapted from the Lorraine Phase-2 Explorer's pipeline/60_deploy.py validator (the
-provenance note for that adaptation is not part of this repo). `check(tables_dir, contract)`
+Pattern adapted from an earlier SIRIS Streamlit tool's deploy-time validator.
+`check(tables_dir, contract)`
 returns a list of violation strings
 (empty = clean). CLI prints a per-table verdict and exits 1 on any violation.
 
@@ -28,7 +28,7 @@ def _read_table(path: Path) -> pd.DataFrame:
 
 
 def _load_source_schemas(tables_dir: Path) -> dict | None:
-    """source_manifest.json (app/data/) or manifest.json (data/artefacts_eu/) -- either name,
+    """source_manifest.json (app/data/) or manifest.json (an alternate table directory) -- either name,
     same content (verified byte-identical). Returns table_schemas dict, or None if
     no manifest is present in this directory (undeclared-drop check is then skipped, not failed)."""
     for name in ("source_manifest.json", "manifest.json"):
@@ -43,8 +43,8 @@ def check(tables_dir: str | Path, contract: dict, resolve=None) -> list[str]:
     """Validate every file declared in contract['files']. Returns the full list of violations
     across all files (empty list = clean).
 
-    `resolve(fname) -> Path` optionally overrides where each declared file is read from (deploy.py
-    uses this at --check-only time, since the parquet tables and umbrella_supplement.csv are not
+    `resolve(fname) -> Path` optionally overrides where each declared file is read from (the deploy
+    step uses this at --check-only time, since the parquet tables and umbrella_supplement.csv are not
     all under one directory before deploy). Defaults to
     `tables_dir / fname` (the deployed-layout case: test_contract.py, the plain CLI). `tables_dir`
     itself is still used to locate source_manifest.json/manifest.json for the undeclared-drop check

@@ -204,11 +204,11 @@ def _probe_find(page) -> None:
         # SOFTENED (see file-level note at the bottom of this module): the
         # workbook's own "score" column is `lib/ranked.py::format_rows`'s
         # `_pct100(row["lens_score"])`, fed by `views_find._rows_for_ids` /
-        # `_filtered` -- a different pipeline stage than `rank_all`'s own
+        # `_filtered` -- a different computation stage than `rank_all`'s own
         # raw `l1["scores"]` array (live-measured: NOT a plain x100 of it,
         # e.g. 74.349 vs 0.138515 x 100 = 13.8515 for this exact seed/lens).
-        # Reproducing that second pipeline stage is E2's own file, outside
-        # this stream's fence -- the LOAD-BEARING half (which institution
+        # Reproducing that second stage is outside
+        # this probe's scope -- the LOAD-BEARING half (which institution
         # ranks #1) is the hard check above; the score itself is checked
         # only for shape (a finite, non-negative number).
         got_score = row0.get("score")
@@ -231,13 +231,13 @@ def _probe_compare(page) -> None:
     ids = [IFREMER_ID, NIOZ_ID]
 
     # --- Key-figure card recompute: Publications (vol_full), off
-    #     `compare_data.cards` (pure -- Stream C1's own file, imports no
+    #     `compare_data.cards` (pure, imports no
     #     Streamlit), matched against the FIRST card's own rendered text
     #     (cards are `st.markdown` HTML, real text nodes -- not canvas). ---
     cards_df = CD.cards(ctx, ids).set_index("institution_id")
     vol_full = cards_df.loc[IFREMER_ID, "vol_full"]
     # DOM FACT (live-verified): Compare's own card formatter
-    # (`charts.py::_fmt_vol`, the Lorraine `fr_int` convention) prints a
+    # (`charts.py::_fmt_vol`, the `fr_int` convention) prints a
     # thousands separator as a NARROW NO-BREAK SPACE, never a comma -- Find's
     # own `_count` uses a plain comma instead (a legitimate per-page
     # difference, not a bug: `views_find.py` vs `charts.py` are two

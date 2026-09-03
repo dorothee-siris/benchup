@@ -15,7 +15,7 @@ this file runs every check the brief names at least once per seed (and per
 scenario where the scenario is the point of the check), consolidates
 per-lens/per-row work into one `all(.)` per assertion, and stays in the
 "~150 assertions" ballpark that way rather than by copy-pasting -- measured
-at collection: see progress/2A_G.md for the actual count.
+at collection.
 
 Run from cwd `app/`: python -m pytest tests/test_matrix.py -q
 """

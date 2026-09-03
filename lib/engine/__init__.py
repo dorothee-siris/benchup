@@ -3,7 +3,7 @@ app/lib/engine -- BenchUp's pure-python ranking engine. NO Streamlit import anyw
 directory in and returns plain dicts / numpy arrays out, so the golden
 regression can drive it headless.
 
-Provenance for every vendored function: VENDORED_engine.md (same folder).
+Provenance for every ported function is documented inline in each module.
 """
 from .derive import derive_shapes
 from .evidence import rows_evidence, top_shared_cell

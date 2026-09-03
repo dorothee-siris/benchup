@@ -13,17 +13,16 @@ whole scenario dict (`cards`, `relationship`) -- this module loads that one
 pin internally.
 
 Every number this module ships is either (a) read straight off a shipped
-artefact with no reinterpretation, or (b) IDENTICAL, cell for cell, to what
-BenchUp's `compare_data.py` computed for the same (institution, taxon)
-pair -- verified against `V4/evals/goldens/v3_compare_anchors.json` in
-`tests/test_compare_data.py`. The file this module
+table with no reinterpretation, or (b) IDENTICAL, cell for cell, to what
+the reference version's `compare_data.py` computed for the same
+(institution, taxon) pair -- verified against the reference figures for
+three pairs in `tests/test_compare_data.py`. The file this module
 descends from carried a much larger surface (an N-institution "Compare by"
 metric-selector matrix, ERC panels, dynamics, a pooled frontier scatter,
 grey-accounting coverage, bootstrap-CI impact-by-subfield): all of that is
-DELETED per 's brief and stays the archive (E12)
-see `V4/progress/C1.md` for the full deletion map and a grep proof that
-nothing outside this module's fence still imports a deleted name (aside
-from two owned-elsewhere test files, also listed there).
+DELETED per the brief and stays only in the archive -- no other file
+outside this module's fence still imports a deleted name (aside from two
+owned-elsewhere test files).
 
 ONE function survives with its name and signature unchanged:
 `fields_long(ctx, subs, ids)` -- `lib/collab_data.py:reciprocity_frame` imports and calls it directly,
@@ -287,8 +286,9 @@ def _fwci_taxon(ctx: dict, ids: list[str], level: str) -> pd.DataFrame:
 
 
 def _taxon_si_from_share(share: pd.Series, taxon_id: pd.Series, ref: pd.Series) -> pd.Series:
-    """`share / eu_mean_share`, joined by `taxon_id` -- 's own SDG-grain SI
-    formula (`_taxon_si_from_share`, ported verbatim): SDG has no stored
+    """`share / eu_mean_share`, joined by `taxon_id` -- the reference
+    version's own SDG-grain SI formula (`_taxon_si_from_share`, ported
+    verbatim): SDG has no stored
     `si` column at all (`profile_data.SDG_COLS` ships `esi`, a DIFFERENT
     figure `sdg_table` computes -- never read here), so SI is recomputed
     on the fly against the SAME `share_refs.parquet` mean the share metric's
@@ -302,17 +302,17 @@ def _taxon_si_from_share(share: pd.Series, taxon_id: pd.Series, ref: pd.Series) 
 
 def _share_and_si(ctx: dict, subs: dict, ids: list[str], level: str) -> pd.DataFrame:
     """institution_id, taxon_id, share_full, si, eu_mean_share -- the
-    `share`/`si` values 's own `_share_frame`/`_si_frame` computed at
+    `share`/`si` values the reference version's own `_share_frame`/
+    `_si_frame` computed at
     subfield/sdg grain (dropping the OLD per-field `field_id` filter: it
-    only ever restricted which ROWS shipped, never the VALUE of any row
+    only ever restricted which ROWS shipped, never the VALUE of any row --
     both `_share_denom_value` and `_taxon_si_from_share`'s population mean
     were always computed off the institution's WHOLE taxonomy regardless of
-    that filter -- see progress/C1.md 'why the per-field loop disappeared'
-    for the full argument and its anchor-test proof). `si` at SUBFIELD grain
+    that filter, per the anchor-test proof). `si` at SUBFIELD grain
     is the base frame's own (unfloored) `si` column; at SDG grain there is
     no such column (`profile_data.SDG_COLS` ships `esi`, unrelated) so it is
-    RECOMPUTED as `share / eu_mean_share` (`_taxon_si_from_share`, 's own
-    SDG branch, ported verbatim)."""
+    RECOMPUTED as `share / eu_mean_share` (`_taxon_si_from_share`, the
+    reference version's own SDG branch, ported verbatim)."""
     basis = subs["basis"]
     ref = _share_ref_series(ctx, level, basis)
     if level == "subfield":
@@ -349,15 +349,15 @@ def _taxon_metrics(ctx: dict, subs: dict, ids: list[str], level: str) -> pd.Data
 # scenario data).
 # ---------------------------------------------------------------------------
 
-# The 7 legacy figures 's `overview` shipped, kept EQUAL (golden `overview`,
-#   brief item 1) -- window: `total_full_2020_2024` /
+# The 7 legacy figures the reference version's `overview` shipped, kept
+#   EQUAL (golden `overview`, brief item 1) -- window: `total_full_2020_2024` /
 # `total_frac_2020_2024` are the 2020-2024 analytical window (config.yaml
-# `window`, D1), ALL FIVE harvested corpus types (article/review/book/
+# `window`), ALL FIVE harvested corpus types (article/review/book/
 # book-chapter/letter, not narrowed to article+review) -- the SAME window
 # `intl_share`/`company_share`/`sdg_tagged_share`/`frontier_top25_share`/
-# `pp_top10_frac` are denominated on. `ci_low`/`ci_high` ('s overview also
-# carried these) are DROPPED here -- D8's card list has no confidence
-# interval, point estimate only.
+# `pp_top10_frac` are denominated on. `ci_low`/`ci_high` (the reference
+# version's overview also carried these) are DROPPED here -- the card
+# list has no confidence interval, point estimate only.
 _CARD_INDEX_COLS = {
     "vol_full": "total_full_2020_2024", "vol_frac": "total_frac_2020_2024",
     "sdg_share": "sdg_tagged_share", "frontier_top25_share": "frontier_top25_share",
@@ -392,12 +392,13 @@ def _all_vol_changes(ctx: dict) -> pd.Series:
 
 
 def cards(ctx: dict, ids: list[str]) -> pd.DataFrame:
-    """D8's Key-figure cards, one row per institution: the 7 legacy figures
-    (EQUAL to 's `overview`, see `_CARD_INDEX_COLS`'s own docstring for
-    windows) plus `vol_change` (change in MEAN ANNUAL full volume, 2020-22
-    -> 2023-24, 's own `_dynamics_value`/`_window_mean` reused verbatim),
+    """Key-figure cards, one row per institution: the 7 legacy figures
+    (EQUAL to the reference version's `overview`, see `_CARD_INDEX_COLS`'s
+    own docstring for windows) plus `vol_change` (change in MEAN ANNUAL full
+    volume, 2020-22 -> 2023-24, the reference version's own
+    `_dynamics_value`/`_window_mean` reused verbatim),
     `fwci_eu_median`/`star_share`/`n_stars`/`n_topics_led_fair` and `led_pool` ('universities' when `type == "education"`,
-    else 'all institutions', D6's fair-pool rule). EVERY numeric figure also
+    else 'all institutions', the fair-pool rule). EVERY numeric figure also
     ships a `<col>_eu_median` twin: the NaN-safe median of that SAME figure
     over the whole 7,557-row index, computed once
     per call, identical for both rows of a 2-institution pair by
@@ -432,12 +433,12 @@ def cards(ctx: dict, ids: list[str]) -> pd.DataFrame:
 
 
 # ---------------------------------------------------------------------------
-# top_subfields / all_subfields -- D3's Thematic-shape frame, in the
+# top_subfields / all_subfields -- the Thematic-shape frame, in the
 # two_tab_bars long-by-(row, institution) SHAPE (one row per subfield x
 # institution) but carrying BOTH the Profile metric (share_full) and the
 # Impact metric (pp10_wd) as separate named columns rather than a single
-# `value` column picked by an active tab -- see progress/C1.md for the exact
-# rename C3 needs per tab (`charts_compare.two_tab_bars`'s own contract).
+# `value` column picked by an active tab (`charts_compare.two_tab_bars`'s
+# own contract).
 # ---------------------------------------------------------------------------
 
 SUBFIELD_WIDE_COLS = [
@@ -448,9 +449,9 @@ SUBFIELD_WIDE_COLS = [
     "fwci_median", "fwci_mean", "n_covered_fwci", "eu_median_fwci",
 ]
 
-# 's own `PAL.OA_DOMAIN_ORDER` display order (1=Life Sciences,
-# 2=Health Sciences, 3=Physical Sciences, 4=Social Sciences) -- copied here
-# as a plain tuple (not imported from `lib.palette`, C2's fence, to avoid a
+# The reference version's own `PAL.OA_DOMAIN_ORDER` display order (1=Life
+# Sciences, 2=Health Sciences, 3=Physical Sciences, 4=Social Sciences) --
+# copied here as a plain tuple (not imported from `lib.palette`, to avoid a
 # needless cross-fence coupling for four ints) so field grouping has a
 # stable, documented order without depending on chart-layer code.
 _OA_DOMAIN_ORDER = (1, 2, 3, 4)
@@ -673,10 +674,10 @@ def frontier_positioning(ctx: dict, subs: dict, ids: list[str]) -> pd.DataFrame:
 
 
 # ---------------------------------------------------------------------------
-# shared_frontier -- D5's mirror-chart + table data. Topic set and A/B
-# volumes are IDENTICAL to 's own `shared_frontier(ctx, subs, ids,
-# pool="volume")` (golden-anchor tested); every other column is a NEW
-# per-topic addition this stream's own brief asks for.
+# shared_frontier -- the mirror-chart + table data. Topic set and A/B
+# volumes are IDENTICAL to the reference version's own
+# `shared_frontier(ctx, subs, ids, pool="volume")` (golden-anchor tested);
+# every other column is a NEW per-topic addition the brief asks for.
 # ---------------------------------------------------------------------------
 
 SHARED_FRONTIER_COLS = [
@@ -700,10 +701,10 @@ def _shared_frontier_topics(ctx: dict, subs: dict, ids: list[str]) -> pd.DataFra
     `_frontier_pool_frame(pool="volume")` + `shared_frontier`'s own
     `owner == "shared"` filter, COLLAPSED to this module's fixed 2-
     institution case (the OLD N-institution "owner" tri-state and the
-    "elite" pool alternative are deleted, D5: the pool is fixed, only two
+    "elite" pool alternative are deleted: the pool is fixed, only two
     institutions are ever compared now) -- values are BIT-IDENTICAL to that
-     path for the rows it would have called "shared" (anchor-tested
-    against `v3_compare_anchors.json`'s own `shared_frontier`)."""
+    path for the rows it would have called "shared" (anchor-tested
+    against the reference figures' own `shared_frontier`)."""
     assert len(ids) == 2, "shared_frontier is defined for exactly two institutions (Compare's own cap)"
     vol_col = "vol_full" if subs["basis"] == "full" else "vol_frac"
     frames = []
@@ -774,9 +775,9 @@ def shared_frontier(ctx: dict, subs: dict, ids: list[str]) -> pd.DataFrame:
     own INPUT FRAME CONTRACT, `lib/charts_compare.py`: `topic_id`,
     `topic_name`, `url_joint`, `vol_a`, `vol_b`, `vol_joint`, `expansion`,
     `acceleration`, `is_top_decile` are all present under these exact
-    names). Topic set and `vol_a`/`vol_b` are IDENTICAL to 's own
-    `shared_frontier` (`_shared_frontier_topics`'s own docstring; anchor-
-    tested against `v3_compare_anchors.json`).
+    names). Topic set and `vol_a`/`vol_b` are IDENTICAL to the reference
+    version's own `shared_frontier` (`_shared_frontier_topics`'s own
+    docstring; anchor-tested against the reference figures).
 
     Per topic, ADDED:
       keywords, domain_id, frontier_score -- `topics_dim.parquet`
@@ -918,9 +919,10 @@ def relationship(ctx: dict, ids: list[str], subs: dict | None = None) -> dict:
                            vol_joint, share_a, share_b (`collab_data.
                            reciprocity_frame`'s `y`/`x` respectively
                            EQUAL golden `reciprocity_frame` once relabelled).
-                           No `rank_in_a`/`rank_in_b` column: 's own
-                           `reciprocity_frame` never carried a per-field
-                           partner rank (only a per-PAIR one, on `momentum`),
+                           No `rank_in_a`/`rank_in_b` column: the reference
+                           version's own `reciprocity_frame` never carried
+                           a per-field partner rank (only a per-PAIR one,
+                           on `momentum`),
                            so this optional pair of columns is omitted
                            rather than fabricated (`reciprocity_bars`'
                            own docstring: an absent column simply drops

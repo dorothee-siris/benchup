@@ -1,16 +1,16 @@
 """
-R2 S2 (REFINEMENT_PLAN.md S10.2, S2 row; R2.19/R2.20) -- the app's future data
+The app's future data
 layer: given the one topic-grain master (`topics_all` + `topics_dim`), derive
 `subfields`/`fields` shapes for ANY tree x basis x 811-toggle scenario with
 duckdb (in-process, $0, MIT), instead of shipping all 12 scenarios
-precomputed. This module is copied verbatim into the Sprint-2 app.
+precomputed.
 
 `derive_shapes(topics_all_path, topics_dim_path, tree, basis, exclude_811,
-index_institution_ids=None)` reproduces `pipeline/agg/trees_agg.py`'s
+index_institution_ids=None)` reproduces the upstream `trees_agg.py`'s
 `build_subfields`/`build_fields` EXACTLY for basis='frac' (the only basis
 trees_agg ever computes -- see "basis generalization" note below), on the
 topic grain instead of the raw corpus grain: under `assignment='primary'`
-(the shipped default, R2.18) a work's full weight lands on its primary topic
+(the shipped default) a work's full weight lands on its primary topic
 only, and trees_agg maps that SAME primary topic to a subfield -- so
 GROUP BY (institution, tree_subfield(topic)) over `topics_all` and GROUP BY
 (institution, tree_subfield(primary_topic)) over the raw corpus are the same

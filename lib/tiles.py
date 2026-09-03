@@ -1,7 +1,6 @@
 """
-app/lib/tiles.py -- the KPI card (.2 L18, VIZ_SPEC.md
-S2.11), copied in from Lorraine `Streamlit/pages/2_(factory)_
-Laboratoires.py:_kpi_tile` (lines 1151-1178) and reduced to what BenchUp
+app/lib/tiles.py -- the KPI card, copied in from an earlier SIRIS
+Streamlit tool's `_kpi_tile` component and reduced to what BenchUp
 needs: name + value + one small line, no per-tile download button.
 
 CARD ANATOMY: the metric
@@ -50,7 +49,7 @@ import streamlit as st
 
 from lib import palette as P
 
-# Type scale (design-system/DESIGN_TOKENS.md S3, Lorraine's own tile sizes).
+# Type scale (an earlier SIRIS Streamlit tool's own tile sizes).
 # -6: the NAME gets its own step -- above the small line, below the value,
 # so the reading order down the card is name -> value -> reference.
 LABEL_PX = 15

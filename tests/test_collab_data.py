@@ -191,12 +191,11 @@ def test_topics_together_and_untapped_builders_are_gone():
 
 
 # ============================================================================
-# D7/ -- `pair_domain_year`, the
+# `pair_domain_year` -- the
 # Relationship block's joint-publications-by-domain-and-year chart data,
-# read off the NEW `collab_pair_domain_year.parquet`
-# (pipeline/22_pair_domain_year.py). Anchors independently recomputed
-# straight off `collab_pairs.parquet` / `data/interim/collab_p7/
-# fields_2022.parquet`, no import of the pipeline script.
+# read off the NEW `collab_pair_domain_year.parquet`. Anchors independently
+# recomputed straight off `collab_pairs.parquet` / `data/interim/collab_p7/
+# fields_2022.parquet`, no import of the upstream build script.
 # ============================================================================
 
 IFREMER, NIOZ = "I154202486", "I4210107283"
@@ -214,9 +213,9 @@ def test_pair_domain_year_dtypes_and_sort(ctx):
 
 
 def test_pair_domain_year_sum_equals_core_total_ifremer_nioz(ctx):
-    """P2 acceptance (a): Sigma(vol) over ALL domain x year rows for this
+    """Sigma(vol) over ALL domain x year rows for this
     qualifying pair equals `collab_pairs.core_total` exactly -- the
-    pipeline rollup's own invariant, re-verified here through the module's
+    upstream rollup's own invariant, re-verified here through the module's
     public accessor."""
     df = CL.pair_domain_year(ctx, IFREMER, NIOZ)
     pairs = _load_pairs_raw(ctx)
@@ -226,9 +225,9 @@ def test_pair_domain_year_sum_equals_core_total_ifremer_nioz(ctx):
 
 
 def test_pair_domain_year_2022_matches_direct_groupby_on_fields_2022(ctx):
-    """P2 acceptance (b): the pair's 2022 domain totals, hand-recomputed by
+    """The pair's 2022 domain totals, hand-recomputed by
     an INDEPENDENT groupby straight off fields_2022.parquet (no import of
-    pipeline/22_pair_domain_year.py), equal what `pair_domain_year` returns."""
+    the upstream build script), equal what `pair_domain_year` returns."""
     fields = pd.read_parquet(INTERIM_COLLAB_P7 / "fields_2022.parquet")
     lo, hi = sorted([IFREMER, NIOZ])
     sub = fields[(fields["a"] == lo) & (fields["b"] == hi)]

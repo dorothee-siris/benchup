@@ -2,20 +2,21 @@
 tests/test_scenarios.py -- identity + RAM proof.
 
 For each of the 6 (tree, basis) scenarios, `lib.engine.substrates.load_substrates`
-(reads `app/data/scenarios/`, written by `pipeline/21_scenario_substrates.py`)
+(reads `app/data/scenarios/`, written by the offline build step whose script
+this file loads directly -- see `PIPELINE_SCRIPT` below)
 must return the EXACT SAME dict an in-process reference build produces
 same keys, dtypes, shapes, memory order (arrays), same values (frames,
-exact incl. category dtype). The reference is the pipeline step's own
+exact incl. category dtype). The reference is that offline build step's own
 building blocks (`build_topic_share`/`build_common`/`build_scenario`),
-loaded by file path since `pipeline/` has no `__init__.py` and its filename
+loaded by file path since it has no `__init__.py` and its filename
 starts with a digit (brief: "import the ORIGINAL build_substrates from the
-pipeline step, or from \\app\\lib\\engine by sys.path -- read-only").
+offline build step, or from \\app\\lib\\engine by sys.path -- read-only").
 
 Run from `app/`: python -m pytest tests/test_scenarios.py -q -s
 
 `test_scenarios.py:__main__` (not collected by pytest) is the RAM proof:
 `python tests/test_scenarios.py` cycles the 6 scenarios keeping only the
-latest (del + gc), printing RSS after each -- table pasted into progress/P1.md.
+latest (del + gc), printing RSS after each.
 """
 from __future__ import annotations
 
@@ -50,10 +51,10 @@ from rss_probe import process_rss_mb  # noqa: E402
 
 
 def _load_pipeline_module():
-    """`pipeline/21_scenario_substrates.py` is not an importable package
+    """`PIPELINE_SCRIPT` is not an importable package
     member (no __init__.py, filename starts with a digit) -- load it by
-    path, the same mechanism `run`/ad-hoc tooling uses for numbered
-    pipeline scripts."""
+    path, the same mechanism ad-hoc tooling uses for numbered
+    build scripts."""
     spec = importlib.util.spec_from_file_location("_p1_pipeline_scenario_substrates", PIPELINE_SCRIPT)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
@@ -164,7 +165,7 @@ def test_topic_share_is_shared_across_trees(ctx, topic_share_ref):
 
 
 def test_f1_is_exact_column_subset_of_l3():
-    """The design decision documented in pipeline/21_scenario_substrates.py's
+    """The design decision documented in the offline build step's own
     module docstring: f1 is never stored separately."""
     ctx_ = load_context(DATA_DIR)
     subs = load_substrates(ctx_, DEFAULT_TREE, DEFAULT_BASIS)

@@ -3,8 +3,8 @@ app/lib/state.py -- cross-page session state: PERSIST (the persistence kwarg
 every keyed widget in this app must carry to survive a page switch) and the
 seed handed from Find to Compare's first slot.
 
-Lorraine lib/controls.py lines 184-222 (read verbatim before touching
-this file): a widget's value resets to its coded default on every page switch
+An earlier SIRIS Streamlit tool's controls module (read verbatim before
+touching this file): a widget's value resets to its coded default on every page switch
 unless the widget itself is given `persist_state="session"` -- Streamlit's
 per-page widget-id hashing means a plain session_state write-through does not
 reliably reattach across more than one page hop.

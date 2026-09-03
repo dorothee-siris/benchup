@@ -120,7 +120,7 @@ def test_copy_carries_no_collab_dict_any_more():
 
 
 def test_find_six_year_basis_disclosure_key_exists_and_names_the_whole_run():
-    """VF's D5 disclosure (progress/2C_VF.md): the SDG/ERC profile panels
+    """The SDG/ERC profile panels
     read a WHOLE-RUN (six-year) window, different from the five-year core
     window the rest of Find states -- said in words wherever the ratio it
     qualifies is on screen."""

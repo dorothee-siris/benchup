@@ -64,17 +64,17 @@ def test_new_table_exists_with_exact_columns(contract: dict, fname: str) -> None
 
 
 def test_contract_declares_23_files(contract: dict) -> None:
-    # History of this count (each step live-verified against `ops/deploy.py
-    # --check-only`'s own printed total, not typed in twice): ... -> 23 ->
+    # History of this count (each step live-verified against the deploy
+    # step's own printed total, not typed in twice): ... -> 23 ->
     # 22 (impact_fields.parquet deleted, dead, superseded by impact_taxa.parquet)
     # -> 27 (contract v1.5): five new tables -- collab_pair_domain_year.parquet,
     # topic_leaders.parquet, topics_led.parquet, inst_stars.parquet,
     # pair_stars.parquet (world leaders, star papers, the yearly pair x domain
-    # rollup) -> 23 (contract v1.6, this stream): impact_cells.parquet and
+    # rollup) -> 23 (contract v1.6): impact_cells.parquet and
     # collab_pair_topics.parquet deleted (dead, no code path read either);
-    # type_overrides.csv and pool_exclusions.csv moved to the private pipeline
+    # type_overrides.csv and pool_exclusions.csv moved to a private build
     # tree (the app never read them at run time either). `collab_facts.json`
-    # (momentum constants) and the pipeline-internal `fwci_ref.parquet`/
+    # (momentum constants) and the build-internal `fwci_ref.parquet`/
     # `fwci_work.parquet` do NOT join this count -- all are DELIBERATELY
     # excluded from `contract["files"]` by the contract's own documented design
     # (not a parquet table this app/data/ directory ships with a column schema
@@ -102,7 +102,7 @@ def test_intl_company_share_bounds() -> None:
 
 # ---------------------------------------------------------------------------
 # 3. pool_excluded: exactly 3 True (the exclusion list itself is a private
-#    pipeline-tree input, not shipped with the app -- see docs/data_contract.yaml)
+#    build-tree input, not shipped with the app -- see docs/data_contract.yaml)
 # ---------------------------------------------------------------------------
 
 def test_pool_excluded_exactly_three() -> None:
@@ -184,9 +184,10 @@ def test_window_strings_appear_verbatim_on_the_columns_that_use_them(contract_te
 
 
 def test_type_overrides_count_is_41_not_stale(contract: dict) -> None:
-    """P4 flagged the contract's own '34 rows' text as stale (41 after the 7 gated-type
-    resolutions); this pins the fix. The identity check against the shipped CSV moved with
-    overrides/type_overrides.csv to the private pipeline tree, which the app no longer reads."""
+    """A prior pass flagged the contract's own '34 rows' text as stale (41 after the
+    7 gated-type resolutions); this pins the fix. The identity check against the
+    shipped CSV moved with overrides/type_overrides.csv to a private build tree,
+    which the app no longer reads."""
     spec = contract["files"]["index.parquet"]["type_overrides"]
     assert spec["n_ids"] == 41
     assert len(spec["institution_ids"]) == 41

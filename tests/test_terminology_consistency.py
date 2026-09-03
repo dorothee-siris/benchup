@@ -11,20 +11,20 @@ silently drift from the first.
 
 Scope note (deliberately NARROW, to avoid a false positive on live,
 correct copy): the OLD phrasings this module bans are the SPECIFIC compound
-strings the press audit / VL4 actually found and fixed ("a European
-reference", "that European average", in `copy.COLLAB["COL_FWCI_HELP"]",
-progress/2D_VL4.md S "E1"), not a blanket ban on the words "European
-reference"/"European average" in isolation -- MT4's own NEW, ruled Methods
+strings a copy review actually found and fixed ("a European
+reference", "that European average", in `copy.COLLAB["COL_FWCI_HELP"]"),
+not a blanket ban on the words "European
+reference"/"European average" in isolation -- the ruled Methods
 section is deliberately titled "The European average behind a reference
-line" (progress/2D_MT4.md S1), and banning that substring outright would
+line", and banning that substring outright would
 fail on a correct, reviewed string rather than catch a regression. The
-suffix check below is likewise scoped to the two hooks E3 actually names
+suffix check below is likewise scoped to the two hooks actually named
 (`copy.COMPARE["METRIC_PP"/"METRIC_FWCI"]`, `copy.FIND["KPI_PP_LABEL"]`)
 a residual "PP(top10%)" literal survives in a few OTHER Find keys
 (`CARD_PP`/`ASP_SORT_LABEL`/`ASP_UNDEFINED`/`COL_PP`/`TILE_PP`), already
-disclosed by VC4 as a known, out-of-fence gap for a future round
-(progress/2D_VC4.md S12) -- asserting it away here would fail on a KNOWN,
-undisputed gap rather than guard the E1/E3 rulings this module owns.
+disclosed as a known, out-of-fence gap for a future round --
+asserting it away here would fail on a KNOWN,
+undisputed gap rather than guard the rulings this module owns.
 
 VACUITY, per module: every assertion is followed by an in-memory mutation
 that makes the identical check fail.
@@ -126,8 +126,8 @@ def test_pp_and_fwci_suffix_labels_are_wired_at_their_hooks():
 
 def test_suffix_tokens_are_digit_ban_allowlisted_project_wide():
     """PP10_WD/EU27 both carry digits, so both must clear `copy.py`'s own
-    digit-ban scanner (MT4/VF4's shared-infrastructure touch, progress/
-    2D_MT4.md / 2D_VF4.md) -- checked live here rather than assumed."""
+    digit-ban scanner (a shared-infrastructure touch) -- checked live here
+    rather than assumed."""
     from lib import copy as copy_mod
 
     assert copy_mod.scan_for_digit_violations() == []

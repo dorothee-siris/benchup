@@ -23,7 +23,7 @@ make them true rather than aspirational:
       * number formats are COMPOSED from int constants
         (`f".{SHARE_DECIMALS}%"`), never typed as `".1%"`;
       * hover text is PRE-FORMATTED in Python and passed through `customdata`
-        with `hovertemplate="%{customdata}<extra></extra>"` (Lorraine's idiom),
+        with `hovertemplate="%{customdata}<extra></extra>"`,
         so no `%{x:.1%}` and no `%{customdata[0]}` -- both of which carry a
         digit -- ever appears in this file;
       * the SI reference is a LINE at the neutral value, never a text label
@@ -35,7 +35,7 @@ make them true rather than aspirational:
     constant (`WRAP_WIDTH`), never a string -- the digit-ban only reaches into
     string literals, and an int default argument is not one.
 
-Grammar decided by the R1 A/Bs on real data (`design-system/ab/AB_VERDICT.md`):
+Grammar decided by side-by-side comparison on real data:
   * A/B #3 -> the share + SI pair is TWO ALIGNED PANELS of one figure sharing a
     y-axis: share bars on the left, SI as a lollipop from a dashed reference at
     the neutral value on the right. The rejected rival encoded SI as a tick on
@@ -45,30 +45,29 @@ Grammar decided by the R1 A/Bs on real data (`design-system/ab/AB_VERDICT.md`):
   * A/B #4 -> volume sits in a LEFT TEXT GUTTER, right-aligned against the
     zero baseline, not as a right-of-bar annotation. The rival clipped at the
     narrow width and scattered the numbers across the full plot width.
-  * Both from Lorraine / BenchUp V1+V2 lineage; the grouped-bar
-    geometry below is Lorraine's `_series_offset_width` verbatim, because
-    `offsetgroup` is BROKEN on the pinned plotly 5.24.1.
+  * The grouped-bar geometry below is shared with an earlier SIRIS
+    Streamlit tool, because `offsetgroup` is BROKEN on the pinned plotly
+    5.24.1.
 
-Refinement R2 (L35, user ruling items 9/10)
-changed two things about the paired share + SI form above, both still inside
-the A/B #3/#4 winning geometry -- neither reopens either A/B:
-  * L35 -- **full names, never an ellipsis.** A category label longer than
+A later pass changed two things about the paired share + SI form above, both
+still inside the A/B #3/#4 winning geometry -- neither reopens either A/B:
+  * **Full names, never an ellipsis.** A category label longer than
     `WRAP_WIDTH` now WRAPS onto at most two lines at a word boundary
     (`wrap_label`) instead of being cut short from the right. The row's own
     height grows to fit a two-line label (`row_height`'s `n_wrapped` term).
-    This REVERSES the R1 fix-X3 truncation rule below what used to be
+    This REVERSES the earlier truncation rule below what used to be
     `MAX_LABEL_CHARS`/`_truncate_label`/`ELLIPSIS` -- all three are retired,
-    not kept as dead code, since a user ruling that overturns a fix is a
-    change the next reader must not think was missed.
-  * L34 -- **`si_status` (solid / thin / none) drives the SI mark**, when the
+    not kept as dead code, since a reversed decision is worth being explicit
+    about.
+  * **`si_status` (solid / thin / none) drives the SI mark**, when the
     caller's frame carries that column: a `solid` row keeps the FILLED dot
     this section already used; a `thin` row draws a HOLLOW dot (white fill,
     coloured outline) instead of no mark at all, so a below-the-old-floor cell
     is disclosed rather than erased; a `none` row gets no mark and no stem,
     same as the pre-existing NaN rule. **A zero-volume row never gets a mark,
-    whatever `si_status` says** -- the fix for the ERC display bug the user
-    saw (a specialisation dot floating at a fabricated value for a panel with
-    no publications at all). When the column is absent, the pre-R2 rule
+    whatever `si_status` says** -- the fix for a display bug where a
+    specialisation dot floated at a fabricated value for a panel with
+    no publications at all. When the column is absent, the earlier rule
     applies unchanged: a defined `si` gets a filled dot, a NaN `si` gets none.
 
 Refinement changes four more things,
@@ -77,8 +76,8 @@ collapsed fields/subfields/topics/frontier/SDG/ERC panels), none of them
 touching the Compare-page geometry `lib/charts_compare.py` borrows this
 module's private helpers for:
 
-  * **No more wrapping -- widen the gutter instead.** L35 (above) replaced
-    truncation with a two-line wrap; REVERSES that for the Find
+  * **No more wrapping -- widen the gutter instead.** The change above
+    replaced truncation with a two-line wrap; REVERSES that for the Find
     panels in turn: "full label on one row wins over bar length" is now the
     stated priority, small bars being an acceptable cost. `fig_share_si` and
     `fig_topics` gain a `wrap: bool = False` keyword (default OFF -- the new
@@ -161,7 +160,7 @@ SCATTER_HEIGHT = 520
 BAR_GAP = 0.25              # : 0.3 -> 0.25, tighter inter-row gap to
                             # match the compressed pitch above
 
-# --- Fix X3 (Refinement R1, inspection finding I-4) ------------------------
+# --- Volume-gutter collision fix --------------------------------------------
 # The volume gutter used to be a SEPARATE `add_annotation` sitting in a
 # negative-x sliver reserved left of the zero baseline (`GUTTER_FRACTION`/
 # `GUTTER_INSET`, retired by this fix), drawn independently of the y-axis
@@ -170,7 +169,7 @@ BAR_GAP = 0.25              # : 0.3 -> 0.25, tighter inter-row gap to
 # knowledge of each other's extent, so they can (and at 390 px, did) end up
 # with zero space between them, reading as one garbled word.
 #
-# Measured on plotly 5.24.1 (see `progress/R1_X3.md`): `yaxis.automargin`
+# Measured on plotly 5.24.1: `yaxis.automargin`
 # does NOT reserve room away from the plot's own bars for a long tick label
 # it only stops a label being clipped by the OUTER edge of the figure. A
 # label longer than the current margin simply draws on top of the plot area
@@ -178,17 +177,18 @@ BAR_GAP = 0.25              # : 0.3 -> 0.25, tighter inter-row gap to
 # for a container narrower than our own estimate, below.
 #
 # The fix (STILL the mechanism -- only the treatment of an over-length label
-# changed, see the R2 note below): fold the volume INTO the y tick text as one
+# changed, see the note below): fold the volume INTO the y tick text as one
 # right-anchored string (`_tick_display`) -- there is then only ONE text
 # element per row, so there is nothing left for it to collide with -- and
 # reserve the left margin ourselves from the longest resulting LINE
 # (`_gutter_margin_px`) rather than assume automargin will do it.
 #
-# --- R2 (user ruling item 10) -------------------------
-# X3 originally ellipsised a label past `MAX_LABEL_CHARS` from the right
-# (`_truncate_label`). The user reversed that ruling: no chart may ever
-# shorten a name, so `MAX_LABEL_CHARS`/`_truncate_label`/`ELLIPSIS` are GONE
-# (not left as dead code -- a reversed ruling is worth being explicit about).
+# --- Wrap instead of truncate -------------------------
+# The gutter fix originally ellipsised a label past `MAX_LABEL_CHARS` from
+# the right (`_truncate_label`). That approach was reversed: no chart may
+# ever shorten a name, so `MAX_LABEL_CHARS`/`_truncate_label`/`ELLIPSIS` are
+# GONE (not left as dead code -- a reversed decision is worth being explicit
+# about).
 # `wrap_label` replaces truncation: a label over `WRAP_WIDTH` chars wraps onto
 # at most two lines at a word boundary instead of losing any text, and the row
 # grows taller to fit (`row_height`'s `n_wrapped` term, `WRAP_ROW_FACTOR`).
@@ -208,7 +208,7 @@ GUTTER_MARGIN_MIN_PX = 8    # the old fixed margin, kept as the floor when
                             # there is nothing long enough to reserve room for
 WRAP_WIDTH = 40             # `wrap_label` default -- a label longer than this
                             # many characters wraps at the last word boundary
-                            # before it, never mid-word (L35)
+                            # before it, never mid-word
 WRAP_ROW_FACTOR = 1.7       # a wrapped (two-line) row needs ~1.7x a single
                             # -line row's vertical budget (measured); folded
                             # into `row_height` via its `n_wrapped` count
@@ -220,20 +220,17 @@ GUTTER_FONT_PX = 11
 BUBBLE_MIN_PX = 6
 BUBBLE_MAX_PX = 34
 
-DEFAULT_GROUP_SPAN = 0.82   # D10/CHROME-F reconciliation (chrome_audit_2C.md,
-                            # "bar-group span"): was 0.8/0.9, Lorraine
-                            # VIZ_SPEC_pass6 S1.5 verbatim -- `charts_compare.py`
+DEFAULT_GROUP_SPAN = 0.82   # "bar-group span": was 0.8/0.9, matches the
+                            # grouped-bar geometry `charts_compare.py`
                             # independently carried its OWN pair for the SAME
                             # `_series_offset_width` geometry (0.82/0.86, its
-                            # `BAR_GROUP_SPAN`/`BAR_GROUP_FILL`). CHROME_CONTRACT.md
-                            # SS0 names Compare's `fig_metric_bars` chrome as the
+                            # `BAR_GROUP_SPAN`/`BAR_GROUP_FILL`). The Compare
+                            # page's own `fig_metric_bars` chrome is the
                             # app's reference to converge ON, not away from, so
                             # this pair now matches Compare's exactly and IS the
                             # single source -- `charts_compare.py` should import
-                            # these two names rather than redefine its own (one-
-                            # line change recorded for in
-                            # progress/2C_CHROME-F.md; charts_compare.py is
-                            # outside this stream's fence). Changes the Find
+                            # these two names rather than redefine its own.
+                            # Changes the Find
                             # panels' own yearly-breakdown geometry fractionally
                             # (was 0.8/0.9); Compare's own geometry is UNCHANGED
                             # since the values it already used are what this
@@ -292,7 +289,7 @@ EXCLUDED_GLYPH = "\N{ASTERISK OPERATOR}"   # catch-all / out-of-scope topic mark
 AX_SHARE = "Share of output"
 AX_SI = "Specialisation index"
 AX_ESI = "Specialisation index (SDG)"
-AX_WORKS = "Publications"  # manager fix 2026-08-29 (L29: works -> publications; E3 needs_change #2)
+AX_WORKS = "Publications"  # renamed from "works" for reader clarity
 AX_YEAR = "Year"
 AX_EXPANSION = "Expansion"
 AX_ACCELERATION = "Acceleration"
@@ -316,7 +313,7 @@ _SI_FMT = f".{SI_DECIMALS}f"
 _FRONTIER_FMT = f".{FRONTIER_DECIMALS}f"
 
 # Column-name candidates, in preference order, for the frames of section 9.4.
-# `sdg_label_numbered` (L36, "SDG 1. No poverty") is preferred over the plain
+# `sdg_label_numbered` ("SDG 1. No poverty") is preferred over the plain
 # `sdg_label` whenever the caller's frame carries it; `fig_sdg` never picks the
 # column itself, `_first_col` does, so the preference lives in ONE place.
 _LABEL_COLS = ("topic_name", "subfield_name", "field_name", "panel_label",
@@ -330,16 +327,16 @@ _VOLUME_COLS = ("vol_full", "vol_frac", "mass", "total")
 def row_height(n: int, minimum: int = MIN_HEIGHT, n_wrapped: int = 0) -> int:
     """Figure height for `n` category rows -- the shared idiom, one place.
 
-    `n_wrapped` (R2, L35) counts rows whose label WRAPPED to two lines
+    `n_wrapped` counts rows whose label WRAPPED to two lines
     (`wrap_label` inserted a `<br>`): each such row needs `WRAP_ROW_FACTOR`
     normal rows' worth of vertical space instead of one, so the extra height
     is `(WRAP_ROW_FACTOR - 1)` rows per wrapped row, not per label character
     wrapping is binary (one line or two, never more), so the row-height cost
-    is too. Default `0` reproduces the pre-R2 formula exactly."""
-    # Manager fix 2026-08-29 (R2 render check, r2_shipped_builders_1280.png):
-    # plotly spaces a categorical axis UNIFORMLY, so adding height only in
-    # proportion to the number of wrapped rows left each two-line label
-    # overlapping its neighbours (3 wrapped rows of 30 grew the pitch by 7 %).
+    is too. Default `0` reproduces the earlier formula exactly."""
+    # Measured on a rendered chart: plotly spaces a categorical axis
+    # UNIFORMLY, so adding height only in proportion to the number of
+    # wrapped rows left each two-line label overlapping its neighbours
+    # (3 wrapped rows of 30 grew the pitch by 7 %).
     # If ANY label wraps, every row must get the two-line pitch.
     n_wrapped = min(max(int(n_wrapped), 0), int(n))
     pitch = ROW_PX * (WRAP_ROW_FACTOR if n_wrapped > 0 else 1.0)
@@ -359,7 +356,7 @@ def _fmt_frontier(v: float) -> str:
 
 
 def _fmt_vol(v) -> str:
-    """Volumes print with a narrow no-break space thousands separator (Lorraine
+    """Volumes print with a narrow no-break space thousands separator (the
     `fr_int` convention). A fractional volume keeps one decimal; a full count
     prints as an integer."""
     if v is None or (isinstance(v, float) and np.isnan(v)):
@@ -372,8 +369,8 @@ def _fmt_vol(v) -> str:
 
 def wrap_label(text, width: int = WRAP_WIDTH) -> str:
     """Wrap a category label onto AT MOST TWO LINES at a word boundary,
-    never splitting a word, never dropping a character (L35 -- replaces the
-    R1 ellipsis rule; `tests/test_charts.py` pins that the joined-back text
+    never splitting a word, never dropping a character (replaces the
+    earlier ellipsis rule; `tests/test_charts.py` pins that the joined-back text
     always equals the original).
 
     Greedy word-wrap: a word is added to the current line whenever the result
@@ -407,8 +404,7 @@ def _tick_display(label: str, vol_text: str | None, *, wrap: bool = True) -> tup
     `styled` is what plotly actually draws, wrapped label lines joined by
     `<br>` and the volume in the secondary ink and gutter font size via
     plotly's limited tick pseudo-html (`<span style=".">`, verified to
-    render as a coloured, resized `<tspan>` on the pinned plotly 5.24.1
-    see `progress/R1_X3.md`).
+    render as a coloured, resized `<tspan>` on the pinned plotly 5.24.1).
 
     `wrap`: `False` skips `wrap_label` entirely and keeps the label on
     its one line, whatever its length -- the Find panels' new priority ("full
@@ -553,21 +549,21 @@ def fig_share_si(
     RIGHT the SI lollipop: a stem from the neutral reference to the value and
            a dot at the value, on ONE scale shared by every row, with a dashed
            vertical reference line AND unit grid lines at every integer up to
-           the axis max (L34). Mark style is driven by the frame's OWN
+           the axis max. Mark style is driven by the frame's OWN
            `si_status` column when present -- `solid` -> a FILLED dot (this
            panel's original mark); `thin` -> a HOLLOW dot (white fill, coloured
            outline), disclosing a below-the-old-floor cell instead of erasing
            it; `none` -> no mark and no stem, same treatment as a NaN `si_col`.
            **A zero-volume row NEVER gets a mark, whatever `si_status` says**
-           (the ERC display-bug fix, L34/L9): a panel with no publications
+           (the ERC display-bug fix): a panel with no publications
            cannot have a specialisation reading. When `si_status` is absent,
-           the pre-R2 rule applies unchanged -- a defined `si` gets a filled
+           the earlier rule applies unchanged -- a defined `si` gets a filled
            dot, a NaN `si` gets none -- and its hover says so with
            `palette.NA_MARK`.
 
     `stacked=True` puts the SI panel BELOW the share panel instead of beside it,
     same row order, for the narrow breakpoint: side by side at 390 px each panel
-    measures 61 px of plot area, which is not a chart (VIZ_SPEC section 1.8, the
+    measures 61 px of plot area, which is not a chart (the
     measured cost of the A/B #3 winner). Streamlit cannot read the viewport width
     server-side, so the caller decides when to pass it -- the builder only makes
     the layout available.
@@ -599,7 +595,7 @@ def fig_share_si(
           else np.full(n, np.nan, dtype=float))
     vol = d[volume_col].to_numpy() if volume_col else None
 
-    # A zero-volume row never gets a mark under any rule (L34/L9, the ERC
+    # A zero-volume row never gets a mark under any rule (the ERC
     # display bug): NaN volume is NOT zero (it means "unknown", not "none"),
     # only an actual zero counts.
     if vol is not None:
@@ -652,7 +648,7 @@ def fig_share_si(
     ), row=1, col=1)
 
     # Volume gutter (A/B #4): folded into the y tick text as ONE right-anchored
-    # string per row -- see the fix note above. Wrapping (L35) applies to every
+    # string per row -- see the fix note above. Wrapping applies to every
     # row's label whether or not `gutter` is on, because a long category name
     # can overrun the plot on its own.
     if gutter and vol is not None:
@@ -683,7 +679,7 @@ def fig_share_si(
         # solid -> filled dot (family colour fill, SURFACE outline, as before);
         # thin -> HOLLOW dot (SURFACE fill, family-colour outline at
         #          OUTLINE_WIDTH) -- a below-the-old-floor cell is disclosed,
-        #          never erased (L34). Per-point colour/line arrays, not a
+        #          never erased. Per-point colour/line arrays, not a
         #          second trace, so the two states share one legend-free trace.
         mk_fill = [P.SURFACE if hollow[i] else colors[i] for i in range(n) if ok[i]]
         mk_line_color = [colors[i] if hollow[i] else P.SURFACE for i in range(n) if ok[i]]
@@ -772,7 +768,7 @@ def fig_topics(
     names = [f"{EXCLUDED_GLYPH}{THIN_SPACE}{v}" if excluded[i] else str(v)
              for i, v in enumerate(d[label_col])]
     # `names` is the identity (y positions / hover), full and untouched;
-    # `_tick_display` wraps it (L35) for the volume-folded tick actually drawn
+    # `_tick_display` wraps it for the volume-folded tick actually drawn
     # see fig_share_si's fix note above; topic names are the longest labels
     # in the app, so this panel is the wrap mechanism's harder test.
     share = d[share_col].to_numpy(dtype=float)
@@ -977,8 +973,8 @@ def fig_frontier(
 # ---------------------------------------------------------------------------
 def fig_sdg(df: pd.DataFrame, *, sort: str = "taxonomy", gutter: bool = True) -> go.Figure:
     """The SDG panel. Delegates to `fig_share_si` with `esi` presented in the SI
-    slot, so the reader learns ONE form and reuses it (Lorraine VIZ_SPEC
-    `same-read-same-form`).
+    slot, so the reader learns ONE form and reuses it
+    (`same-read-same-form`).
 
     The share denominator is SDG-TAGGED fractional mass and the labelling is
     MULTI-LABEL -- one work can carry several goals, so these shares do NOT sum
@@ -1021,7 +1017,8 @@ def fig_breakdown_global(
     number is a SECOND measure sitting beside a share bar, and A/B #4 showed it
     belongs in an aligned column; here the number IS the bar's own value, which
     is the textbook direct-label case (dataviz marks-and-anatomy, "selective
-    direct labels"). Same pattern as Lorraine `plot_global_breakdown_h`."""
+    direct labels"). Same pattern as an earlier SIRIS Streamlit tool's
+    global-breakdown chart."""
     order = sorted(range(len(labels)), key=lambda i: float(totals[i]), reverse=True)
     cats = [str(labels[i]) for i in order]
     tot = [float(totals[i]) for i in order]
@@ -1046,7 +1043,8 @@ def fig_breakdown_global(
 
 
 def _series_offset_width(n: int, k: int, group_span: float, group_fill: float) -> tuple[float, float]:
-    """Lorraine VIZ_SPEC_pass6 S1.5 geometry, VERBATIM.
+    """Grouped-bar offset geometry, VERBATIM from an earlier SIRIS
+    Streamlit tool.
 
     `offsetgroup` is BROKEN on the pinned plotly (5.24.1) -- under every
     `barmode` it stacks or overlaps instead of grouping -- so every grouped bar
@@ -1071,7 +1069,7 @@ def fig_breakdown_yearly(
 ) -> go.Figure:
     """RIGHT panel of the pair: category x year GROUPED bars.
 
-    GROUPED, never stacked -- Lorraine's standing rule, "a bar chart may never
+    GROUPED, never stacked -- a standing house rule, "a bar chart may never
     stack a second categorical dimension" (a stack would make the year total the
     figure and hide every series' own trajectory, which is the claim here).
 
@@ -1116,7 +1114,7 @@ def fig_breakdown_yearly(
     fig = _base_layout(fig, SCATTER_HEIGHT - BASE_PX * 2,
                        margin=dict(t=BASE_PX // 2, l=8, r=16, b=BASE_PX))
     fig.update_layout(bargap=0)   # explicit offsets already own the spacing
-    # Manager fix 2026-08-29 (inspection R2, I-1): with l=8 the rotated y-axis
+    # Measured at a narrow viewport: with l=8 the rotated y-axis
     # title clipped to "Publicatio" at 390 px; automargin lets plotly reserve
     # the title's width whatever the viewport.
     fig.update_yaxes(automargin=True, title_standoff=6)
@@ -1134,7 +1132,8 @@ NO_PX = 0            # a literal zero belongs in an int, never inside a CSS stri
 
 
 def chip_legend_html(items: Sequence[tuple[str, str]]) -> str:
-    """HTML chip strip (Lorraine `render_chip_legend`, de-Streamlit-ed: this
+    """HTML chip strip (ported from an earlier SIRIS Streamlit tool's
+    chip-legend renderer, de-Streamlit-ed: this
     module returns the markup and `views_find.py` is the only caller that hands
     it to `st.markdown(., unsafe_allow_html=True)`).
 

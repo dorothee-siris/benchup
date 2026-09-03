@@ -1,10 +1,10 @@
 """
 app/tests/test_leaders_data.py -- acceptance tests
 (Tier A). Real data (`app/data/*.parquet` as built by
-`pipeline/25_leader_star_kpis.py`) -- no fixtures, no mocks.
+the upstream build) -- no fixtures, no mocks.
 
 Anchors verified by hand against `data/interim/stars/star_works.parquet` and
-`app/data/topic_leaders.parquet` on 2026-09-03 (see the recomputation
+`app/data/topic_leaders.parquet` (see the recomputation
 commands in each test's docstring):
   - ETH Zurich (I35440088) holds 18 star works in topic T10001 -- the frozen
     definition (top 1% most cited within topic x year), NOT the earlier
@@ -99,14 +99,13 @@ def test_star_share_range_and_nan_rule(index_df):
     real-data exception; NaN occurs ONLY when the AR denominator
     (total_ar_full_w1 + total_ar_full_w2) is 0.
 
-    DEVIATION found by this probe (2026-09-03): Google UK (I4210113297)
+    DEVIATION found by this probe: Google UK (I4210113297)
     42 stars / 204 AR works (a tiny-denominator elite-AI-lab case) -- sits at
     0.2059, 0.006 over the brief's stated 0.2 ceiling. Verified against real
     data (not a computation bug: n_stars and the two AR totals are each
-    independently checked elsewhere in this file), so the pipeline is NOT
+    independently checked elsewhere in this file), so the upstream data is NOT
     altered to force it under 0.2 -- this test instead asserts the true,
-    checked bound [0, 0.21] and that at most ONE institution exceeds 0.2
-    (see progress/P5.md)."""
+    checked bound [0, 0.21] and that at most ONE institution exceeds 0.2."""
     denom = index_df["total_ar_full_w1"].astype("float64") + index_df["total_ar_full_w2"].astype("float64")
     share = index_df["star_share"].astype("float64")
     is_nan = share.isna()

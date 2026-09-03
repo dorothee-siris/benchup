@@ -1,10 +1,10 @@
 """
-app/lib/countries.py -- ISO2 -> English country name (
-Refinement R1, S9.2 L22 / S9.4 `countries.name(code) -> str`).
+app/lib/countries.py -- ISO2 -> English country name
+(`countries.name(code) -> str`).
 
-Pattern copied from Lorraine's own
+Pattern copied from an earlier SIRIS Streamlit tool's own
 `countries_fr.py` (frozen CSV, `keep_default_na=False`), English names instead
-of French: this app's UI is English throughout (
+of French: this app's UI is English throughout (per the
 decisions log, "UI language = English").
 
 `data/countries_en.csv` is a curated, frozen mapping covering every

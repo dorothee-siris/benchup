@@ -608,9 +608,9 @@ def test_row_height_n_wrapped_matches_the_documented_factor():
     base = C.row_height(10)
     grown = C.row_height(10, n_wrapped=3)
     assert C.row_height(10, n_wrapped=0) == base, "default reproduces the pre-R2 formula exactly"
-    # Manager fix 2026-08-29: plotly spaces categories UNIFORMLY, so one wrapped
-    # label forces the two-line pitch on EVERY row (proportional growth left
-    # adjacent wrapped labels overlapping in the R2 render).
+    # Measured on a rendered chart: plotly spaces categories UNIFORMLY, so one
+    # wrapped label forces the two-line pitch on EVERY row (proportional growth
+    # left adjacent wrapped labels overlapping).
     expected = max(C.MIN_HEIGHT, int(round(C.ROW_PX * C.WRAP_ROW_FACTOR * 10)) + C.BASE_PX)
     assert grown == expected
     assert grown > base

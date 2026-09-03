@@ -58,7 +58,7 @@ def build_dense_matrix(
 
 def erc_matrices(erc_df: pd.DataFrame, inst_ids: list[str]) -> dict:
     """Dense (n_inst, 28) ERC panel matrices: share_frac, vol_frac (mass), si.
-    Used by the offline scenario-substrate build (pipeline/21_scenario_substrates.py),
+    Used by the offline scenario-substrate build, precomputed before deployment,
     not by the live app, which reads the precomputed result instead."""
     cats = list(range(28))
     share, _ = build_dense_matrix(erc_df, inst_ids, "panel_idx", "share", cats)

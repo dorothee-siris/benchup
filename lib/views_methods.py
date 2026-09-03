@@ -42,10 +42,10 @@ DOCS_DIR = Path(__file__).resolve().parent.parent / "docs"
 CONTRACT_PATH = DOCS_DIR / "data_contract.yaml"
 NOTE_PATH = DOCS_DIR / "METHODS_NOTE.md"
 
-# The star-paper cut is `pipeline/24_star_papers.py`'s own k formula (k =
-# max(1, ceil(0.01 * count)) per topic x year, D6/Q16a) -- it is not shipped
+# The star-paper cut is the upstream build's own k formula (k =
+# max(1, ceil(0.01 * count)) per topic x year) -- it is not shipped
 # to any table, so it is named here exactly the way `views_find.CORE_TOP_N`
-# names a pipeline-side constant with no data home of its own.
+# names an upstream constant with no data home of its own.
 STAR_TOP_PCT = 1  # percent
 
 _DOC_TYPE_WORDS = {

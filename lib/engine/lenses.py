@@ -2,25 +2,28 @@
 app/lib/engine/lenses.py -- ranking, concordance, aspirational-by-impact and
 the seed card.
 
-Every formula here is copied from the two campaign generators, not rewritten:
+Every formula here is copied from two reference implementations, not
+rewritten:
 
-  evals/campaign/gen_lists_recall.py -- rank_map, is_degenerate,
+  the recall reference implementation -- rank_map, is_degenerate,
       parse_shape_top3, base_evidence, rank_under_l1_l3, build_seed_card
-  evals/campaign_v2/gen_lists_v2.py -- full_sorted_positive,
+  the ranking reference implementation -- full_sorted_positive,
       top_n_ids_with_ties, top_n_pairs_with_ties, competition_ranks,
       cut_rows_with_ties, base_evidence_v2, build_c1_for_seed,
       build_concordance, build_aspirational_v2, build_catchall_811_share,
       process_seed's per-lens branches (undefined tests + reason strings)
 
-`RANK_VISIBLE_MAX = 50` is gen_lists_v2's own monkey-patched value (the golden
-lists were generated with it), not gen_lists_recall's default 100.
+`RANK_VISIBLE_MAX = 50` is the ranking reference implementation's own
+monkey-patched value (the golden lists were generated with it), not the
+recall reference implementation's default 100.
 
-Deviations from the sources are listed in VENDORED_engine.md; the load-bearing
-ones are (a) the app takes the lens set as a parameter where the generators
-hard-coded it, (b) the per-seed functions take an already-built substrate dict
-instead of doing their own IO, and (c) `catchall_811_share` groups by the
-integer institution position instead of `institution_id` (the column-subsetted
-topics_all read -- see substrates.py).
+Deviations from the sources are documented inline; the load-bearing
+ones are (a) the app takes the lens set as a parameter where the reference
+implementations hard-coded it, (b) the per-seed functions take an
+already-built substrate dict instead of doing their own IO, and (c)
+`catchall_811_share` groups by the integer institution position instead of
+`institution_id` (the column-subsetted topics_all read -- see
+substrates.py).
 """
 from __future__ import annotations
 
@@ -32,7 +35,7 @@ from . import lens_lib as L
 
 ALL_LENSES = ["L0", "L1", "L3", "F1", "L2f", "L4", "L5", "L6", "L7", "C1"]
 DEFAULT_LENSES = list(CFG["lenses"]["default"])   # the lenses Find shows by default; config.yaml is the single source
-GOLDEN_CONCORDANCE_LENSES = ["L1", "L3", "F1", "L2f", "L4", "L5", "L6"]     # gen_lists_v2
+GOLDEN_CONCORDANCE_LENSES = ["L1", "L3", "F1", "L2f", "L4", "L5", "L6"]     # the golden default lens set
 RANK_VISIBLE_MAX = 50
 DEPTH = 50
 CONCORDANCE_N = int(CFG["concordance_N"])
@@ -42,7 +45,8 @@ CONCORDANCE_N = int(CFG["concordance_N"])
 
 def full_sorted_positive(scores: np.ndarray, self_idx: int) -> tuple[np.ndarray, np.ndarray]:
     """(indices, scores) of every OTHER institution with score>0, sorted desc,
-    ties broken by stable array position -- gen_lists_v2.py verbatim."""
+    ties broken by stable array position -- verbatim from the ranking
+    reference implementation."""
     s = scores.copy()
     s[self_idx] = -np.inf
     order = np.argsort(-s, kind="stable")
@@ -64,7 +68,8 @@ def cut_with_ties(sorted_ids: list, sorted_scores: np.ndarray, n: int) -> tuple[
 
 
 def competition_ranks(scores_desc) -> list[int]:
-    """Standard competition ranking (1,2,2,4,.) -- gen_lists_v2.py verbatim."""
+    """Standard competition ranking (1,2,2,4,.) -- verbatim from the ranking
+    reference implementation."""
     ranks = []
     prev = None
     cur_rank = 0
@@ -77,7 +82,8 @@ def competition_ranks(scores_desc) -> list[int]:
 
 
 def cut_rows_with_ties(items_sorted: list, key_of, n: int) -> list:
-    """gen_lists_v2.py verbatim (concordance's own top-50 cut)."""
+    """Verbatim from the ranking reference implementation (concordance's own
+    top-50 cut)."""
     if len(items_sorted) <= n:
         return items_sorted
     cut_key = key_of(items_sorted[n - 1])
@@ -91,8 +97,8 @@ def cut_rows_with_ties(items_sorted: list, key_of, n: int) -> list:
 
 def rank_map(scores: np.ndarray, self_idx: int, inst_ids: list,
              excluded_positions: frozenset | None = None) -> dict:
-    """Full 1-based rank of every OTHER institution -- gen_lists_recall verbatim,
-    plus the A6/R2-E pool-exclusion chokepoint: a position in
+    """Full 1-based rank of every OTHER institution -- verbatim from the recall
+    reference implementation, plus the pool-exclusion chokepoint: a position in
     `excluded_positions` (`ctx["pool_excluded_positions"]`) is dropped from the
     order BEFORE ranks are assigned, so a surviving institution's rank reads as
     if the excluded one had never been in the population -- never off by the
@@ -105,14 +111,14 @@ def rank_map(scores: np.ndarray, self_idx: int, inst_ids: list,
 
 
 def is_degenerate(vec_row: np.ndarray) -> bool:
-    """gen_lists_recall verbatim."""
+    """Verbatim from the recall reference implementation."""
     return bool(np.nansum(vec_row) <= 1e-9)
 
 
 # ------------------------------------------------------------- evidence -----
 
 def parse_shape_top3(packed: object, field_name_by_id: dict) -> list:
-    """gen_lists_recall verbatim."""
+    """Verbatim from the recall reference implementation."""
     if not isinstance(packed, str) or not packed:
         return []
     pairs = []
@@ -125,13 +131,13 @@ def parse_shape_top3(packed: object, field_name_by_id: dict) -> list:
 
 
 def top3_fields_from_l0(subs: dict, idx: int, field_name_by_id: dict) -> list:
-    """R1 bug #5: top-3 fields FOLLOWING THE TREE -- top-3 by share on the
+    """Top-3 fields FOLLOWING THE TREE -- top-3 by share on the
     L0 substrate row (`subs["l0"]["share"][idx]` / `subs["l0"]["cats"]`) of
     whichever (tree, basis) scenario `subs` was built with, same dict shape
     as `parse_shape_top3` ({field_id, field_name, share} rounded 6). On the
     DEFAULT scenario this is verified equal (ids + order) to
-    `parse_shape_top3(row['shape_field_bestfit'])` for all 37 golden seeds
-    (see progress/R1_B.md) -- both read the same bestfit/frac field shares,
+    `parse_shape_top3(row['shape_field_bestfit'])` for all 37 golden seeds --
+    both read the same bestfit/frac field shares,
     just from a matrix instead of a packed string."""
     row, cats = subs["l0"]["share"][idx], subs["l0"]["cats"]
     order = np.argsort(-row, kind="stable")[:3]
@@ -140,12 +146,13 @@ def top3_fields_from_l0(subs: dict, idx: int, field_name_by_id: dict) -> list:
 
 
 def base_evidence(cid: str, ctx: dict, subs: dict | None = None) -> dict:
-    """gen_lists_recall.base_evidence + gen_lists_v2.base_evidence_v2's
-    `type_openalex` line, merged (v2 is what the golden rows carry).
+    """The recall reference implementation's `base_evidence` plus the
+    ranking reference implementation's `base_evidence_v2`'s
+    `type_openalex` line, merged (the ranking one is what the golden rows carry).
 
-    R1 bug #5: when `subs` is given, `shape_top3_fields` follows subs's own
+    When `subs` is given, `shape_top3_fields` follows subs's own
     (tree, basis) via `top3_fields_from_l0` instead of the fixed bestfit
-    packed string; `subs=None` keeps the pre-R1 behaviour byte-for-byte (no
+    packed string; `subs=None` keeps the earlier behaviour byte-for-byte (no
     caller in the golden regression passes subs here)."""
     row = ctx["index_by_id"].loc[cid]
     ev = {
@@ -168,7 +175,8 @@ def base_evidence(cid: str, ctx: dict, subs: dict | None = None) -> dict:
 
 
 def rank_under_l1_l3(cid: str, l1_scores, l1_rmap, l3_scores, l3_rmap, id_pos) -> dict:
-    """gen_lists_recall verbatim, with v2's RANK_VISIBLE_MAX = 50."""
+    """Verbatim from the recall reference implementation, with the ranking
+    reference's RANK_VISIBLE_MAX = 50."""
     out = {}
     for ln, scores, rmap in (("L1", l1_scores, l1_rmap), ("L3", l3_scores, l3_rmap)):
         r = rmap.get(cid)
@@ -179,13 +187,14 @@ def rank_under_l1_l3(cid: str, l1_scores, l1_rmap, l3_scores, l3_rmap, id_pos) -
 
 def build_rows(ranking: dict, ctx: dict, depth: int, rankings: dict | None = None,
                subs: dict | None = None) -> list[dict]:
-    """UI-facing rows for ONE lens (gen_lists_v2.build_rows_v2): tie-inclusive
+    """UI-facing rows for ONE lens (the ranking reference implementation's
+    `build_rows_v2`): tie-inclusive
     cut at `depth`, competition ranks, base evidence, this lens's score and
     when the L1/L3 rankings are supplied -- the cross-lens rank pair.
 
-    R1 bug #5: `subs`, when given, is forwarded to `base_evidence` so every
+    `subs`, when given, is forwarded to `base_evidence` so every
     row's `shape_top3_fields` follows subs's own (tree, basis); `subs=None`
-    keeps the pre-R1 byte-for-byte behaviour (no golden-regression caller
+    keeps the earlier byte-for-byte behaviour (no golden-regression caller
     passes it)."""
     ids, scores = cut_with_ties(ranking["sorted_ids"], ranking["sorted_scores"], depth)
     rows = []
@@ -205,7 +214,8 @@ def build_rows(ranking: dict, ctx: dict, depth: int, rankings: dict | None = Non
 # ------------------------------------------------------------------ C1 ------
 
 def build_c1_for_seed(idx: int, ctx: dict, l1_sub: dict):
-    """gen_lists_v2.build_c1_for_seed verbatim (itself gen_lists_recall's own
+    """Verbatim from the ranking reference implementation's
+    `build_c1_for_seed` (itself the recall reference implementation's own
     C1 formula): L1 restricted to the seed's top-20 subfields, seed-relative
     normalisation so the seed scores 1.0 against itself."""
     l1_full_row = l1_sub["share"][idx]
@@ -234,10 +244,11 @@ def build_c1_for_seed(idx: int, ctx: dict, l1_sub: dict):
 def rank_all(ctx: dict, subs: dict, seed_id: str, lenses=None) -> dict:
     """Full-population ranking per lens (self excluded, positive scores only,
     stable tie-break by population position). The per-lens branches, undefined
-    tests and reason strings are gen_lists_v2.process_seed's, verbatim.
+    tests and reason strings are the ranking reference implementation's
+    `process_seed`'s, verbatim.
 
-    A6/R2-E: `ctx["pool_excluded_positions"]` (built once in
-    `load_context`, empty until the pipeline ships the `pool_excluded` column)
+    `ctx["pool_excluded_positions"]` (built once in
+    `load_context`, empty until the upstream data ships the `pool_excluded` column)
     is read HERE, in the one shared `_emit` every lens branch below calls
     not per lens -- so a flagged institution (a funder surfacing as a
     performer, or a duplicate row a canonical id already covers) can never
@@ -344,7 +355,7 @@ def rank_all(ctx: dict, subs: dict, seed_id: str, lenses=None) -> dict:
 
 def family_overlap_scores(ctx: dict, subs: dict, seed_id: str) -> np.ndarray:
     """The L0 (field-grain) score vector -- what the opt-in family post-filter
-    thresholds (L6 of the plan, `family_filter_threshold` 0.7)."""
+    thresholds (threshold `family_filter_threshold` 0.7)."""
     idx = ctx["id_pos"][seed_id]
     return L.histogram_intersection_row(subs["l0"]["share"][idx], subs["l0"]["share"])
 
@@ -352,7 +363,7 @@ def family_overlap_scores(ctx: dict, subs: dict, seed_id: str) -> np.ndarray:
 # ---------------------------------------------------------- concordance -----
 
 def concordance(ctx: dict, rankings: dict, lenses=None, N: int = CONCORDANCE_N) -> list[dict]:
-    """gen_lists_v2.build_concordance for ONE N, with the lens set as a
+    """The ranking reference implementation's `build_concordance` for ONE N, with the lens set as a
     parameter (the generator hard-coded its 7). k = # of DEFINED lenses whose
     tie-aware top-N contains the candidate; n = # defined. Order: (-k, mean
     rank over the HIT lenses only, id); tie-inclusive cut at 50; competition
@@ -398,10 +409,11 @@ def concordance(ctx: dict, rankings: dict, lenses=None, N: int = CONCORDANCE_N) 
 # -------------------------------------------------------- aspirational ------
 
 def aspirational(ctx: dict, l1_ranking: dict, pool: int = DEPTH) -> list[dict]:
-    """gen_lists_v2.build_aspirational_v2 verbatim: the L1 top-`pool`
+    """Verbatim from the ranking reference implementation's
+    `build_aspirational_v2`: the L1 top-`pool`
     (tie-inclusive) filtered to pp_top10_frac > seed AND pp_ci_low > seed
-    pp_ci_high, KEPT IN L1-OVERLAP ORDER (L4 of the plan -- never re-sorted by
-    PP; that is what the golden pins)."""
+    pp_ci_high, KEPT IN L1-OVERLAP ORDER -- never re-sorted by
+    PP; that is what the golden pins."""
     index_by_id = ctx["index_by_id"]
     iid = l1_ranking["seed_id"]
     seed_row = index_by_id.loc[iid]
@@ -434,21 +446,20 @@ def aspirational(ctx: dict, l1_ranking: dict, pool: int = DEPTH) -> list[dict]:
 
 def aspirational_frontier(ctx: dict, l1_ranking: dict, f1_ranking: dict | None,
                           pool: int = DEPTH) -> list[dict]:
-    """A-frontier, ported from `evals/aspirational_R2/REPORT.md`
-    S1: the SAME L1 top-`pool` (tie-inclusive) look-alike pool `aspirational`
-    draws on, RE-RANKED by the F1 (frontier-topic overlap) score instead of
-    filtered by impact. Used as the aspirational view's fallback for a seed
-    whose V0 (`aspirational`) returns no row -- ETH Zurich in the R2
-    campaign, a seed already near the impact ceiling of its own look-alike
-    pool -- never as a replacement for V0 where V0 has something to show
-    (REPORT.md S3.1: V0 holds up for ordinary universities).
+    """A-frontier: the SAME L1 top-`pool` (tie-inclusive) look-alike pool
+    `aspirational` draws on, RE-RANKED by the F1 (frontier-topic overlap)
+    score instead of filtered by impact. Used as the aspirational view's
+    fallback for a seed whose base aspirational ranking returns no row --
+    ETH Zurich is one such case, a seed already near the impact ceiling of
+    its own look-alike pool -- never as a replacement for the base ranking
+    where it has something to show (it holds up for ordinary universities).
 
     Candidates absent from F1's positive-score ranking (F1 undefined, or the
     candidate scored exactly zero) sort last, at an explicit zero rather than
     being dropped -- the pool is the SAME pool, just reordered, so nobody who
     qualified for L1 disappears here. `sorted` is stable, so ties in the F1
     score keep the pool's own L1-overlap order (`pool_ids` is already sorted by
-    it), matching the campaign generator's tie behaviour.
+    it), matching the reference generator's tie behaviour.
 
     Because `pool_ids` is cut from `l1_ranking["sorted_ids"]`, which
     `rank_all`'s shared `_emit` has already dropped every `pool_excluded`
@@ -481,7 +492,8 @@ def aspirational_frontier(ctx: dict, l1_ranking: dict, f1_ranking: dict | None,
 # ----------------------------------------------------------- catch-all ------
 
 def catchall_811_share(ctx: dict) -> dict:
-    """gen_lists_v2.build_catchall_811_share: per-institution sum of
+    """The ranking reference implementation's `build_catchall_811_share`:
+    per-institution sum of
     topics_all.share_frac over topics flagged `topics_dim.is_excluded`.
     Grouped by integer institution position (topics_all is read without
     `institution_id` -- substrates.py), which is the same grouping."""
@@ -498,16 +510,17 @@ def catchall_811_share(ctx: dict) -> dict:
 # ----------------------------------------------------------- seed card ------
 
 def seed_card(ctx: dict, seed_id: str, subs: dict | None = None, catchall: dict | None = None) -> dict:
-    """gen_lists_recall.build_seed_card + the four fields gen_lists_v2's
+    """The recall reference implementation's `build_seed_card` + the four
+    fields the ranking reference implementation's
     process_seed appends (total_frac, catch-all share, n eligible L2f
     subfields, type_openalex).
 
-    R1 bug #5: `shape_top3_fields` follows `subs`'s own (tree, basis) via
+    `shape_top3_fields` follows `subs`'s own (tree, basis) via
     `top3_fields_from_l0` (both call sites -- the golden test and
     views_find.py -- always pass subs; `subs=None` is a defensive fallback to
-    the pre-R1 fixed bestfit string, and `top5_subfields_default_scenario`
+    the earlier fixed bestfit string, and `top5_subfields_default_scenario`
     is then empty since it has no other source). `top5_subfields_default_scenario`
-    was ALREADY tree-aware before R1 (`subs["l1"]["share"]`), unchanged here."""
+    was ALREADY tree-aware before this change (`subs["l1"]["share"]`), unchanged here."""
     idx = ctx["id_pos"][seed_id]
     row = ctx["index_by_id"].loc[seed_id]
     if subs is not None:
