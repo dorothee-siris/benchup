@@ -1,9 +1,9 @@
 BenchUp — palette validation log
-Stream D0, 2026-08-29. Validator: dataviz skill scripts/validate_palette.js.
+Run log begins 2026-08-29. Validator: dataviz skill scripts/validate_palette.js.
 House rule (SIRIS CLAUDE.md): --mode light ONLY, dark-mode pass skipped deliberately.
 Two runs. Run 1 is the one that SHIPS (lib/palette.py TYPE_COLORS + FOCAL).
 Run 2 documents, by design, why COMPARISON/NEUTRAL/INK are excluded from the
-categorical set (same finding class as Lorraine helpers.py hitting #333333 as
+categorical set (same finding class elsewhere flagging #333333 as
 chroma-0 text ink — see RULES.md §4 validator edit 2026-08-15).
 
 ================================================================================
@@ -27,14 +27,14 @@ Exit code: 0
 
 Disposition of the two WARN lines (both carried as BINDING rules, not dismissed):
   - CVD separation WARN (#CC79A7<->#009E73, deutan dE 7.6, below the 8.0 comfortable
-    floor): legal only with secondary encoding. lib/badges.py (Stream F) never renders
+    floor): legal only with secondary encoding. lib/badges.py never renders
     a type badge as a bare colour fill — text + glyph always accompany it (DESIGN_TOKENS.md
     badge grammar). Assignment order in TYPE_COLORS also keeps #009E73 and #CC79A7
     non-adjacent per RULES.md §4's explicit instruction, so the two rarely sit side by
     side in a legend or chip row in the first place.
   - Contrast-vs-surface WARN (#CC79A7 = 2.98:1 on white, "binding relief"): #CC79A7
     (government+funder) never ships as a bare fill/dot without its text label —
-    identical relief rule to Lorraine VIZ_SPEC.md §1.1's Social Sciences slot, same hex.
+    identical relief rule to `VIZ_SPEC.md` §1.1's Social Sciences slot, same hex.
 
 ================================================================================
 RUN 2 (documents an exclusion, expected FAIL) — COMPARISON grey (#8C9196),
@@ -45,7 +45,7 @@ as "TEXT ONLY... fails the palette validator as a series colour" — this run
 reproduces that finding for BenchUp's exact hexes before they are locked into
 lib/palette.py as FOCAL/COMPARISON/NEUTRAL/INK (never run through the categorical
 CVD check; COMPARISON and INK are checked for WCAG text/UI contrast only, which
-both already carry an established precedent in Lorraine's shipped app at the same
+both already carry an established precedent at the same
 hex values).
 
 $ node scripts/validate_palette.js "#8C9196,#E6E8EB,#333333" --mode light
@@ -78,25 +78,23 @@ respectively. Their WCAG contrast is verified against their actual usage instead
     irrelevant to that usage (it is not a mark that needs to stand out from #fcfcfb).
 
 ################################################################################
-# R1 additions (2026-08-29) -- the four IDENTITY FAMILIES and the chrome
+# Later additions (2026-08-29) -- the four IDENTITY FAMILIES and the chrome
 # tokens. Same rule as runs 1-2: `--mode
 # light` ONLY (SIRIS house rule; the dark pass is skipped deliberately, not
-# forgotten). Every R1 run adds `--surface "#FFFFFF"` because that is the
+# forgotten). Every run below adds `--surface "#FFFFFF"` because that is the
 # surface the app actually paints (lib/palette.py SURFACE / Streamlit light
 # theme), not the skill's off-white default, and `--pairs all` because these
 # are bar panels and legends where any pair can end up adjacent after a sort
 # toggle -- `adjacent` would under-test them.
 #
-# Working directory for every command below:
-#   C:/Users/theod/AppData/Local/Temp/claude/bundled-skills/2.1.250/
-#     7d34fd5c5ca02f9d932830007398ac3e/dataviz
-# (the `dataviz` skill's own base directory; node v24.19.0)
+# Working directory for every command below: the `dataviz` skill's own
+# base directory (node v24.19.0).
 ################################################################################
 
 ================================================================================
 RUN 3 (DESCRIPTIVE, hexes are FIXED) -- OA_DOMAIN_COLORS, the four OpenAlex
-domains (BenchUp V2 / Lorraine DOMAIN_COLORS lineage; fields, subfields and
-topics inherit these). These hexes are inherited, not chosen: the FAIL and the
+domains (fields, subfields and topics inherit these). These hexes are
+inherited, not chosen: the FAIL and the
 WARNs below are carried as BINDING RELIEF RULES in lib/palette.py, never as a
 reason to change a value.
 
@@ -119,11 +117,11 @@ Exit code: 0
 RUN 4a -- ERC candidate SCREEN. Each candidate is paired with each of the
 four OA hues through the validator's own exported validate(); the table reports
 the WORST normal-vision and worst CVD distance against the OA quartet, and the
-WCAG contrast against the white surface. Requirement (R1 brief): normal-vision
-dE >= 12 from every OA hue. Script: design-system/ab/screen_erc.mjs (kept in the
-repo so the screen re-runs).
+WCAG contrast against the white surface. Requirement: normal-vision
+dE >= 12 from every OA hue. Script: `screen_erc.mjs`, a local screening helper
+built on the dataviz palette validator (not shipped in this repo).
 
-$ node "design-system/ab/screen_erc.mjs" "#1F4E9C" "#00706B" "#A31A6E" "#8A5A00" "#B07A00" "#4B2E83" "#7D2E68" "#A10A4E" "#C24E00" "#3B4CA8" "#00566E" "#9B1B6B" "#5E5C00" "#8C4A1E" "#B5197C" "#1B4F91" "#8A2E62"
+$ node "screen_erc.mjs" "#1F4E9C" "#00706B" "#A31A6E" "#8A5A00" "#B07A00" "#4B2E83" "#7D2E68" "#A10A4E" "#C24E00" "#3B4CA8" "#00566E" "#9B1B6B" "#5E5C00" "#8C4A1E" "#B5197C" "#1B4F91" "#8A2E62"
 #1F4E9C  vsOA minNormal=25.8 (Physical #8190FF)  minCVD=24.5 (Physical #8190FF)  contrast=7.99
 #00706B  vsOA minNormal=18.8 (Life #0CA750)  minCVD=11.6 (Health #F85C32)  contrast=5.95
 #A31A6E  vsOA minNormal=24.4 (Health #F85C32)  minCVD=17.6 (Life #0CA750)  contrast=7.17
@@ -193,7 +191,7 @@ Palette (light, surface #FFFFFF, categorical): 3 slots
 Exit code: 0
 
 ================================================================================
-RUN 5 (SHIPS -- the co-occurrence the R1 brief requires) -- the four OA
+RUN 5 (SHIPS -- the co-occurrence the requirement above needs) -- the four OA
 domain hues AND the three ERC hues, validated as ONE set of seven.
 
 $ node scripts/validate_palette.js "#0CA750,#FFCB3A,#8190FF,#F85C32,#1F4E9C,#9B1B6B,#8A5A00" --mode light --surface "#FFFFFF" --pairs all
@@ -212,10 +210,10 @@ Palette (light, surface #FFFFFF, categorical): 7 slots
 Exit code: 0
 
 ================================================================================
-RUN 6a (SHIPS) -- DOCTYPE_COLORS: Lorraine's four validated pass-6 hues plus
-the NEW hue for `letter` (#A10A4E, the slot Lorraine's own palette carried for
-conference papers; BenchUp's corpus has letters where Lorraine's had those).
-Rejected for `letter`, all measured: #C24E00 (CVD 4.0 vs #667900), #1F4E9C (CVD
+RUN 6a (SHIPS) -- DOCTYPE_COLORS: four already-validated hues plus
+the NEW hue for `letter` (#A10A4E, reusing the slot an earlier palette carried
+for conference papers, since BenchUp's corpus has letters where that palette
+had those). Rejected for `letter`, all measured: #C24E00 (CVD 4.0 vs #667900), #1F4E9C (CVD
 4.3 / normal 14.0 vs #7838B6, and it is the ERC PE hue), #8A5A00 (CVD 3.0 /
 normal 10.1 vs #667900 -- two ochres in one legend).
 
@@ -237,7 +235,7 @@ Exit code: 0
 ================================================================================
 RUN 6b (DOCUMENTS A BOUNDED EXCLUSION, expected FAIL) -- the five document
 types AND the four OA domains as one nine-slot set. The two failing pairs both
-PRE-EXIST this stream and neither involves the new hue: #667900 (book) <->
+PRE-EXIST this addition and neither involves the new hue: #667900 (book) <->
 #0CA750 (Life) at normal-vision 13.1, and #667900 <-> #F85C32 (Health) at protan
 3.3. DISPOSITION: the COEXISTENCE RULE (lib/palette.py module docstring) -- the
 yearly-breakdown pair shows EITHER the domain series OR the document-type series,
@@ -264,7 +262,7 @@ Exit code: 0
 
 ================================================================================
 RUN 7 (DESCRIPTIVE ONLY -- the UN fixes these) -- SDG_COLORS, all seventeen
-official goal colours. SOURCE: manager-supplied, matching the 2019 UN guidelines
+official goal colours. SOURCE: taken directly, matching the 2019 UN guidelines
 as commonly published. A live check of https://www.un.org/sustainabledevelopment/
 news/communications-material/ on 2026-08-29 CONFIRMS the governing document --
 'Sustainable Development Goals Guidelines for the use of the SDG logo including
@@ -323,7 +321,7 @@ gutter numbers and chip labels it paints. BORDER and GRID are furniture that mus
 RECEDE (dataviz: 'recessive grid/axes'), so a low contrast is the requirement,
 not the defect -- neither is ever a mark and neither ever carries text.
 
-$ node scripts/validate_palette.js "#5A5F66,#E3E6EA,#D9DDE2" --mode light --surface "#FFFFFF" --pairs all; echo; node -e "import(String.raw\`file:///C:/Users/theod/AppData/Local/Temp/claude/bundled-skills/2.1.250/7d34fd5c5ca02f9d932830007398ac3e/dataviz/scripts/validate_palette.js\`).then(m=>{for(const c of [\"#5A5F66\",\"#E3E6EA\",\"#D9DDE2\",\"#333333\",\"#8C9196\"]) console.log(c, \"contrast vs #FFFFFF =\", m.contrast(c,\"#FFFFFF\").toFixed(2)+\":1\")})"
+$ node scripts/validate_palette.js "#5A5F66,#E3E6EA,#D9DDE2" --mode light --surface "#FFFFFF" --pairs all; echo; node -e "import(String.raw\`file:///<dataviz-skill-dir>/scripts/validate_palette.js\`).then(m=>{for(const c of [\"#5A5F66\",\"#E3E6EA\",\"#D9DDE2\",\"#333333\",\"#8C9196\"]) console.log(c, \"contrast vs #FFFFFF =\", m.contrast(c,\"#FFFFFF\").toFixed(2)+\":1\")})"
 
 Palette (light, surface #FFFFFF, categorical): 3 slots
   [FAIL] Lightness band         outside band: [["#E3E6EA",0.924],["#D9DDE2",0.896]]
@@ -351,12 +349,13 @@ RUNS 9-12 (2026-08-29) -- the FIFTH identity family
 hex below was RUN, none was eyeballed, and a FAIL is recorded with its
 disposition rather than made to disappear by changing a colour.
 
-Two screening tools were written for this pass and are kept beside the runner
-scripts, `design-system/ab/screen_inst.mjs` (full pairwise matrix + distance to
-the FOCAL/COMPARISON chrome) and `design-system/ab/screen_ordinal.mjs` (the
+Two screening tools were written for this pass, `screen_inst.mjs`
+(full pairwise matrix + distance to
+the FOCAL/COMPARISON chrome) and `screen_ordinal.mjs` (the
 skill's own `validateOrdinal`, which is the applicable validator for a
-sequential ramp). Both import the dataviz skill's `validate_palette.js`
-directly, exactly as `screen_erc.mjs` did in R1.
+sequential ramp) -- local helpers built on the dataviz palette validator, not
+shipped in this repo. Both import the dataviz skill's `validate_palette.js`
+directly, exactly as `screen_erc.mjs` did above.
 
 ================================================================================
 RUN 9 -- INSTITUTION_COLORS, the six in SHIPPED SLOT ORDER, all pairs.
@@ -1296,7 +1295,7 @@ Palette (light, surface #FFFFFF, categorical): 10 slots
   none of it is new. institution-monochrome-family covers the navy self-pairs; the
   COMPARISON/momentum-stable lines are chrome-vs-chrome, excluded by convention.
 
---- RUN 37 SETUP (2026-09-01). D7 ratified: SHARED_FRONTIER moves from
+--- RUN 37 SETUP (2026-09-01). Ratified: SHARED_FRONTIER moves from
 #7A1600 to #821D13 -- measurement of three candidates
 (#821D13/#801D06/#82182E) against vermillion + the navy trio and found all three
 pass, #821D13 preferred as the largest deutan-vs-navy margin with the smallest
@@ -1351,17 +1350,17 @@ SHARED_FRONTIER NEW #821D13 in OKLCH: L=0.4004 C=0.1377 H=29.9 deg
   the same figure"). The two hues are never two marks in one figure or
   one page, so this is DESCRIPTIVE, not a blocking fail -- recorded rather than
   suppressed per this file's own convention (runs 6b/10/16/33).
-  EVERY OTHER PAIR PASSES WITH MARGIN, including the two pairs D7 actually cared
-  about (navy trio: min normal 20.5 / min deutan 16.0; vermillion: 22.8/23.0),
-  matching WT_2C.md claim 5's reported numbers exactly. Contrast vs white
+  EVERY OTHER PAIR PASSES WITH MARGIN, including the two pairs that mattered
+  most (navy trio: min normal 20.5 / min deutan 16.0; vermillion: 22.8/23.0),
+  matching the numbers measured in the original screen exactly. Contrast vs white
   9.84:1 (floor ~3:1 for a filled mark, 4.5:1 body-text floor also cleared).
 
-RESIDUAL, disclosed per WT_2C.md claim 5 (binding, carried in lib/palette.py):
+RESIDUAL, disclosed rather than hidden (binding, carried in lib/palette.py):
 luminance/contrast separation from navy slot 2 barely moves (1.75:1 new vs
 1.93:1 old, marginally WORSE) because #821D13's whole gain comes from a small
 lightness lift (L 0.377 -> 0.400) that a HARD deutan-vs-navy floor caps -- any
 candidate at L>=0.50 (a real fix for "two dark blobs read alike") fails the
-deutan-vs-navy-slot-2 floor outright (measured, WT_2C.md claim 5's trade-off
+deutan-vs-navy-slot-2 floor outright (measured, from the same trade-off
 curve). The compensating mechanism is NOT colour: `palette.FRONTIER_SHARED_HALO`,
 a white/SURFACE outline ring on every shared-frontier mark, so a reader tells a
 shared bubble from a same-lightness navy bubble by SHAPE (a ring) rather than by

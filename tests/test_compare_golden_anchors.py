@@ -70,7 +70,7 @@ def subs():
 
 
 # ---------------------------------------------------------------------------
-# cards -- n_stars / n_topics_led_fair, recomputed by hand off the raw P5
+# cards -- n_stars / n_topics_led_fair, recomputed by hand off the raw source
 # tables cards never itself reads (it reads index.parquet columns).
 # ---------------------------------------------------------------------------
 

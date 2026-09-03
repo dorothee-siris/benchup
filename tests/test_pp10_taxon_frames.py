@@ -6,9 +6,9 @@ check here reads `impact_taxa.parquet` straight off disk (never through
 `compare_data`'s own ctx-cache) and probes a different institution than the
 anchor tests do, so a regression that breaks both together is still caught.
 
-, (2026-09-03): ERC and field grain are DELETED (
-stays the archive, E12) -- this file is rewritten to sweep only the two
-surviving grains, `subfield` and `sdg`. E4's "NO display floor" rule (every
+, ERC and field grain are DELETED (
+stays the archive) -- this file is rewritten to sweep only the two
+surviving grains, `subfield` and `sdg`. The "NO display floor" rule (every
 taxon an institution has >=1 covered work in ships a row) is a fact about
 the shipped table, kept verbatim.
 
@@ -48,11 +48,11 @@ def raw_impact_taxa():
     return pd.read_parquet(IMPACT_TAXA)
 
 
-# --------------------------------------------- 1. E4: no floor, exact ship
+# --------------------------------------------- 1. no floor, exact ship
 
 @pytest.mark.parametrize("level", SURVIVING_LEVELS)
 def test_pp_taxon_ships_every_raw_row_no_floor(ctx, raw_impact_taxa, level):
-    """E4's own headline: `_pp_taxon(., level)` must ship EXACTLY the raw
+    """The headline rule: `_pp_taxon(., level)` must ship EXACTLY the raw
     (institution, taxon) rows `impact_taxa.parquet` has for STRASBOURG at
     this grain -- no 10/30 impact-floor control anywhere in this API path
     any more."""
@@ -92,8 +92,8 @@ def test_pp_taxon_n_covered_pp_matches_raw_exactly(ctx, raw_impact_taxa, level):
 # --------------------------------------------------- 2. taxon_metrics gate
 
 def test_taxon_metrics_rejects_unsupported_level(ctx):
-    """Field/ERC grain is DELETED with this stream (E12: is the
-    archive) -- `_taxon_metrics` (which `_pp_taxon` feeds into via
+    """Field/ERC grain is DELETED here (the archive keeps the
+    old data) -- `_taxon_metrics` (which `_pp_taxon` feeds into via
     `sdg_frame`/`all_subfields`) must raise for either, never silently
     return an empty frame that could be misread as "no impact data"."""
     for bad_level in ("field", "erc", "bogus"):

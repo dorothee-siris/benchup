@@ -119,7 +119,7 @@ def test_topic_url_shape():
     assert "authorships.institutions.id:I154202486" in decoded
     assert "primary_topic.id:T10753" in decoded
     assert "publication_year:2020-2024" in decoded
-    assert "type:article|review," in decoded  # CORE-AR default (E6), not the 5-type harvest list
+    assert "type:article|review," in decoded  # CORE-AR default, not the 5-type harvest list
     assert "book" not in decoded
     assert "has_doi:true" in decoded
     assert "sort=" not in url
@@ -131,7 +131,7 @@ def test_topic_url_sort_appended_unencoded():
 
 
 def test_joint_topic_url_shape_matches_copubs_taxon_url_topic_level():
-    """E6 "joint = both ids in the same filter": `joint_topic_url` must be
+    """"joint = both ids in the same filter": `joint_topic_url` must be
     the SAME shape `copubs_taxon_url(., "topic",.)` already ships
     (the measured, live-verified AND convention) -- checked here
     by direct string equality (minus an optional `sort` suffix), not just by
@@ -153,10 +153,10 @@ def test_joint_topic_url_sort_appended():
 # ------------------------------------------------------------ joint_stars ---
 
 def test_joint_stars_url_core_ar_and_sort():
-    """E6 joint-stars link: the joint filter, CORE-AR types (never the
+    """Joint-stars link: the joint filter, CORE-AR types (never the
     5-type harvest list `copubs_url` defaults to), sorted most-cited-first
     the honest proxy for the top-1%-within-topic-year star definition,
-    which OpenAlex cannot filter on directly (E6's own caveat)."""
+    which OpenAlex cannot filter on directly."""
     url = joint_stars_url("I154202486", "I4210107283")
     assert url.endswith("&sort=cited_by_count:desc")
     decoded = unquote(url)

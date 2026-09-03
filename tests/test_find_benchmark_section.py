@@ -20,7 +20,7 @@ Five claims, one section each:
      originally written to inject the flag onto `ctx` because PC had not yet
      deployed `pool_excluded` to `app/data/index.parquet`; PC's deploy has
      since landed it (3 ids: the Romanian Ministry + the Shell UK / INESC
-     duplicate rows, `data/overrides/*` R2-E), so re-cut both
+     duplicate rows, `data/overrides/*`), so re-cut both
      to assert against the REAL deployed column instead of a synthetic one.
 
   3. ASPIRATIONAL MODE B. `aspirational_frontier` reorders the SAME
@@ -97,7 +97,7 @@ def test_display_names_open_with_their_own_new_code():
 def test_display_codes_pass_the_copy_digit_ban():
     # LENS_DISPLAY_CODE/LENS_DISPLAY_NAMES live inside copy.FIND, already
     # covered by copy.scan_for_digit_violations; this just re-asserts PASS
-    # after this stream's edits, isolated from the rest of the file.
+    # after recent edits, isolated from the rest of the file.
     bad = copy.scan_for_digit_violations()
     assert bad == [], bad
 
@@ -127,7 +127,7 @@ def test_load_context_reads_pool_excluded_column_when_present(tmp_path, monkeypa
     assert fake_ctx["pool_excluded_positions"] == frozenset({fake_ctx["id_pos"][flagged_id]})
 
 
-POOL_EXCLUDED_IDS = {ROMANIAN_MINISTRY, "I4210164678", "I4210125590"}   # PC deploy (2BR_PC.md): Romanian
+POOL_EXCLUDED_IDS = {ROMANIAN_MINISTRY, "I4210164678", "I4210125590"}   # deployed: Romanian
                                                                         # Ministry + the Shell/INESC duplicates
 
 

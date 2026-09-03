@@ -38,7 +38,7 @@ def _read(fname: str) -> pd.DataFrame:
 def test_contract_check_clean(contract: dict) -> None:
     """Every declared file present, every declared column/dtype/key verified, no undeclared
     drop vs source_manifest.json's table_schemas. This single check covers 11 tables (9 parquet
-    + 2 override csv) since R1's doctype_by_year.parquet addition (contract_version 1.1)."""
+    + 2 override csv) since the doctype_by_year.parquet addition (contract_version 1.1)."""
     violations = check(DATA_DIR, contract)
     assert violations == [], "\n".join(violations)
 

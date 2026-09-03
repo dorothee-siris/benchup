@@ -11,7 +11,7 @@ toggle a reader can flip" (there is none), but "is every function this page
 calls genuinely INCAPABLE of drifting off the pin, and does the page say so
 in words". Three checks:
 
-  1. every `compare_data` function C3's page calls takes no `tree`/`basis`
+  1. every `compare_data` function the Compare page calls takes no `tree`/`basis`
      keyword at all (a caller cannot even ASK for a different scenario)
      inspected via `inspect.signature`, not trusted from a docstring.
   2. `views_compare.render` calls `lib.engine.scenario_cache.get` with the
@@ -20,7 +20,7 @@ in words". Three checks:
      "prove a structural fact from the file, not from running it once"
      idiom `test_download_button_consolidation.py` already uses).
   3. the ONE pin caption under the title states the pin in words, and both
-     of its own windows resolve to real config values (E5).
+     of its own windows resolve to real config values.
 
 VACUITY: every assertion is followed by an in-memory/string mutation that
 makes the identical check fail.

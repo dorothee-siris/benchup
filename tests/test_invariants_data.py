@@ -247,7 +247,7 @@ def test_fwci_taxa_ifremer_field11_anchor():
 
 
 def test_index_star_leader_fwci_columns_present():
-    """The 8 columns P3/P4/P5/P6 (world leaders, star papers, institution
+    """The 8 new columns (world leaders, star papers, institution
     FWCI_EU) add to `index.parquet` -- present, correctly typed, and (for
     the two anchor institutions the upstream build itself verified) matching
     reference values recorded during that verification."""

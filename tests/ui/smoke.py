@@ -501,7 +501,7 @@ def check_compare_deeplink(page) -> None:
           "nor a synthetic wheel event over the canvas brought the 3 rightmost (link) columns into it "
           "in a live trial")
 
-    # --- one workbook, 7 sheets, BEFORE and AFTER Show all (2C lesson: a
+    # --- one workbook, 7 sheets, BEFORE and AFTER Show all (a known lesson: a
     #     manual rerun after a widget callback poisons every download_button
     #     for the session -- proving the download still works after the
     #     Show-all click is the regression test for exactly that).
@@ -712,7 +712,7 @@ def main() -> int:
     failed = [m for ok, m in RESULTS if not ok]
     print(f"\n{len(RESULTS) - len(failed)}/{len(RESULTS)} checks passed")
     if FINDINGS:
-        print(f"\n{len(FINDINGS)} app finding(s) (not this stream's to fix):")
+        print(f"\n{len(FINDINGS)} app finding(s) (outside this suite's scope):")
         for m in FINDINGS:
             print(" -", m)
     if SOFTENED:

@@ -36,7 +36,7 @@ FIELD_AG_BIO = 11              # "Agricultural and Biological Sciences"
 
 pytestmark = pytest.mark.skipif(
     not (DATA_DIR / "collab_pairs.parquet").exists(),
-    reason="app/data/*.parquet v2 artefacts not present -- skip-if-absent CI guard")
+    reason="app/data/*.parquet not present -- skip-if-absent guard")
 
 
 @pytest.fixture(scope="module")
@@ -65,7 +65,7 @@ def test_ifpen_decision_sciences_sdg_share_hand_derived():
     # numerator: distinct-tagged (>=1 SDG) fractional/full mass in this field.
     # denominator: the field's OWN total fractional/full mass. SAME window
     # (core_window, 2020-2024) and SAME basis on both sides by construction
-    # of sdg_fields.parquet v2 (window_conventions.core_window) -- this is
+    # of sdg_fields.parquet (window_conventions.core_window) -- this is
     # the exact numerator/denominator pair `_sdg_share_field_frame` computes,
     # derived here from the raw tables, not that function.
     num_frac = float(s["mass_any_frac"].iloc[0])

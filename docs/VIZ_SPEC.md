@@ -5,7 +5,7 @@ SIRIS studio run's own VIZ_SPEC convention: one app-wide system
 section, then one row per view, each with form / encoding / interaction /
 empty-state / export / composition and a named rejected alternative.
 **Contract, not restated:** `INDICATOR_SPEC_v2.md` (lens statuses, recall figures,
-judged reads, closed micro-choices) and `` §1 (locked decisions
+judged reads, closed micro-choices) and the decisions log §1 (locked decisions
 L1–L15) are binding and only summarised here where a viz decision hangs on them.
 **House rules:** light mode only, full width, render-verify at 1920/1280/390 px.
 `dataviz` skill loaded; palette validated `--mode light` only (SIRIS override of
@@ -23,7 +23,7 @@ illustration — illustrations are marked "e.g." and are never literal UI copy.
 Single source: `lib/palette.py`. Full validator log with every command and its
 verbatim output: `design-system/palette_validation.txt`.
 
-**The coexistence rule (binding, R1/L19): ONE identity family per chart.** A
+**The coexistence rule (binding): ONE identity family per chart.** A
 chart is coloured by OpenAlex domain, OR by ERC domain, OR by SDG, OR by
 document type — never two at once, and never a family plus `FOCAL`. The whole
 profile section describes ONE institution, so there is nothing to highlight
@@ -35,11 +35,11 @@ control, so exactly one family is on screen at a time and the chip legend is
 rebuilt on every swap — which is precisely why the two families' mutual
 validator distance is a NON-requirement (§2.14, palette_validation.txt run 6b).
 
-**Family 1 — OpenAlex domains** (`OA_DOMAIN_COLORS`, BenchUp V2 / Lorraine
-lineage, FIXED): Life `#0CA750`, Social `#FFCB3A`, Physical `#8190FF`, Health
+**Family 1 — OpenAlex domains** (`OA_DOMAIN_COLORS`, inherited unchanged,
+FIXED): Life `#0CA750`, Social `#FFCB3A`, Physical `#8190FF`, Health
 `#F85C32`. **Fields, subfields and topics have no colour of their own — they
-INHERIT their domain's** (`palette.domain_color`, the V2 `get_field_color`
-pattern). Because the active TREE decides which subfield, field and domain a
+INHERIT their domain's** (`palette.domain_color`, a `get_field_color`
+inheritance pattern). Because the active TREE decides which subfield, field and domain a
 topic rolls up to, colours follow the tree × basis toggles with no extra code.
 Unknown / unclassified → `COMPARISON` grey, never a fifth identity.
 Validator run 3 is **descriptive**: these hexes are inherited, not chosen, and
@@ -51,7 +51,7 @@ numbers through the CSV export; (c) `#F85C32`↔`#0CA750` deutan ΔE 7.6 sits in
 6–8 floor band, legal only with the secondary encoding the axis labels provide,
 and the two are non-adjacent in the fixed display order.
 
-**Family 2 — ERC domains** (`ERC_DOMAIN_COLORS`, THREE NEW hues chosen in R1):
+**Family 2 — ERC domains** (`ERC_DOMAIN_COLORS`, THREE NEW hues):
 PE `#1F4E9C` deep blue, LS `#9B1B6B` deep magenta, SH `#8A5A00` dark ochre.
 Validated ALONE (run 4, `--pairs all`): **ALL CHECKS PASS**, worst CVD ΔE 8.8
 protan, worst normal-vision ΔE 20.3, every contrast ≥ 3:1. Validated TOGETHER
@@ -64,7 +64,7 @@ on three hue angles OA does not use. Rejected candidates and their measured
 reasons are listed in `lib/palette.py`.
 
 **Family 3 — the UN SDGs** (`SDG_COLORS`, 17 stored, **16 drawn**): the official
-UN goal colours, FIXED by the UN. Source: manager-supplied, matching the 2019 UN
+UN goal colours, FIXED by the UN. Source: taken directly, matching the 2019 UN
 guidelines as commonly published; a live check of un.org's communications-material
 page confirms the governing document — *Sustainable Development
 Goals Guidelines for the use of the SDG logo including the colour wheel and 17
@@ -79,10 +79,10 @@ every bar carrying its goal number and short label on the axis. Goal 17
 panel says so from `palette.SDG_UNCOVERED`, never from a typed string.
 
 **Family 4 — document types** (`DOCTYPE_COLORS`): article `#22A2BD`, review
-`#A55F8F`, book `#667900`, book-chapter `#7838B6` (Lorraine's validated pass-6
+`#A55F8F`, book `#667900`, book-chapter `#7838B6` (an already-validated
 set, taken over unchanged) + **`letter` `#A10A4E`, new for BenchUp** (the hue
-Lorraine's own palette carried in that slot; BenchUp's corpus has letters where
-Lorraine's had conference papers). The five ALONE (run 6a, all pairs): **ALL
+an earlier palette carried in that slot; BenchUp's corpus has letters where
+that palette had conference papers). The five ALONE (run 6a, all pairs): **ALL
 CHECKS PASS**. The new hue clears the OA quartet on its own by min normal-vision
 ΔE 24.0 / min CVD ΔE 17.5. The five WITH the four OA hues (run 6b, 9 slots) FAILS
 on two PRE-EXISTING pairs that do not involve the new hue (`#667900`↔`#0CA750`
@@ -96,10 +96,10 @@ institution in the ranked views only — and, mirrored there alone,
 reference marks and every family's unknown/unclassified slot. `NEUTRAL` `#E6E8EB`
 is background/zebra/empty-state fill. `INK` `#333333` is text only (the validator
 fails it as a series colour by design). `SURFACE` `#FFFFFF` is every figure's
-`paper_bgcolor` and `plot_bgcolor`, and is the `--surface` every R1 validator run
+`paper_bgcolor` and `plot_bgcolor`, and is the `--surface` every palette validator run
 was executed against.
 
-**Chrome tokens (R1, text and furniture — excluded from categorical validation by
+**Chrome tokens (text and furniture — excluded from categorical validation by
 design, run 8 reproduces the expected FAIL):** `INK_SECONDARY` `#5A5F66` for KPI
 sublines, gutter numbers, chip labels and axis ticks (6.43:1 on white, above the
 4.5:1 body-text floor — the only check that matters for it); `BORDER` `#E3E6EA`
@@ -112,8 +112,8 @@ topic keeps its domain colour with an `INK` outline of `OUTLINE_WIDTH`. Both are
 secondary encodings on top of the family colour. BenchUp still defines no
 status palette (no good/bad or momentum read exists in the spec).
 
-**REMOVED in R1: `TYPE_COLORS` / `type_group`.** L22 removes the badge column
-from every table (user ruling #8: the type filter covers the need),
+**REMOVED: `TYPE_COLORS` / `type_group`.** The badge column was removed
+from every table (the type filter covers the need),
 which left the institution-type identity set with no consumer. A grep before
 deletion returned only `palette.py`, `tests/test_palette.py` and two prose lines
 in `DESIGN_TOKENS.md` — no live code path — so both symbols were deleted rather
@@ -128,10 +128,10 @@ level per numeric measure; thousands separator; every percentage states its
 denominator in the same cell or the line immediately above it (never a bare
 "{x}%"). Full scale: `DESIGN_TOKENS.md` §3.
 
-### 1.3 Control placement — sidebar vs the controls row (R1/L16, supersedes the pre-R1 all-in-the-sidebar order)
+### 1.3 Control placement — sidebar vs the controls row (supersedes the original all-in-the-sidebar order)
 
  feedback #1: the sidebar was over-loaded, and controls that act on the
-benchmark tables were a page away from the tables they act on. R1 splits them by
+benchmark tables were a page away from the tables they act on. This splits them by
 SCOPE, not by type — **the sidebar holds what changes the whole app; a control
 that changes one section lives at the head of that section.**
 
@@ -181,7 +181,7 @@ non-vacuity target for toggle × filter matrix test (`test_matrix.py`).
 
 ### 1.5 Badge grammar
 
-Text + glyph, never colour alone (`DESIGN_TOKENS.md` §5). **R1 change:** the
+Text + glyph, never colour alone (`DESIGN_TOKENS.md` §5). **Change:** the
 institution-TYPE badge family is GONE together with `TYPE_COLORS` (§1.1) — type
 is plain text in its own table column plus a post-filter. Two badge families
 remain, both text-only and both seed-level (profile header, §2.10), neither
@@ -230,10 +230,10 @@ in argument order — seed search → profile section → controls row → tab s
 tabs) → ranked table (its own `overflow-x:auto`, never the page body). Legends
 and badges wrap to a second line rather than truncating silently (RULES §8
 Small screen). Render-verified at 1920/1280/390 px with `scrollWidth ≤
-innerWidth+2` is /H's acceptance gate; this section only fixes the rule
-they render against.
+innerWidth+2` as the acceptance gate; this section only fixes the rule
+renders are checked against.
 
-**R1 additions, measured rather than assumed** (`design-system/ab/AB_VERDICT.md`,
+**Additions, measured rather than assumed** (an A/B verdict record,
 A/B #3, run at 390x844):
 
 - **The share + SI pair STACKS below the small breakpoint** — share panel above,
@@ -248,12 +248,12 @@ A/B #3, run at 390x844):
   against 1 clipped for the rejected right-of-bar form) — which is one of the two
   reasons it won A/B #4.
 
-### 1.9 Profile section composition (R1/L17 replaces the seed card of §2.2; R2/L30 re-lays the rows as the Lorraine lab card's grid, not just its chart panels)
+### 1.9 Profile section composition (replaces the seed card of §2.2; re-lays the rows as a reference dashboard's grid, not just its chart panels)
 
- feedback #2 (R1): the page was chart-poor. feedback item 3 (R2):
+Feedback: the page was chart-poor. Further feedback:
 the resulting layout still read as "leftovers" — a coverage line with no clear
-audience, a wordcloud oddly paired with a chart it has nothing to do with. R2's
-fix is the Lorraine lab card's actual GRID, not just its panels. Fixed order,
+audience, a wordcloud oddly paired with a chart it has nothing to do with. The
+fix is a reference dashboard's actual GRID, not just its panels. Fixed order,
 top to bottom:
 
 1. **Row 1 — three columns, `[1.0, 2.0, 1.4]`** (§2.10–§2.13): **identity**
@@ -281,13 +281,13 @@ than repeated in every row below:
   panels say so in their caption instead of silently ignoring the toggle.
 - **One identity family per chart** (§1.1) — the profile section never paints a
   bar `FOCAL`.
-- **Grouped bars, never stacked.** Lorraine's standing rule: "a bar chart may
+- **Grouped bars, never stacked.** The standing rule: "a bar chart may
   never stack a second categorical dimension." The grouped geometry uses explicit
   `offset`/`width` under `barmode="overlay"` because `offsetgroup` is BROKEN on
-  the pinned plotly 5.24.1 (`lib/charts.py:_series_offset_width`, Lorraine
+  the pinned plotly 5.24.1 (`lib/charts.py:_series_offset_width`,
   verbatim).
 - **The paired share + SI form and the left volume gutter are A/B verdicts on
-  real data**, not preferences — `design-system/ab/AB_VERDICT.md` (R1 section),
+  real data**, not preferences — an A/B verdict record,
   A/B #3 and #4.
 - **Every panel that drops rows says how many it dropped**, from the data
   (`is_excluded.sum`, unscored counts), never from a typed number (L10).
@@ -295,7 +295,7 @@ than repeated in every row below:
   the section exports.
 
 > **Rejected alternative:** render all six panels expanded, as one long scroll
-> (BenchUp V2's own layout). Rejected on the measured cost: the six panels are
+> (an earlier layout). Rejected on the measured cost: the six panels are
 > ~150 plotly traces and >1,300 marks for a large seed, all built on every rerun,
 > against a warm-rerun budget of 1.5 s; and the section's job is to characterise
 > the seed in one screen before the reader goes to the benchmark tables, which a
@@ -304,7 +304,7 @@ than repeated in every row below:
 
 ---
 
-## 2. View specs — one row per Find view (9 pre-R1 views; §2 bis adds 13 more)
+## 2. View specs — one row per Find view (9 original views; §2 bis adds 13 more)
 
 Status: all **[NEW]** — is the first build of this app.
 
@@ -355,7 +355,7 @@ the seed's own row wherever it appears as a candidate for another seed).
 | `card-seed` | header + KPI tiles + text lists + evidence lines + CI line + 3 outbound links, as composed above | outbound links open in a new tab; no in-card filtering (one primary interaction per view is spent on the search box that produced this card) | undefined evidence line → `NA_MARK`, never 0 | — |
 
 **Rejected alternative:** a radar/spider chart for the top-3-fields shape
-rejected on the same grounds Lorraine already documented for an analogous
+rejected on the same grounds already documented for an analogous
 profile card (`VIZ_SPEC.md` §2.6): angle encoding is weak and OpenAlex fields
 are not comparable radially; a ranked text list states the same three shares
 more precisely in less space.
@@ -394,7 +394,7 @@ noisy — for L0 through L7 and both optional lenses alike.*
 **Composition:** gloss (one line, from the table below) + evidence line +
 caveat, ALL above the table, never buried in a tooltip only; then the ranked
 table; then the depth caption (§2.6) and tail search + export (§2.7) below it.
-**Same read, same form** (Lorraine `VIZ_SPEC.md` §3 rule 1): every one of L0,
+**Same read, same form** (`VIZ_SPEC.md` §3 rule 1): every one of L0,
 L1, L3, F1, L2f, L4, L5, L6, C1, L7 renders through the ONE shared form id
 below — never a bespoke per-lens layout.
 
@@ -403,7 +403,7 @@ below — never a bespoke per-lens layout.
 | `tbl-lens-ranked` | table: competition rank · institution (OpenAlex works deep link) · country · type+badge · size (full) · score (form decided by Cross-cutting A/B #1, §3) · evidence (continuous line, lens-specific) · secondary reference "rank under L1/L3" · add-to-shortlist button (retired) | column sort disabled on score (rank order IS the read — RULES honesty rule 6, no re-sorting past what the ranking already asserts); search scoped to the full ranking (§2.7) | lens undefined for this seed → §1.6 reason line replaces the table entirely | full filtered ranking CSV, §1.7 |
 
 **Per-lens gloss + caveat (source: `INDICATOR_SPEC_v2.md` §1; caveat sits
-directly under the gloss, never tooltip-only, per this brief's placement rule):**
+directly under the gloss, never tooltip-only, per the placement rule):**
 
 | Lens | One-line gloss | Caveat shown with it |
 |---|---|---|
@@ -467,7 +467,7 @@ search or one download away, not gone.*
 | `ctl-depth` | **RETIRED.** The two-option depth segmented control is gone; depth is fixed at 50 app-wide (`config.yaml`'s `depth.default == depth.max == 50`, single source). Caption under every table: "showing top {N} of {M} ranked — search the tail or download" (RULES §9.9) | none — there is no control; `M` and `N` are always read from the live ranking, never typed | — (depth never empties a non-empty ranking) | — (the caption itself is not exportable; the CSV always carries the full ranking regardless of the on-screen depth) |
 
 **Rejected alternative:** a continuous slider over the full ranking length
-rejected per R4.6 simplicity ("ONE global control, not a
+rejected on simplicity grounds ("ONE global control, not a
 per-lens cutoff") and because a freely-draggable depth would need its own
 per-value caption logic where a two-option control needs one sentence with two
 possible fills; the real per-lens noise-growth-with-depth difference
@@ -498,7 +498,7 @@ why a row's numbers might need a second look, without the badge ever implying
 the row is wrong or excluded.*
 **Composition:** inline in the type/name cell of every ranked table (§2.4);
 never a separate panel (RULES §8 "disclose, never demote" — same principle
-Lorraine's ARTIFACT-FLAG pattern already applies: a flag discloses, it does not
+the ARTIFACT-FLAG pattern already applies: a flag discloses, it does not
 grey out or hide the row).
 
 | Form id | Form & encoding | Interaction | Empty-state | Export |
@@ -520,16 +520,16 @@ live in `lib/charts.py` (pure plotly, no Streamlit import); `lib/views_find.py`
 composes. Frames are the §9.4 column contracts from `lib/profile_data.py`.
 
 **§2.2 (Seed card) is SUPERSEDED by §2.10–§2.20** and is kept only as the record
-of what the pre-R1 page did.
+of what the original page did.
 
 ### 2.10 Profile header
 
-**R2 update (L30, user ruling item 3 — "profile space not optimised. Lorraine
-lab card as the model"):** the header is now COLUMN 1 of the section's three-column
+**Updated ("profile space not optimised, a reference dashboard card as
+the model"):** the header is now COLUMN 1 of the section's three-column
 row 1 (`[1.0, 2.0, 1.4]` — identity | KPI tiles | wordcloud, §2.11–§2.13), not a
 full-width block above the tiles. Nothing about the header's own content or rules
 changes — only its position and width, which is why this row's prose below is
-otherwise the R1 text unaltered.
+otherwise the original text unaltered.
 
 - **Form.** One block filling column 1: institution name (`text-xl`), then a
   meta line "type · city, country NAME", then the seed-level badges, then a link
@@ -539,9 +539,9 @@ otherwise the R1 text unaltered.
   say "publications" without re-explaining doc types, the DOI requirement or the
   bonus year each time.
 - **Encoding.** Text only; no chart, no colour. Type is a WORD, not a coloured
-  dot (§1.1: `TYPE_COLORS` removed in R1). Country is the English NAME, never the
+  dot (§1.1: `TYPE_COLORS` removed). Country is the English NAME, never the
   two-letter code (L22, `lib/countries.py`, frozen `data/countries_en.csv`).
-  Badges keep their pre-R1 rules exactly — umbrella/aggregate (EXPERIMENTAL +
+  Badges keep their original rules exactly — umbrella/aggregate (EXPERIMENTAL +
   tooltip carrying the country × type median compared against) and type-corrected
   ("type corrected by SIRIS (was: {type_openalex})") — and the hard invariant
   that **never both on one row** still holds.
@@ -556,7 +556,7 @@ otherwise the R1 text unaltered.
 - **Export.** Nothing of its own; the identity columns ride in every CSV.
 
 > **Rejected alternative:** keep the institution-type colour dot beside the type
-> word, reusing the pre-R1 `TYPE_COLORS`. Rejected because the badge column that
+> word, reusing the earlier `TYPE_COLORS`. Rejected because the badge column that
 > justified a five-hue identity set is gone (L22) and a lone dot on the header
 > would be a fifth colour family competing with the four the profile section
 > actually encodes (§1.1) — one entity's own type is not a categorical worth a
@@ -587,9 +587,9 @@ an earlier tile design.
   ("index median {m} · higher than {pct} of institutions"); the publications
   card's small line is the same measure on the fractional basis instead
   (a companion figure, not an index position); star papers and topics led
-  read `index.parquet` directly (P5's own columns).
+  read `index.parquet` directly (the newer columns).
 - **Interaction.** None (a card is not a control).
-- **Empty state.** `n/a` (or `MISSING_KPI_MARK` for the two P5 cards) for
+- **Empty state.** `n/a` (or `MISSING_KPI_MARK` for the two newer cards) for
   anything the data cannot support — never 0, never a hidden card (§1.6,
   `palette.NA_MARK`).
 - **Export.** The same eight numbers are the seed's row in every CSV the page
@@ -603,13 +603,13 @@ caption (§2.17), and SDG-tagged share to a card (§2.11) above.
 
 ### 2.13 Subfield wordcloud
 
-**R2 (L30):** moves from "left half of a wide row shared with the yearly
+**Updated:** moves from "left half of a wide row shared with the yearly
 breakdown" to COLUMN 3 of row 1 (identity | tiles | wordcloud, `[1.0, 2.0, 1.4]`)
 — it now sits beside the tiles it illustrates, not beside the breakdown pair,
 which has its own row (§2.14) with the global panel it was never paired with
-before R2.
+before.
 
-- **Form.** A PNG (Lorraine's `WordCloud` → `PIL` → `st.image` pattern, copied
+- **Form.** A PNG (a `WordCloud` → `PIL` → `st.image` pattern, copied
   into `lib/wordcloud_png.py`), filling column 3 of the section's row 1.
 - **Encoding.** **Word size = the subfield's works on the CURRENT basis; word
   colour = its domain colour** (`palette.domain_color` through a `color_func`),
@@ -626,7 +626,7 @@ before R2.
 
 > **Rejected alternative:** a plotly treemap of subfields, sized by works and
 > coloured by domain. It is interactive, exportable and quantitatively honest
-> and it was still rejected: the user asked for the Lorraine cloud by name, and
+> and it was still rejected: the user asked for the word cloud by name, and
 > the treemap would duplicate §2.16's bar panel in a second, weaker geometry
 > (area comparisons across non-adjacent rectangles) two rows above it. The cloud
 > earns its place by being the one deliberately impressionistic object on the
@@ -634,9 +634,9 @@ before R2.
 
 ### 2.14 Yearly breakdown pair
 
-**R2 (L30):** this pair's own FORM is unchanged — it was already the global +
-yearly pair under one control before R2. What changes is its ROW: it moves out
-of sharing a row with the wordcloud (§2.13, R1) into its OWN full-width row 2,
+**Updated:** this pair's own FORM is unchanged — it was already the global +
+yearly pair under one control before. What changes is its ROW: it moves out
+of sharing a row with the wordcloud (§2.13) into its OWN full-width row 2,
 directly under row 1's three columns, so both panels get the section's full
 width instead of half of it each.
 
@@ -646,10 +646,10 @@ width instead of half of it each.
   descending, direct end labels, no legend (`charts.fig_breakdown_global`);
   **right** = per-year GROUPED bars (`charts.fig_breakdown_yearly`). Both
   render `showlegend=False`; `charts.chip_legend_html` is the ONE legend for
-  the pair (Lorraine `render_chip_legend`).
+  the pair (`render_chip_legend`).
 - **Encoding.** The segmented control swaps the IDENTITY FAMILY: OpenAlex domain
-  (from `profile_data.yearly_by_domain`) ↔ document type (from the R1 artefact
-  `doctype_by_year.parquet`). Series order is the family's FIXED order
+  (from `profile_data.yearly_by_domain`) ↔ document type (from the
+  `doctype_by_year.parquet` artefact). Series order is the family's FIXED order
   (`palette.OA_DOMAIN_ORDER` / `palette.DOCTYPE_ORDER`), never a data-dependent
   sort, and a series that is zero across every year is KEPT so the absence is
   visible. Years are STRINGS (a numeric x-axis autoranges and ticks unlike every
@@ -666,7 +666,7 @@ width instead of half of it each.
 
 > **Rejected alternative:** ONE stacked bar per year, with the segmented control
 > choosing what is stacked. It is more compact and gives the year total for free
-> — and it is forbidden here: Lorraine's standing rule is that "a bar chart may
+> — and it is forbidden here: the standing rule is that "a bar chart may
 > never stack a second categorical dimension", because a stack makes the year
 > total the figure and hides each series' own trajectory, which is the only claim
 > this pair exists to make. (The same rule is why the grouped geometry uses
@@ -677,7 +677,7 @@ width instead of half of it each.
 - **Form.** `st.expander(expanded=False)`. Inside: `charts.fig_share_si(family="oa")`
   — two aligned panels of one figure sharing the y axis; share bars left with the
   volume in a left text gutter, SI lollipops right against a dashed reference at
-  the neutral value (A/B #3 and #4 winners), plus a **unit grid** (R2/L34) — a
+  the neutral value (A/B #3 and #4 winners), plus a **unit grid** — a
   light `GRID`-coloured vertical line at every integer 1, 2, 3 … up to the SI
   axis's own max, tick-labelled at those integers, so a reader can place a dot
   at "about 2.3×" without hovering.
@@ -695,7 +695,7 @@ width instead of half of it each.
   seed); a field with mass but undefined SI keeps its bar and gets NO SI mark
   never a dot at zero, never a dot at the neutral value; a field with mass but
   ZERO volume also gets no mark, whatever any `si_status` might otherwise say
-  (R2/L34 — the ERC-bug fix generalised to every panel this builder serves).
+  (the ERC-bug fix generalised to every panel this builder serves).
 - **Export.** CSV of the panel's frame, all columns, full precision.
 
 > **Rejected alternative:** a single chart with SI encoded as bar colour
@@ -727,14 +727,14 @@ width instead of half of it each.
 > apart — fold them into one string, or reserve the margin the wider of the
 > two actually needs, never assume. Proof: `tests/test_charts.py`'s
 > truncation/margin tests plus `tests/ui/smoke.py`'s bounding-box check at
-> 390 px and 1280 px (`progress/R1_X3.md`).
+> 390 px and 1280 px.
 >
-> **R2 update (L35, user ruling item 10 — REVERSES the ellipsis half of this
+> **Updated (REVERSES the ellipsis half of this
 > fix, keeps the folding half).** The one-string-per-row mechanism above is
 > UNCHANGED and still the reason there is nothing to collide with; what changed
-> is what happens to a string over budget. X3 ellipsised it from the right
+> is what happens to a string over budget. The earlier version ellipsised it from the right
 > (`_truncate_label`/`MAX_LABEL_CHARS`/`ELLIPSIS`, all now deleted, not left as
-> dead code); R2 WRAPS it onto at most two lines at a word boundary instead
+> dead code); this version WRAPS it onto at most two lines at a word boundary instead
 > (`charts.wrap_label`), because the user's own read of a shortened field name
 > was that losing text is worse than a taller row. Two mechanical consequences
 > the next editor should know: (1) `_gutter_margin_px` now measures the
@@ -744,12 +744,12 @@ width instead of half of it each.
 > row's own budget by `WRAP_ROW_FACTOR` (measured ≈1.7×) for every row whose
 > label wrapped, via its new `n_wrapped` argument, so a frame with several long
 > names is proportionally taller rather than uniformly cramped. Proof:
-> `tests/test_charts.py`'s wrap/row-height/margin tests (§2.15) plus the R2
+> `tests/test_charts.py`'s wrap/row-height/margin tests (§2.15) plus a
 > render proof PNG (§5).
 
 ### 2.16 Panel — Top subfields (share + SI)
 
-**R2 rewrite (L34, user ruling item 8/9 — "top 30, no taxonomy sort" / "SI
+**Rewrite ("top 30, no taxonomy sort" / "SI
 charts: unit grid lines; no SI mark at zero volume; harmonised floors").**
 Three changes at once, all measured on IFPEN's real profile (top-30 subfields
 carry 2 cells ≥30 fractional mass but 17 ≥10 — the old single 30-floor was
@@ -757,7 +757,7 @@ throwing away a disclosable signal on 15 of those rows):
 
 - **Form.** As §2.15, `charts.fig_share_si`, on the **top 30 subfields by
   volume** (the caller passes exactly 30 rows — `charts.py` itself types
-  neither 20 nor 30 anywhere; the cut is E3's, not the builder's), plus the same
+  neither 20 nor 30 anywhere; the cut is the caller's, not the builder's), plus the same
   unit grid described in §2.15.
 - **Encoding.** Domain colour inherited through the subfield → field → domain
   chain, so the panel re-tints with the tree. **SI display is now a THREE-WAY
@@ -793,8 +793,8 @@ throwing away a disclosable signal on 15 of those rows):
 
 - **Form.** `st.expander(expanded=False)` → `charts.fig_topics`: horizontal share
   bars for the top topics by share, volume in the left gutter. Topic names are
-  the longest labels in the app, so this panel is the R2 wrap mechanism's
-  (§2.15's L35 note, `charts.wrap_label`) hardest real test — a topic name over
+  the longest labels in the app, so this panel is the wrap mechanism's
+  (§2.15, `charts.wrap_label`) hardest real test — a topic name over
   budget now wraps to two lines instead of losing its tail.
 - **Encoding.** Colour = the topic's DOMAIN (inherited through the active tree).
   A **catch-all / out-of-scope (811) topic is flagged three ways at once**: a
@@ -810,15 +810,15 @@ throwing away a disclosable signal on 15 of those rows):
   flag survives outside the app.
 
 > **Rejected alternative:** exclude the catch-all topics from the panel entirely
-> (the pre-R1 811 toggle's behaviour). Rejected because the toggle was REMOVED in
-> R2.19/R2.20 precisely so the catch-all mass would be disclosed rather than
+> (the earlier 811 toggle's behaviour). Rejected because the toggle was REMOVED
+> precisely so the catch-all mass would be disclosed rather than
 > switched off: hiding those rows makes a seed's profile look cleaner than the
 > data is, and the share they carry is a caveat on every other number in the
 > section.
 
 ### 2.18 Panel — Frontier positioning
 
-**R2 rewrite (L33, user ruling item 5 — "frontier panel unreadable/slow: toggle
+**Rewrite ("frontier panel unreadable/slow: toggle
 top-200-by-volume ↔ all global-top-quartile topics").** The panel used to plot
 EVERY scored topic at once, which on a large seed is both visually dense and,
 per the feedback, slow. It now offers two MODES via a segmented control, each
@@ -864,7 +864,7 @@ unchanged, it never knows which mode produced its input.
 > a bucket, and because the quadrant boundaries sit at zero on both axes, so a
 > topic just either side of a line would be assigned to opposite cells with no
 > visible indication of how marginal that assignment is.
-> **Rejected alternative (for the R2 toggle specifically):** a single combined
+> **Rejected alternative (for this toggle specifically):** a single combined
 > mode showing the UNION of top-200-by-volume and top-quartile-emergence.
 > Rejected because a union hides which criterion put a given topic on the
 > chart — the whole point of the user's own two-mode framing was to let the
@@ -876,13 +876,13 @@ unchanged, it never knows which mode produced its input.
 
 - **Form.** `st.expander(expanded=False)` → `charts.fig_sdg`, which delegates to
   `charts.fig_share_si` with ESI in the SI slot, so the reader learns ONE form
-  and reuses it (Lorraine `same-read-same-form`) — including the R2 unit grid
+  and reuses it (`same-read-same-form`) — including the same unit grid
   (§2.15) and the harmonised solid/hollow/no-mark floor (§2.16), since `fig_sdg`
   reads whatever `si_status` the caller's frame carries with no SDG-specific code.
 - **Encoding.** Sixteen bars in **fixed SDG number order** (never sorted by
   value), each in its **official UN colour**; ESI dots against the same dashed
   neutral reference, with the unit grid at every integer. **Axis labels now carry
-  the goal number** (L36, user ruling item 11 — "SDG labels carry the number"):
+  the goal number** ("SDG labels carry the number"):
   `sdg_label_numbered` ("SDG {n} · {short label}", number from the resource,
   never typed) when the caller's frame carries that column, falling back to the
   plain `sdg_label` otherwise (`charts._LABEL_COLS` preference order,
@@ -910,12 +910,12 @@ unchanged, it never knows which mode produced its input.
 
 ### 2.20 Panel — ERC profile
 
-**R2 bug fix (user ruling item 4/9 — "concentration KPI wrong" led the review to
+**Bug fix ("concentration KPI wrong" led the review to
 the actual finding: "ERC bug", a specialisation dot floating on a panel with NO
 classified publications at all).**
 
 - **Form.** `st.expander(expanded=False)` → `charts.fig_erc` (again
-  `fig_share_si`): the ERC evaluation panels, share left, SI right, with the R2
+  `fig_share_si`): the ERC evaluation panels, share left, SI right, with the same
   unit grid (§2.15) and the harmonised solid/hollow floor (§2.16) — again no
   ERC-specific code, `fig_erc` reads whatever `si_status` the frame carries.
 - **Encoding.** One row per panel, coloured by its **ERC DOMAIN** — three hues,
@@ -970,7 +970,7 @@ classified publications at all).**
 > post-filters are the advanced ones; burying all nine at the same depth would
 > hide the two that feedback said should be closest to the tables.
 
-### 2.22 Ranked tables — the R1 changes (supersedes §2.4's column list)
+### 2.22 Ranked tables — the changes (supersedes §2.4's column list)
 
 - **Form.** Unchanged: the shared `lib/ranked.py` renderer, same form on every
   lens tab, `st.column_config.ProgressColumn` for the score.
@@ -985,7 +985,7 @@ classified publications at all).**
   the top shared cell for THAT lens (`argmax_j min(seed_j, cand_j)` over the
   lens's own substrate row pair), labelled in the lens's own namespace — field,
   subfield, topic, ERC panel or SDG label — with its contribution share of the
-  score. The pre-R1 "Top field" column only ever made sense for L1.
+  score. The earlier "Top field" column only ever made sense for L1.
 - **Interaction.** Unchanged (sort, tail search, CSV download; the add-to-shortlist
   button described here is retired).
 - **Empty state.** Unchanged (§1.6), except that the emptied-list message now
@@ -1005,7 +1005,7 @@ classified publications at all).**
 ## 2 ter. View specs — the Compare view (earlier spec, superseded by §11 below)
 
 **Produced by:** the design team, in an early wave — before `pages/2_⚖️_Compare.py`
-existed, against the `` §4 column
+existed, against the data contract's §4 column
 contracts. Same row format as §2 and
 §2 bis: form / encoding / interaction / empty state / export, and one NAMED
 rejected alternative each. Builders: `lib/charts_compare.py` (pure plotly, no
@@ -1063,7 +1063,7 @@ forbids relying on.
 > **Rejected alternative:** a single table with one row per institution instead
 > of cards. Rejected because the swatch is doing identity work here, and a
 > swatch inside a dataframe cell cannot be styled without the `ProgressColumn`
-> hack that R1 already removed from the ranked tables (L22); cards also degrade
+> hack that was already removed from the ranked tables (L22); cards also degrade
 > to a stack at 390 px, where a six-column table would scroll sideways — which
 > §1.8 forbids outright.
 
@@ -1301,7 +1301,7 @@ forbids relying on.
 
 > **Rejected alternative:** one merged table with a direction column. Rejected
 > because the two tables answer two different questions and a merged one invites
-> a total that means nothing; the R2 campaign also showed this content is read
+> a total that means nothing; user testing also showed this content is read
 > as a partnering shortlist, and a shortlist is read one direction at a time.
 
 ### 3.12 Breadth-overlap diagnostic
@@ -1350,8 +1350,8 @@ forbids relying on.
 
 ## 2 quater. View specs — the redesigned views
 
-**Produced by:** in wave 1 of Phase, before `lib/views_compare.py`
-and `lib/views_collab.py` are rewritten, against the `` §4
+**Produced by:** the design team, before `lib/views_compare.py`
+and `lib/views_collab.py` are rewritten, against the data contract's §4
 interface contracts. Same row format as §2, §2 bis and §2 ter: form / encoding /
 interaction / empty state / export, and one NAMED rejected alternative each.
 Builders: `lib/charts_compare.py` (pure plotly, no Streamlit, no hex literal, no
@@ -1675,7 +1675,7 @@ day.
 > red/green confusion lines collapse and yellow-green is the only region that
 > stays separable, which is why slot 2 is an acid olive rather than a mint.
 
-### 5.2 Metric-selector grouped bars, v2 — taxonomy grouping and the sort toggle
+### 5.2 Metric-selector grouped bars — taxonomy grouping and the sort toggle
 
 - **Form.** `fig_metric_bars(., sort="taxonomy"|"value")`, superseding §4.2's
   "the frame arrives ranked and the builder never re-sorts".
@@ -1707,7 +1707,7 @@ day.
 > mechanism below predates the rework described there, which moves the gutter into a dedicated LEFT
 > COLUMN — a phantom `go.Bar` trace per institution — with a small header
 > naming the basis, kept here as the historical record of this section's own
-> A/B lineage, not as the current behaviour.
+> A/B history, not as the current behaviour.
 
 - **Form.** The row label's right edge carries one number per drawn institution,
   in slot order, right-anchored — `charts._tick_display`'s idiom, extended to
@@ -1791,7 +1791,7 @@ day.
 > taxonomy has, not a benchmark anyone can be above or below in a meaningful
 > sense. A line there would be read as one anyway.
 
-### 5.6 Frontier map v2 — two pools and the colour-by-domain toggle
+### 5.6 Frontier map — two pools and the colour-by-domain toggle
 
 - **Form.** `fig_frontier_map(., pool=, color_by=)`. One pooled
   Expansion × Acceleration plane, unchanged in geometry.
@@ -1854,13 +1854,13 @@ day.
 > collapsed expanders read as six unfinished sections. The `?` costs one glyph.
 
 
-## 3. Cross-cutting A/Bs to run on real data (D1)
+## 3. Cross-cutting A/Bs to run on real data
 
-Named here per this stream's brief item 5; **resolved by ** against
+Resolved against
 real engine output (`app/lib/engine`, University of Gdańsk `I40413290`, L1
 top-50) with Playwright screenshots at 1280 px, appended to this file as a new
-"§4 A/B verdict" section (the one exception to D0's exclusive ownership of this
-file).
+"§4 A/B verdict" section (the one exception to this file's normal single-owner
+convention).
 
 ### A/B #1 — score column in every `tbl-lens-ranked` row
 
@@ -1901,8 +1901,8 @@ lenses at N=50.
 ## 4. A/B verdict
 
 Full measured criteria, screenshots and the one-paragraph reasoning for each
-verdict live in `design-system/ab/AB_VERDICT.md` (the appending stream's own
-file, not duplicated here in full). Summary:
+verdict live in an A/B verdict record
+(not duplicated here in full). Summary:
 
 **A/B #1 (score column, §3):** Winner **A -- `st.column_config.ProgressColumn`**.
 Both candidates were zero-baseline compliant and showed the same row count
@@ -1915,7 +1915,7 @@ height to show all 30 points, exposes rows the table's own internal scroll
 has not reached yet). Candidate A keeps rank, identity and score strength in
 one coherent, single-scroll widget, with the percent value printed on the bar
 itself. No tied competition rank exists in the L1 top-50 of any of the 19
-D19 seeds (checked programmatically), so the honest-tie-rendering criterion
+seeds (checked programmatically), so the honest-tie-rendering criterion
 could not be exercised on real data and is scored a tie between candidates.
 **Per §2.5, this verdict does not extend to the Aspirational tab**, which
 keeps its own interval-mark form regardless (a bare progress bar cannot
@@ -1948,7 +1948,7 @@ Two further A/Bs were run on REAL deployed data (Universite de Strasbourg
 `I68947357`, resolved by `display_name` in `data/index.parquet`, and University
 of Gdansk `I40413290`), rendered through a throwaway Streamlit prototype and
 photographed headless by Playwright at 1280 and 390 px. Full tables, measured
-criteria, commands and screenshots: `design-system/ab/AB_VERDICT.md` (R1 section).
+criteria, commands and screenshots: an A/B verdict record.
 
 - **A/B #3 — the share + SI form. WINNER: two aligned panels of one figure
   sharing the y axis**, share bars left, SI lollipops right against a dashed
@@ -1968,7 +1968,7 @@ criteria, commands and screenshots: `design-system/ab/AB_VERDICT.md` (R1 section
   label on a bar encoding that very number (the yearly global breakdown) keeps
   its end label.
 
-  **Fix X3 note (re-gated on inspection finding I-4):** the verdict
+  **Note (re-gated on a later finding):** the verdict
   above still stands, but the ORIGINAL implementation of it (a separate
   `add_annotation` per row, independent of the y tick label) collided with the
   category label at 390 px — see §2.15's fix note for the mechanism, the
@@ -1976,15 +1976,15 @@ criteria, commands and screenshots: `design-system/ab/AB_VERDICT.md` (R1 section
   own bars), and the robustness rule this leaves for the next A/B that places
   a number beside a label.
 
-  **R2 note (user ruling item 10, L35): the gutter placement STAYS, the
+  **Update: the gutter placement STAYS, the
   ellipsis rule it was paired with does NOT.** A/B #4's verdict is about WHERE
   the volume number goes (the left gutter, right-aligned) — it says nothing
   about what happens to an over-length CATEGORY label sharing that same tick
-  string, which was a separate, later decision (X3's ellipsis, chosen only
-  because X3 needed some rule for the label half of the folded string). The
+  string, which was a separate, later decision (the earlier ellipsis rule, chosen only
+  because that fix needed some rule for the label half of the folded string). The
   user's own read was that shortening a field or topic name is a
-  worse failure than a taller row, so R2 replaces the ellipsis with a two-line
-  WRAP (`charts.wrap_label`, §2.15's R2 update) while leaving A/B #4's own
+  worse failure than a taller row, so this update replaces the ellipsis with a two-line
+  WRAP (`charts.wrap_label`, §2.15's update) while leaving A/B #4's own
   finding — gutter over right-of-bar, numbers right-aligned against the zero
   baseline — completely untouched. No re-test of A/B #4 was needed or run: the
   wrap change touches only the LABEL half of the folded tick string, never the
@@ -1997,15 +1997,14 @@ by `tests/test_charts.py`.
 
 ## 6. A/B verdicts
 
-Two A/Bs were run on **real deployed data**, on the six institutions named in
-the brief — Iscte `I110026055`, ETH Zurich `I35440088`, Sorbonne
+Two A/Bs were run on **real deployed data**, on the six institutions named
+below — Iscte `I110026055`, ETH Zurich `I35440088`, Sorbonne
 `I39804081`, University of Gdańsk `I40413290`, IMT Atlantique `I4210127572`,
 Université de Strasbourg `I68947357` — rendered through a throwaway Streamlit
-prototype (`design-system/ab/proto_2b.py`) and photographed headless by
-Playwright at 1280 px (`design-system/ab/run_ab_2b.py`). Frames come from the
-deployed parquet files through `design-system/ab/_common_2b.py`, which
-reproduces the `` §4 contracts by hand rather than importing
- modules.
+prototype and photographed headless by
+Playwright at 1280 px. Frames come from the
+deployed parquet files, reproducing the §4 contracts by hand rather than
+importing the app's own modules.
 
 **Everything below is MEASURED off the live DOM, not eyeballed.** The runner
 reads every rendered mark's bounding box and computes: `min_mark_px` (the
@@ -2104,18 +2103,18 @@ frontier scatter, which has one series and no occlusion problem.
 
 ### Render proof
 
-`design-system/ab/2b_shipped_builders_1280.png` — every shipped builder on the
+A screenshot of every shipped builder on the
 six real institutions, one page, 1280 × 9,900 px, 11 figures, `scroll_ok: true`.
 
 ## 7. A/B verdicts
 
-Three A/Bs, run on **real deployed data**, on the trio the brief names
+Three A/Bs, run on **real deployed data**, on the trio named below
 — University of Freiburg `I161046081` (slot 1, `inst_key` 876), Sorbonne
 Université `I39804081` (slot 2, 2 922), Université de Strasbourg `I68947357`
 (slot 3, 13 085) — rendered through a throwaway Streamlit prototype
 and photographed headless by Playwright at
 1280 px. Frames come from the deployed parquet
-files, reproducing the `` §4 contracts by hand rather than
+files, reproducing the data contract's §4 contracts by hand rather than
 importing modules, which do not exist yet.
 
 **Everything below is MEASURED off the live DOM.** The runner reads every mark's
@@ -2357,13 +2356,13 @@ low-volume rows with daggers, 0 label collisions, no horizontal overflow.
 
 ## 9. Chrome contract convergence
 
-Normative source: `design-system/CHROME_CONTRACT.md` (D10, derived from an audit
-of every rendered chart/table — `evals/chrome_audit_2C.md`). This section folds
+Normative source: `design-system/CHROME_CONTRACT.md` (derived from a full audit
+of every rendered chart/table). This section folds
 the two binding conventions that section produced into VIZ_SPEC's own record,
 since both change how numbers and grouped bars are built by this document's own
 prior sections (§1.2, §2.14/§2.15's `_series_offset_width` geometry).
 
-### 9.1 Number-format policy (D9): printf-style, period-decimal, everywhere
+### 9.1 Number-format policy: printf-style, period-decimal, everywhere
 
 **Rule, superseding any prior silence on this point:** every number the app
 renders — a share, a score, an SI value, a count — is composed with a
@@ -2383,7 +2382,7 @@ copy (CHROME_CONTRACT.md §9); generalises it to every
 `format=` string, because the format string has no scaling step of its own
 `"%.0f%%"` applied to `0.76` prints `"1%"` (the value rounded to the nearest
 whole FRACTION, not a percentage), which is the exact defect a since-retired
-`# manager fix` comment on `lib/ranked.py`'s score column named correctly but
+`# fix` comment on `lib/ranked.py`'s score column named correctly but
 then still shipped `format="percent"` as its workaround. The fix has two
 halves that both have to be in place: **the underlying dataframe column must
 already carry the value ×100**, and the column config's format string then
@@ -2394,18 +2393,17 @@ pair — `ranked.PCT_PROGRESS_FORMAT` (`"%.1f%%"`) and `ranked.pct_progress_colu
 applies. Any other 0–1 score rendered as a `ProgressColumn` elsewhere in the
 app should import and reuse this pair rather than hand-roll a second one.
 
-**Fixed in (this stream's fence):** `lib/ranked.py`'s lens-table
+**Fixed:** `lib/ranked.py`'s lens-table
 `Score` column (`render_ranked_table`) — the app's single most-read column
-(§2.4 above). **Fixed by other streams from the same shared pair (not this
-stream's file fence, tracked in `progress/2C_CHROME-F.md`):**
-`lib/views_find.py`'s Aspirational-tab `L1 overlap` column (owner VF);
+(§2.4 above). **Fixed elsewhere from the same shared pair:**
+`lib/views_find.py`'s Aspirational-tab `L1 overlap` column;
 `lib/views_collab.py`'s topic-table `top10_share`/`sdg_share` columns, which
 share ONE `PROGRESS_FORMAT = "percent"` constant feeding two `ProgressColumn`
-calls (owner VL). A whole-`app/lib` grep for `format="percent"`, `toLocaleString`,
+calls. A whole-`app/lib` grep for `format="percent"`, `toLocaleString`,
 `Intl.NumberFormat` and a locale-sensitive `{:n}`/`,n` spec found no other hit
 of any of the four shapes.
 
-### 9.2 Bar-group spacing (D10): one constant pair, not two
+### 9.2 Bar-group spacing: one constant pair, not two
 
 **Superseded by this section:** §2.14's `fig_breakdown_yearly` and every
 `fig_share_si`/`fig_topics` caller of `_series_offset_width` (§2.15–§2.17)
@@ -2414,7 +2412,7 @@ previously drew from `charts.DEFAULT_GROUP_SPAN`/`DEFAULT_GROUP_FILL` = **0.8 /
 sections, §2 ter) independently defined its OWN pair for the identical
 geometry helper, `BAR_GROUP_SPAN`/`BAR_GROUP_FILL` = **0.82 / 0.86**, so the
 same grouped-bar idiom drew at two fractionally different pitches depending on
-which page it appeared on (`chrome_audit_2C.md`, "bar-group span" row).
+which page it appeared on.
 
 CHROME_CONTRACT.md §0 names Compare's `fig_metric_bars` chrome as the chart the
 rest of the app should converge ON (the newest chrome, reused three times
@@ -2428,18 +2426,18 @@ constant pair instead of two.
 
 ## 10. Chart primitives rebuild
 
-Ratified by `` §7's 2026-09-02 decisions log (the manager read the
-render proofs personally, E13, before ratifying). Scope: `fig_metric_bars`
+Ratified per §7's decisions log, after a full personal review of the
+render proofs before ratifying. Scope: `fig_metric_bars`
 — the bar-family chart every horizontal-bar chart in `charts.py`/
-`charts_compare.py` is asked to converge on (E9) — plus an explicit audit of
+`charts_compare.py` is asked to converge on — plus an explicit audit of
 the dot/SI family, confirmed to keep its own, already-correct conventions
 (§10.3). Render proof: the Ifremer/NIOZ/GEOMAR sample trio,
 share/PP/FWCI(subject grain)/SDG-share/ERC, at 1920/1280/390 px, captured
 with a DYNAMIC viewport (§10.5). CHROME_CONTRACT.md §§10–12 are the
-per-chart-TYPE contract this section feeds and that E9's propagation audits
-against.
+per-chart-TYPE contract this section feeds and that every propagation audit
+runs against.
 
-### 10.1 The left gutter COLUMN (E6, replaces §5.3)
+### 10.1 The left gutter COLUMN (replaces §5.3)
 
 - **Form.** A phantom, zero-visible-fill `go.Bar` trace per drawn institution,
   offset into the SAME lane as its real bar, sitting at a small negative x
@@ -2449,7 +2447,7 @@ against.
 - **Encoding.** The number wears the institution's DARK TWIN — or the
   caution colour (§10.2) on a below-floor row, the SAME rule the real bar's
   own value text follows, so the two texts agree on every row.
-- **Mechanism, and why not an annotation.** WT_2D claim 1 tested a per-bar
+- **Mechanism, and why not an annotation.** A prior investigation tested a per-bar
   `add_annotation` first (candidate A) and refuted it on TWO independent
   counts, both reproduced live: (1) an annotation anchored at the plot's own
   `x=0` collides with plotly's NATIVE y-tick label, which is anchored at the
@@ -2487,7 +2485,7 @@ against.
 > mechanism: `gutterB_*.png` (clean at 1920/1280 px) and `gutterB_calib_*.png`
 > (the 390 px real-estate limit, confirmed not a coding slip).
 
-### 10.2 The caution channel (E5, replaces §5.4)
+### 10.2 The caution channel (replaces §5.4)
 
 - **Form.** Every bar is SOLID, in the institution's own colour, at every
   volume — no hollow fill, no diagonal `marker.pattern`, anywhere in
@@ -2498,10 +2496,10 @@ against.
   the one and only identity family this chart carries (the institution), so
   a caution never competes with that for the reader's eye the way a second
   fill treatment would.
-- **The floor itself is UNCHANGED (E4).** `_is_low_volume`'s per-metric fork
+- **The floor itself is UNCHANGED.** `_is_low_volume`'s per-metric fork
   — PP/FWCI on their own per-row `denom_value` against
   `palette.RATIO_HATCH_FLOOR`, every other metric on `vol_full_annual_mean`
-  against `LOW_VOLUME_FLOOR` — is the SAME flag computation as an earlier D6
+  against `LOW_VOLUME_FLOOR` — is the SAME flag computation as an earlier
   amendment. Only the RENDERING of a flagged row changed.
 - **Interaction.** The hover still carries the reason in plain words
   (`HOVER_LOW_VOLUME`), unchanged.
@@ -2511,7 +2509,7 @@ against.
   unchanged.
 
 > **Rejected alternative:** keep the hatch, only retint it. Rejected because
-> the manager's own eyes-on PNG findings named the
+> a full eyes-on PNG review named the
 > hatch/hollow rendering itself as the thing to retire, not its colour — a
 > diagonal texture on a bar's own fill reads as "this mark is damaged/
 > half-rendered" at density in a way a caution-coloured NUMBER, sitting
@@ -2519,7 +2517,7 @@ against.
 
 ### 10.3 The dot/SI family — audited, confirmed UNCHANGED
 
-E5's brief asked whether the SI/mirror-dot below-floor MARKER should be
+The question was raised whether the SI/mirror-dot below-floor MARKER should be
 retired too. Judged and confirmed NO, for two independent reasons:
 
 - **It is a different visual grammar, not the same mechanism wearing a
@@ -2554,7 +2552,7 @@ retired too. Judged and confirmed NO, for two independent reasons:
   MOSTLY EMPTY dot panel" (where the same dash reads cleanly) — the dot
   family is the second case, unchanged.
 
-### 10.4 The reference mark (E8, replaces §5.5's encoding — the arithmetic stays)
+### 10.4 The reference mark (replaces §5.5's encoding — the arithmetic stays)
 
 - **Form.** A reference that VARIES by row (PP / SDG-tagged share / Dynamics
   / FWCI's own per-taxon population mean) is now a dark `REF_MARKER_SYMBOL`
@@ -2594,7 +2592,7 @@ retired too. Judged and confirmed NO, for two independent reasons:
 
 **Not a chart-code defect — a proof-HARNESS one, closed at the harness.**
 Investigation root-caused an earlier "first row clipped" symptom
-to `render_proof.py`'s own fixed
+to a capture script's own fixed
 `viewport={"height": 1400}`, used for EVERY chart width regardless of the
 chart's own declared height: the SAME app, the SAME URL, the SAME chart,
 captured at a viewport TALLER than the chart's own `layout.height` renders
@@ -2608,9 +2606,8 @@ of the same bug, not a fix for this one instance of it.
 `.js-plotly-plot` element:** read the chart's own rendered height (
 `gd.layout.height`, or the element's `getBoundingClientRect.height`) and
 set the page's viewport to AT LEAST that height before screenshotting
-never a viewport fixed in advance. `evals/ch2_2D_shots/`'s own capture
-script implements this rule; I5's inspection battery and any later
-grouped-bar proof should adopt it too (CHROME_CONTRACT.md §12).
+never a viewport fixed in advance. Any screenshot script that captures a
+`.js-plotly-plot` element should implement this rule (CHROME_CONTRACT.md §12).
 
 A SEPARATE, real, currently-dormant defect was found while investigating and
 is fixed in code, not just in the harness: `metric_row_height`'s FALLBACK
@@ -2628,18 +2625,18 @@ correctly returns a larger number instead of the same one.
 
 ## 11. V4 trim — Compare page rebuild
 
-`` D1-D7 replace the whole earlier Compare page (§2 ter
-through §10 above) with a FIXED two-institution page (D1: two search slots,
+This section replaces the whole earlier Compare page (§2 ter
+through §10 above) with a FIXED two-institution page (two search slots,
 no cross-tab shortlist — every "up to `COMPARE_MAX_SERIES`" ceiling above is generous
-headroom now, never a live cap) built from four sections: Thematic shape
-(D3), SDG profile (D4), Shared frontier (D5), The relationship (D7). The
+headroom now, never a live cap) built from four sections: Thematic shape,
+SDG profile, Shared frontier, The relationship. The
 metric-selector surface (§8/§9's Dynamics/SDG-tagged-as-a-tab/Specialisation/
 Volume/FWCI tabs, `SELECTOR_METRICS`) is RETIRED along with the selector UI
-it served — D3/D4 need exactly two fixed tabs, Profile and Impact. `docs/
+it served — the profile and impact sections need exactly two fixed tabs, Profile and Impact. `docs/
 CHROME_CONTRACT.md` §§13-14 are the normative chart-chrome record for the two
 genuinely new forms below; this section is the render-proof record.
 
-**Deleted, per D2/D5's "out of scope" list (grep proof: `progress/C2.md`):**
+**Deleted, per the "out of scope" list (grep-proved):**
 `fig_mirror_dots` (the whole dot-mirror family, §7 quinquies), `fig_
 quadrant_mix`, `fig_frontier_overlay`/`fig_frontier_small_multiples` (§6),
 `fig_impact_intervals`/`fig_impact_subfields` ("Impact-by-subfield interval
@@ -2647,23 +2644,23 @@ section", out of scope), `fig_frontier_map` and `fig_diverging_shared`, and the 
 `fig_pulse` (superseded by `yearly_domain_stack` below). The bar-pattern-fill
 remnants (`LOW_VOLUME_PATTERN_SHAPE`/`SOLIDITY`, §10's own note that `fig_
 pulse` was their one remaining caller) are deleted with it — no hatch
-mechanism survives anywhere in `charts_compare.py` after this stream.
+mechanism survives anywhere in `charts_compare.py` after this rebuild.
 
 **Kept, unchanged in substance:** `fig_metric_bars` (§9/§10's bar-family
-primitive) — trimmed to the two metrics D3/D4 need (`share`, `pp`) — is the
+primitive) — trimmed to the two metrics the profile/impact tabs need (`share`, `pp`) — is the
 primitive `two_tab_bars` (below) is a thin adapter onto; `legend_strip`/
 `map_legend_strip`/`chart_note`/`basis_caption`/`best_value_dot` (page-level
 presentation helpers, not builders).
 
-### 11.1 `two_tab_bars` — Thematic shape (D3) and SDG profile (D4)
+### 11.1 `two_tab_bars` — Thematic shape and SDG profile
 
 One call site, one `tab` switch (`"profile"` → metric `share`, `"impact"` →
 metric `pp`), `grouped_by_field` toggling the field-domain row grouping
 no new bar-drawing code, the existing SS10 bar-family contract unchanged.
 See `lib/charts_compare.py:two_tab_bars`'s own docstring for the frame
-contract; `progress/C2_renders/` for the render proof at all three widths.
+contract; the render proof at all three widths confirms it.
 
-### 11.2 `mirror_frontier` — Shared frontier (D5)
+### 11.2 `mirror_frontier` — Shared frontier
 
 New geometry, three floating `go.Bar` traces per topic via `base=` (A-only /
 JOINT / B-only around a common centre) — no kept primitive draws this shape.
@@ -2676,11 +2673,10 @@ real SVG anchor, but SVG spells the link attribute `xlink:href` — a plain
 must pass `force=True` because Plotly's own hover-capture `div.svg-container`
 sits on top of the SVG and fails the default actionability check (a real
 click at that point DOES still reach the anchor and its `target="_blank"`
-still opens a new tab — verified end-to-end, including the click, in
-`progress/C2_renders/render_c2.py`).
+still opens a new tab — verified end-to-end, including the click).
 
 > **Rejected alternative — a two-panel share+SI-style mirror redrawn for exactly two institutions.** Not
-> measured on real data (D1/D5 supersede the whole dot-mirror family before
+> measured on real data (this redesign supersedes the whole dot-mirror family before
 > any A/B on it would matter): the mirror's whole point is showing the THREE
 > quantities of one relationship (A-only, joint, B-only) as one continuous
 > bar whose SEGMENTS sum to the row's total volume — a dot per institution
@@ -2689,7 +2685,7 @@ still opens a new tab — verified end-to-end, including the click, in
 > "the number is not on the mark" problem A/B #7 (§9) already measured
 > against the dot family at low institution counts.
 
-### 11.3 `yearly_domain_stack` — The relationship, year by year (D7)
+### 11.3 `yearly_domain_stack` — The relationship, year by year
 
 Replaces the earlier single-series pair-pulse chart (`fig_pulse`) with the SAME
 joint-publications-per-year figure, stacked by the four OpenAlex domains
@@ -2704,15 +2700,15 @@ past the plot's right edge. The fix is to pass the category's own INTEGER
 INDEX (`enumerate(years)`) as `x`, never its string label; the bar traces
 keep using the label strings (`x=years`), since THEY populate the category
 axis correctly — only `add_annotation` needs the index. Found and fixed
-during this stream's own render proof (screenshot before/after in
-`progress/C2.md`) — a different manifestation of the same "plotly annotation
+during this section's own render proof (screenshot before/after
+recorded) — a different manifestation of the same "plotly annotation
 positioning is not trustworthy without an explicit numeric anchor" class of
 defect `charts._tick_display`'s own fix note already warns about for
 `xref="paper"` (§0 of `CHROME_CONTRACT.md`'s companion audit).
 
-### 11.4 `reciprocity_bars` — Strategic reciprocity by field (D7)
+### 11.4 `reciprocity_bars` — Strategic reciprocity by field
 
-ADAPTED from 's `views_collab._reciprocity_chart` + `collab_data.
+ADAPTED from `views_collab._reciprocity_chart` + `collab_data.
 reciprocity_frame` (credited in the builder's own docstring): the original
 was a bubble SCATTER (x = a field's share of B's own corpus, y = the same
 for A, area = joint volume, colour = OA domain, one dotted equal-weight
@@ -2726,15 +2722,15 @@ chrome rather than adding a second chart grammar for one section.
 
 > **Rejected alternative — keep the scatter verbatim, ported unchanged.**
 > Consistency, not a measured A/B: every other Compare section in this trim
-> (D3, D4, D5) now draws through the SS10 bar-family contract, and a lone
+> (the profile, impact and shared-frontier charts) now draws through the SS10 bar-family contract, and a lone
 > surviving scatter would be the one section whose reference line, hover
 > skeleton, colour family and caution channel all diverge from the rest of
 > the page for no reason tied to what the data actually needs to show.
 
-### 11.5 C2 follow-up (2026-09-03) — three fixes from the manager's own PNG read
+### 11.5 Three fixes from a full PNG read (2026-09-03)
 
-The manager read all 21 renders from §§11.1–11.4's first pass, accepted
-`two_tab_bars` (D3/D4, both tabs) as shipped, and asked for three fixes
+A full read of all 21 renders from §§11.1–11.4's first pass accepted
+`two_tab_bars` (both tabs) as shipped, and asked for three fixes
 full contract detail: `CHROME_CONTRACT.md` §§13.8, 14.4, 15.
 
 1. **`mirror_frontier@390 px` was unusable** (zero visible bars, the x-axis
@@ -2751,7 +2747,7 @@ full contract detail: `CHROME_CONTRACT.md` §§13.8, 14.4, 15.
    `mirror_frontier`'s height call omitted the `n_wrapped` term
    `metric_row_height` (and `charts.row_height` before it) already exists
    for exactly this. Both fixes are one system, verified together in
-   `progress/C2_renders/render_c2.py`'s own harness (which itself had a
+   a render-proof harness (which itself had a
    third, harness-only bug found in the same pass: `html,body{padding:16px}`
    doubled the intended page padding to 32 px per side — fixed by moving the
    padding to `body` alone).
@@ -2769,24 +2765,23 @@ full contract detail: `CHROME_CONTRACT.md` §§13.8, 14.4, 15.
    dedicated phantom trace built OUTSIDE `fig_metric_bars` (`gutter=False`
    on the shared call, `_add_centred_gutter` after it — `two_tab_bars`'s own
    per-series gutter is untouched); the x-axis title is now the explicit
-   sentence the manager asked for; and the hover is a rewritten narrative
+   sentence requested; and the hover is a rewritten narrative
    sentence naming the joint count, the share, and (when the optional rank
    columns are present) the partner's rank — CHROME_CONTRACT.md §15.
 
-All three fixes, plus the extra `C2_shape_profile_grouped_1280.png` proving
-`grouped_by_field=True`'s row-boundary rules, are documented with proof in
-`progress/C2.md`.
+All three fixes, plus an extra render proving
+`grouped_by_field=True`'s row-boundary rules, are documented with proof.
 
-### 11.6 C2 follow-up 2 (2026-09-03) — two readability fixes
+### 11.6 Two more readability fixes (2026-09-03)
 
-The manager read the follow-up-1 re-renders: `mirror_frontier@390px`, the
+A full read of the re-renders confirmed: `mirror_frontier@390px`, the
 yearly-stack legend and `reciprocity_bars` all accepted. Two more fixes,
 full contract detail in `CHROME_CONTRACT.md` SS13 row 8 and SS10 row 8.
 
 1. **`mirror_frontier` labels were losing real meaning.** At 1280/1920 every
    topic name was cut to two 20-char lines plus an ellipsis regardless of
-   its own length -- real OpenAlex topic names run 25-60 characters (the
-   manager's own example: "Geological and Geochemical Analysis") and were
+   its own length -- real OpenAlex topic names run 25-60 characters (for
+   example: "Geological and Geochemical Analysis") and were
    unreadable as a result. Fixed: `MIRROR_LABEL_MAX_LINES` raised to three
    (width per line unchanged at twenty); the ellipsis decision moved from
    "however many lines greedy wrap wants" to "the ORIGINAL name is over
@@ -2794,12 +2789,12 @@ full contract detail in `CHROME_CONTRACT.md` SS13 row 8 and SS10 row 8.
    budget that still needs a fourth greedy-wrap line gets its overflow
    MERGED into the last line instead (never a lost character, matching
    `charts.wrap_label`'s own two-line philosophy, now applied at three).
-   Re-checked at 390 px per the follow-up's own instruction: the two-line/
+   Re-checked at 390 px: the two-line/
    forty-char fallback it allowed for was NOT needed -- automargin's left-
    margin need is driven by line WIDTH (unchanged at twenty chars), not
    line COUNT, so the 120 px bar-area floor held with no further tuning.
    A second bug surfaced on this fix's own first render (the SAME discovery
-   pattern as follow-up 1): a three-line row needs MORE vertical pitch than
+   pattern as the earlier fix): a three-line row needs MORE vertical pitch than
    `metric_row_height`'s binary two-line-only `n_wrapped` term could supply
    — fixed by `mirror_frontier._mirror_row_height`, a dedicated formula
    generalising `charts.WRAP_ROW_FACTOR` linearly to three lines.
@@ -2809,11 +2804,10 @@ full contract detail in `CHROME_CONTRACT.md` SS13 row 8 and SS10 row 8.
    mechanisms rather than inventing new ones: the frame contract gains an
    optional `domain_id` column, which the ALREADY-WIRED accent glyph
    (`_accent_ticktext`, `reciprocity_bars`'s own domain accent since
-   follow-up 1) now also draws for grouped subfield rows with zero new
+   the earlier fix) now also draws for grouped subfield rows with zero new
    code; and `_metric_hover` puts `"Field: {group_label}"` as the literal
    first hover line whenever the frame carries `group_label`. No group
-   header rows were added, per the brief.
+   header rows were added.
 
-Re-rendered: `C2_mirror_frontier_{1920,1280,390}.png`,
-`C2_shape_profile_grouped_1280.png`. Full proof (render-script assertions,
-before/after screenshots) in `progress/C2.md`.
+Re-rendered at all three widths. Full proof (render-script assertions,
+before/after screenshots) recorded.

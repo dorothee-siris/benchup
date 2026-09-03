@@ -6,7 +6,7 @@
 # Kept <=18 non-comment lines ON PURPOSE (a growing allowlist is the
 # historical failure mode this file's own discipline guards against) -- do not
 # add a token here to make a real violation disappear; fix the string or
-# get the manager to re-scope the rule instead (test_narrative.py's own
+# re-scope the rule instead through review (test_narrative.py's own
 # test_allowlist_has_required_tokens_and_stays_small enforces the cap).
 # The cap was raised from 15 to 18 for exactly three tokens, L2/L8/L9: the
 # DISPLAY codes assigned once the eight default lenses are

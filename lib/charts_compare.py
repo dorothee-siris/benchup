@@ -248,10 +248,10 @@ LOW_VOLUME_FLOOR = 10.0
 RATIO_HATCH_METRICS = ("pp",)
 # `pp` hatches on its own per-row `denom_value` (n_covered) against
 # `palette.RATIO_HATCH_FLOOR` directly -- the impact tab's own caution rule
-# ( brief: "caution on impact rows with n_covered <
+# (the rule: "caution on impact rows with n_covered <
 # fifty"). `share` (the profile tab) keeps the generic `low_vol_col` rule,
 # which two_tab_bars's frame does not carry -- so the profile tab never
-# cautions, matching the brief exactly.
+# cautions, matching the rule exactly.
 LOW_VOLUME_GLYPH = "\N{DAGGER}"
 HOVER_LOW_VOLUME = "rests on fewer than {floor} works over the counted window, read with care"
 
@@ -929,7 +929,7 @@ def mirror_frontier(
                        y tick's `<a href>`
       vol_a, vol_b -- each institution's OWN publication count on the topic
       vol_joint -- the pair's JOINT count on the topic; NaN when the pair
-                       is below the P7 floor (`JOINT_FLOOR`) -- no red segment
+                       is below the qualifying floor (`JOINT_FLOOR`) -- no red segment
                        is drawn for that row and its hover explains why
       expansion, acceleration -- the topic's frontier scores (hover only)
       is_top_decile -- world top-decile flag; appends `TOP_DECILE_GLYPH` (an

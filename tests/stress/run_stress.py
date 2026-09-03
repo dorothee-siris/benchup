@@ -24,7 +24,7 @@ caught by "PID not openable" alone. The fix: after the port opens, resolve the
 PID that is actually `LISTENING` on it via `netstat -ano` (stdlib subprocess
 call to a Windows built-in, no new dependency) -- correct regardless of
 whether Streamlit's server ends up being the launched process itself (`proc.
-pid`) or a child, which is exactly the ambiguity the BUILD_PLAN brief flags
+pid`) or a child, which is exactly the ambiguity flagged by the spec
 ("on Windows `streamlit run` may itself be the python process; verify with the
 PID you spawned"). `stop_server` below terminates BOTH `proc.pid` and the
 resolved server PID (if different) so no orphan is ever left behind.
@@ -232,7 +232,7 @@ class RssSampler:
     `interval` seconds into `samples` as (elapsed_s, phase, rss_mb). A
     `process_rss_mb` miss (PID no longer openable) is the ONE reliable "the
     server died" signal -- ctypes `OpenProcess` fails only when the process
-    is gone (BUILD_PLAN.md T1 spec: "server alive at the end ... PID still
+    is gone (per spec: "server alive at the end ... PID still
     running") -- recorded once as `died_at`, never silently dropped as a
     zero or skipped as noise."""
 
@@ -297,7 +297,7 @@ def wait_idle(page, timeout_ms: int = 120_000) -> bool:
 
 def has_error_box(page) -> bool:
     """A Streamlit uncaught-exception box always titles itself "Oh no." --
-    the one page-content signal for "a failure to record" the brief names
+    the one page-content signal for "a failure to record"
     for phase B, alongside a websocket disconnect (caught as a raised
     Playwright exception at the call site instead -- there is no reliable
     DOM signal for that one)."""
@@ -688,7 +688,7 @@ def main() -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     scenario_entries = os.environ.get("BENCHUP_SCENARIO_ENTRIES", "1")
-    # BUILD_PLAN.md T1 spec names this exact format (STRESS_<YYYY-MM-DD_HHMM>.md) --
+    # The spec names this exact format (STRESS_<YYYY-MM-DD_HHMM>.md) --
     # minute precision, not seconds. Two runs inside the same minute (only ever
     # happens in rapid manual dev iteration) share a stamp and the later one
     # overwrites the earlier; a real gate run is never that fast.

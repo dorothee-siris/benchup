@@ -286,9 +286,8 @@ def test_shared_frontier_vol_joint_equals_collab_topic_vols_slice(ctx, subs, gol
 
 def test_shared_frontier_below_floor_pair_ships_joint_known_false(ctx, subs):
     """Two institutions almost certainly never co-published (or did, below
-    the P7 `core_total >= 5` floor): `joint_known` must be False and
-    `vol_joint` NaN for every row, never a fabricated 0 (decisions log
-    2026-09-03)."""
+    the `core_total >= 5` qualifying floor): `joint_known` must be False and
+    `vol_joint` NaN for every row, never a fabricated 0."""
     # Two small, geographically/thematically distant institutions with no
     # engineered relationship -- IFPEN (energy, FR) and a tiny facility.
     a, b = "I265217849", "I4210142177"
@@ -397,7 +396,7 @@ def test_relationship_reciprocity_equals_golden(ctx, subs, golden, pair_name):
 def test_relationship_yearly_sums_to_core_total_or_flags_topicless(ctx, subs, golden, pair_name):
     a, b = _pair_ids(golden, pair_name)
     rel = CD.relationship(ctx, [a, b], subs)
-    assert rel["yearly_qualifies"], f"{pair_name}: all 3 anchor pairs are P7-qualifying"
+    assert rel["yearly_qualifies"], f"{pair_name}: all 3 anchor pairs meet the qualifying floor"
     assert list(rel["yearly"].columns) == CD.YEARLY_DOMAIN_COLS
     total = float(rel["yearly"]["vol"].sum())
     if not np.isclose(total, rel["core_total"], atol=1e-9):
@@ -467,7 +466,7 @@ def test_cards_fwci_eu_median_absent_is_nan_not_a_crash(ctx, golden):
 
 
 # ===========================================================================
-# 8. links helpers exposed on shared_frontier rows point at the pair (E6)
+# 8. links helpers exposed on shared_frontier rows point at the pair
 # ===========================================================================
 
 def test_shared_frontier_urls_point_at_the_right_ids_and_topic(ctx, subs, golden):

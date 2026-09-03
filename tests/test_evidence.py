@@ -93,8 +93,8 @@ def test_every_lens_returns_a_label_from_the_right_namespace(engine, lens):
 
 def test_l2f_l5_l7_use_excess_vectors(engine):
     """L2f/L5/L7 evidence reads the EXCESS matrix, not a share matrix: the
-    chosen top cell must have excess > 0 for BOTH seed and candidate (test by
-    construction, per the brief)."""
+    chosen top cell must have excess > 0 for BOTH seed and candidate (true by
+    construction)."""
     ctx, subs = engine
     seed_id = "I40413290"
     for lens, key in (("L2f", "l2f"), ("L5", "l5"), ("L7", "l7")):

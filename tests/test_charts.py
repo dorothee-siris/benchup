@@ -221,7 +221,7 @@ def test_fig_share_si_all_na_si_collapses_to_one_panel(subfields_df):
 
 
 # ---------------------------------------------------------------------------
-# L34 (user ruling item 9): si_status drives solid/hollow/
+# si_status drives solid/hollow/
 # none marks, harmonised across subfields/ERC/SDG, and a zero-volume row
 # NEVER gets a mark whatever si_status says (the ERC display-bug fix).
 # `si_status` is built INLINE here from `vol_frac` (the fractional mass the
@@ -289,7 +289,7 @@ def test_fig_share_si_zero_volume_row_never_gets_a_mark_even_when_si_status_says
 
 
 def test_fig_share_si_si_status_absent_falls_back_to_the_pre_r2_null_rule(subfields_df):
-    """No `si_status` column at all -> the pre-R2 rule holds unchanged: a
+    """No `si_status` column at all -> the original null rule holds unchanged: a
     defined `si` draws a mark, a NaN `si` draws none, and every mark is the
     ordinary FILLED style (no hollow dots without an explicit `thin`)."""
     assert "si_status" not in subfields_df.columns
@@ -489,16 +489,16 @@ def test_invalid_family_and_sort_raise(fields_df):
 
 
 # ---------------------------------------------------------------------------
-# Fix X3 (inspection finding I-4): the label/gutter collision at narrow width.
+# The label/gutter collision at narrow width, fixed:
 # `lib/charts.py:fig_share_si` / `fig_topics` fold the volume into the y
 # ticktext as ONE right-anchored string per row instead of a separate
 # annotation, so there is nothing left for it to collide with -- that
-# mechanism is UNCHANGED by R2. What changed (L35, user ruling item 10,
-# REVERSES this stream's own R1 ellipsis rule): a label longer than
+# mechanism is unchanged here. What changed (reversing the earlier ellipsis
+# rule): a label longer than
 # `wrap_label`'s width WRAPS onto at most two lines at a word boundary
 # instead of being cut short. `MAX_LABEL_CHARS` / `_truncate_label` /
 # `ELLIPSIS` are gone, so `test_truncate_label_never_cuts_from_the_left` (the
-# R1 test of the retired ellipsis rule) is REMOVED, not adapted -- there is no
+# test of the retired ellipsis rule) is REMOVED, not adapted -- there is no
 # truncation left to test. The replacement coverage below is `wrap_label`
 # itself, the folded tick text it feeds, and the row-height/margin
 # consequences of a wrapped (two-line) row.
@@ -506,7 +506,7 @@ def test_invalid_family_and_sort_raise(fields_df):
 def test_wrap_label_never_splits_a_word_and_preserves_the_full_text():
     assert C.wrap_label("Mathematics") == "Mathematics", "within budget -> untouched, no <br>"
 
-    long_name = "Biochemistry, Genetics and Molecular Biology"  # the I-4 example, 46 chars
+    long_name = "Biochemistry, Genetics and Molecular Biology"  # a wrapped-label example, 46 chars
     wrapped = C.wrap_label(long_name)
     lines = wrapped.split("<br>")
     assert len(lines) == 2
@@ -574,7 +574,7 @@ def test_fig_share_si_automargin_and_reserved_margin_grow_for_long_labels(fields
     # more (unlike the old whole-string truncation), because some OTHER row's
     # short label plus its OWN volume can still tie the wrapped row's longest
     # line -- exactly the "measure by longest LINE, not longest STRING" change
-    # this stream made. A frame with genuinely short everything isolates the
+    # made here. A frame with genuinely short everything isolates the
     # comparison instead.
     tiny = pd.DataFrame({
         "field_id": [1, 2], "field_name": ["Ab", "Cd"], "domain_id": [1, 1],
@@ -607,7 +607,7 @@ def test_fig_share_si_row_height_no_longer_pays_the_wrap_penalty(fields_df):
 def test_row_height_n_wrapped_matches_the_documented_factor():
     base = C.row_height(10)
     grown = C.row_height(10, n_wrapped=3)
-    assert C.row_height(10, n_wrapped=0) == base, "default reproduces the pre-R2 formula exactly"
+    assert C.row_height(10, n_wrapped=0) == base, "default reproduces the single-line formula exactly"
     # Measured on a rendered chart: plotly spaces categories UNIFORMLY, so one
     # wrapped label forces the two-line pitch on EVERY row (proportional growth
     # left adjacent wrapped labels overlapping).
@@ -873,7 +873,7 @@ def _deployed_column_names() -> set[str]:
 
 def test_no_digit_in_any_charts_string_literal():
     """The allowlist file is loaded READ-ONLY (it is full at its cap of fifteen
-    tokens; this stream adds none). Everything parametric in a chart is a
+    tokens; none are added here). Everything parametric in a chart is a
     `{placeholder}` the caller fills, and every number format is COMPOSED from
     an int constant -- see the module docstring of lib/charts.py."""
     tokens = load_allowlist()

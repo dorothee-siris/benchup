@@ -296,7 +296,7 @@ def _render_frontier_positioning(ctx: dict, subs: dict, ids: list[str], names: d
 
 def _toggle_frontier_show_all() -> None:
     """on_click target -- a plain session_state flip, with no manual rerun
-    call after it (2C lesson: stacking one on top of a widget's own rerun
+    call after it (known lesson: stacking one on top of a widget's own rerun
     poisons every `st.download_button` for the session)."""
     st.session_state["compare_frontier_show_all"] = True
 
@@ -432,7 +432,7 @@ def _render_momentum(ctx: dict, mom: dict) -> None:
 
 def _fallback_yearly_bar(pulse_yearly: pd.DataFrame) -> go.Figure:
     """The relationship section's "plain yearly totals" fallback for a pair
-    below the P7 qualifying floor: the earlier single-series `fig_pulse`
+    below the qualifying floor: the earlier single-series `fig_pulse`
     builder is gone, so this reuses the SAME house
     chrome (`charts._base_layout`, the shared axis titles/grid/border
     tokens) rather than a second bar-drawing primitive for one rare case."""

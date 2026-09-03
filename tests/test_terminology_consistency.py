@@ -1,7 +1,7 @@
 """tests/test_terminology_consistency.py --, cross-cutting
-guard for E1: "European baseline" = EU27 + the
+guard for the rule that "European baseline" = EU27 + the
 selected friend countries (UK, CH, NO, IS), swept across every rendered
-string, defined once in Methods; plus E3's suffix-naming ruling (PP10_WD /
+string, defined once in Methods; plus the suffix-naming rule (PP10_WD /
 FWCI_EU) at its two primary label hooks.
 
 Reuses `tests/test_narrative.py:collect_copy_module_strings` -- the SAME
@@ -47,8 +47,8 @@ APP_DIR = Path(__file__).resolve().parents[1]
 NON_RENDERED_NAMES = {"METHODS_SOURCES"}
 
 BANNED_OLD_PHRASES = (
-    "a European reference",     # VL4 finding: COL_FWCI_HELP's pre-2D wording
-    "that European average",    # VL4 finding: COL_FWCI_HELP's pre-2D wording
+    "a European reference",     # earlier wording found in COL_FWCI_HELP
+    "that European average",    # earlier wording found in COL_FWCI_HELP
     "EU27+UK/CH/NO/IS",          # the old, undefined shorthand for the perimeter
     "EU27 + UK/CH/NO/IS",
 )
@@ -61,7 +61,7 @@ def _rendered_copy_strings() -> list[tuple[str, str]]:
 
 
 # ============================================================================
-# E1 -- no rendered string carries an old, pre-2D baseline phrasing
+# no rendered string carries an old baseline phrasing
 # ============================================================================
 
 def test_no_rendered_string_carries_an_old_pre_2d_baseline_phrasing():
@@ -81,7 +81,7 @@ def test_no_rendered_string_carries_an_old_pre_2d_baseline_phrasing():
 
 
 # ============================================================================
-# E1 -- "European baseline" appears in the two_baselines explainer
+# "European baseline" appears in the two_baselines explainer
 # ============================================================================
 
 def test_two_baselines_explainer_names_the_baseline_by_its_ruled_name():
@@ -100,14 +100,14 @@ def test_two_baselines_explainer_names_the_baseline_by_its_ruled_name():
 
 
 # ============================================================================
-# E3 -- PP10_WD / FWCI_EU present at their primary label hooks
+# PP10_WD / FWCI_EU present at their primary label hooks
 # ============================================================================
 
 def test_pp_and_fwci_suffix_labels_are_wired_at_their_hooks():
     """BenchUp V4 trim,: the Compare cards' own PP10_WD/FWCI_EU
-    hooks are `CARD_PP10`/`CARD_FWCI` (C3's own key names on its rewritten
-    COMPARE dict, `CARD_FWCI`/`CARD_PP10`) -- the pre-trim `METRIC_PP`/
-    `METRIC_FWCI` keys this test named do not survive C3's rewrite."""
+    hooks are `CARD_PP10`/`CARD_FWCI` (the current key names on the rewritten
+    COMPARE dict, `CARD_FWCI`/`CARD_PP10`) -- the earlier `METRIC_PP`/
+    `METRIC_FWCI` keys this test named do not survive that rewrite."""
     from lib import copy as copy_mod
 
     assert copy_mod.COMPARE["CARD_PP10"] == "PP10_WD"

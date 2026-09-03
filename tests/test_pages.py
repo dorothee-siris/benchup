@@ -164,14 +164,14 @@ def test_undefined_lens_shows_template(undefined_l2f_seed):
     text = " ".join(x.value for x in (*tab.info, *tab.caption, *tab.markdown))
     fixed = _template_literal_segment(copy.UNDEFINED_LENS_TEMPLATE)
     assert fixed in text, text
-    # R2/L29: the reader gets the lens's own plain-language precondition, never
+    # The reader gets the lens's own plain-language precondition, never
     # the engine's debugging string (which names internal structures).
     assert copy.LENS_UNDEFINED_REASON["L2f"] in text, text
     assert "excess-SI" not in text, text
 
 
 def test_type_filter_empties_a_lens_list():
-    """DEVIATION from the brief's exact wording ("set a type filter to a
+    """DEVIATION from the literal wording ("set a type filter to a
     type absent from the seed's L1 top-50"): measured directly --
     for I40413290/L1, EVERY institution type has at
     least 76 candidates somewhere in the full positive-score ranking (not
@@ -179,8 +179,8 @@ def test_type_filter_empties_a_lens_list():
     total-works size_range does reliably empty it (apply_filters(.,
     size_range=(100_000, 100_001)) -> 0 kept, verified against this
     deployed index whose max total_full_2020_2024 is 238,978) and exercises
-    the same "post-filter empties the ranking" code path the brief is
-    really after (lib/filters.py's own predicates are independent per
+    the same "post-filter empties the ranking" code path the intent
+    is really after (lib/filters.py's own predicates are independent per
     )."""
     at = _find_app().run()
     assert not at.exception
@@ -224,14 +224,14 @@ def undefined_l2f_seed(engine_ctx) -> str:
     pytest.skip("no undefined-L2f seed found among the 20 smallest institutions on this snapshot")
 
 
-# ------------------------------------------------ Find: the R1 profile -----
+# ------------------------------------------------ Find: the profile section -----
 # The seed card
 # became a PROFILE section (header, 7 KPI tiles, coverage caption, wordcloud +
 # yearly breakdown pair, six collapsed chart panels) and the benchmark controls
 # moved out of the sidebar into a controls row at the head of the Benchmark
 # section. Every selector below is state- or copy-driven, never a typed label.
 
-STRASBOURG = "I68947357"   # the drive seed; the R1 reference seed
+STRASBOURG = "I68947357"   # the drive seed; the reference seed
 
 # Widget keys L16 froze: the controls MOVED but were NOT renamed, which is the
 # whole reason the move was cheap (the smoke suite's selectors survive it).
@@ -242,7 +242,7 @@ POST_FILTER_KEYS = ("f_types", "f_countries", "f_excl_own", "f_size", "f_guard",
 
 def test_find_profile_section_renders_header_and_eight_cards():
     """ takes the six original cards to eight (adds star
-    papers and topics led, P5): the profile section holds the seed's name and
+    papers and topics led): the profile section holds the seed's name and
     exactly EIGHT KPI cards, each carrying ONE small line. AppTest exposes no
     container element type
     (see test_menu_has_at_least_three_nav_cards), so the cards are counted by
@@ -275,7 +275,7 @@ def test_find_profile_section_renders_header_and_eight_cards():
     # baseline itself, EXCEPT the publications card, whose small line is the
     # same measure on the fractional basis -- asserted here rather
     # than skipped, so a card that quietly lost its reference line still
-    # fails. The two P5 KPIs carry their OWN small line (pool name / citation
+    # fails. The two new KPIs carry their OWN small line (pool name / citation
     # window), never the index-baseline template, so they are excluded from
     # this count on purpose.
     baseline_fixed = _template_literal_segment(copy.FIND["TILE_BASELINE_SUB"])
@@ -287,7 +287,7 @@ def test_find_profile_section_renders_header_and_eight_cards():
 
 def test_kpi_builders_render_from_a_tiny_fixture_index_with_the_five_new_columns():
     """ acceptance step 4: a tiny, hand-built index frame
-    carrying the five new P5 columns, run through the tile-BUILDER functions
+    carrying the five new columns, run through the tile-BUILDER functions
     directly (no Streamlit) -- proves the two new KPI strings render once the
     columns exist, independent of whether the real deployed index has them
     yet (the absent-column path is the test right after this one)."""
@@ -316,7 +316,7 @@ def test_kpi_builders_render_from_a_tiny_fixture_index_with_the_five_new_columns
 
 
 def test_kpi_builders_render_missing_mark_when_the_p5_columns_are_absent():
-    """The other half: an index row from a build that has not landed P5 yet
+    """The other half: an index row from a build that has not landed the new columns yet
     (the columns simply are not there) renders MISSING_KPI_MARK -- never
     NA_MARK (used everywhere else on this page) and never a crash -- and the
     same for a present-but-null cell."""

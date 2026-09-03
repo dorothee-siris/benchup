@@ -8,10 +8,11 @@ scans for that and fails the build if one appears.
 SIRIS house rule (CLAUDE.md): light mode only, full width. This file ships no
 dark-mode variants and no [data-theme] branches -- there is exactly one palette.
 
-Design lineage: Studio RULES.md section 4 colour formula + COMPOSITION_AND_CONTROLS.md's
-"highlight-plus-mute beats more colours" + Lorraine Streamlit/lib/helpers.py
-palette-section convention (DOMAIN_COLORS / NEUTRAL_GREY / NA_MARK naming and
-comment style) + BenchUp V2 `domain_color` inheritance pattern.
+Colour formula: `RULES.md` section 4 + COMPOSITION_AND_CONTROLS.md's
+"highlight-plus-mute beats more colours" -- applied through the
+DOMAIN_COLORS / NEUTRAL_GREY / NA_MARK naming and comment convention below,
+with `domain_color` inheritance following field/subfield/topic ancestry up
+to domain.
 
 --- THE FIVE IDENTITY FAMILIES ----------------
     OA_DOMAIN_COLORS 4 OpenAlex domains; fields, subfields and topics INHERIT
@@ -60,8 +61,8 @@ mutual validator distance a NON-requirement (see palette_validation.txt run 6).
 #   FAIL, documenting that they are chrome, never identities.
 # Run 3: the 4 OA domain hues alone -> FAIL on the fixed
 #   hue #FFCB3A (lightness 0.865, above the 0.43-0.77 band) + contrast WARN.
-#   These hexes are FIXED by lineage (BenchUp V2 / Lorraine DOMAIN_COLORS) and
-#   by lineage; the run is DESCRIPTIVE and the two findings are carried as
+#   These hexes are FIXED -- inherited unchanged, not derived from this
+#   validator; the run is DESCRIPTIVE and the two findings are carried as
 #   binding relief rules, never as a reason to change a hex.
 # Run 4: the 3 ERC hues alone, `--pairs all` -> ALL CHECKS
 #   PASS (worst CVD 8.8 protan, worst normal-vision 20.3, all contrasts >= 3:1).
@@ -72,7 +73,7 @@ mutual validator distance a NON-requirement (see palette_validation.txt run 6).
 #   every ERC-involving CVD pair is >= 8.1. The only FAIL/WARN lines are the
 #   three pre-existing fixed-OA findings from run 3 plus the fixed OA pair
 #   #F85C32<->#0CA750 (deutan 7.6).
-# Run 6: DOCTYPE(5, i.e. Lorraine's 4 + the new `letter`
+# Run 6: DOCTYPE(5, i.e. 4 already-validated hues + the new `letter`
 #   hue) alone, `--pairs all` -> ALL CHECKS PASS. Then DOCTYPE(5) + OA(4)
 #   together -> FAIL, entirely on two PRE-EXISTING fixed pairs that do not
 #   involve the new hue (#667900 book <-> #0CA750 Life, normal 13.1; #667900
@@ -111,8 +112,8 @@ mutual validator distance a NON-requirement (see palette_validation.txt run 6).
 #   (8 slots) -> FAIL, entirely on COMPARISON #8C9196 (chroma 0.009; #8C9196
 #   <-> #CC79A7 normal 12.2 / deutan 3.0), which is the run-2 exclusion class
 #   restated, not a new finding. FOCAL contributes NO failing pair: its nearest
-#   institution hue is #6A3D9A at normal 15.6 / CVD 6.9 (screening matrix,
-#   design-system/ab/screen_inst.mjs), above the normal-vision floor and inside
+#   institution hue is #6A3D9A at normal 15.6 / CVD 6.9 (local screening
+#   matrix, `screen_inst.mjs`), above the normal-vision floor and inside
 #   the 6-8 CVD band -- legal here because FOCAL is never a MARK on a Compare
 #   page (it paints Streamlit chrome: buttons, links, ProgressColumn bars) and
 #   is never in the same figure as an institution dot.
@@ -217,8 +218,7 @@ FOCAL = "#0072B2"
 COMPARISON = "#8C9196"
 # Grey: candidate rows, reference bars, "rest of the ranking", and the
 # UNCLASSIFIED / unknown slot of every identity family (`domain_color` returns
-# it for an unknown domain id) -- a NEUTRAL, not an identity. Same hex as
-# Lorraine Streamlit/lib/helpers.py NEUTRAL_GREY (helpers.py:108). Deliberately
+# it for an unknown domain id) -- a NEUTRAL, not an identity. Deliberately
 # excluded from the categorical validator (fails the chroma floor BY DESIGN,
 # chroma 0.009 -- it reads as achromatic, which is the job); its WCAG check is
 # against actual usage (fills/bars that always carry a text label alongside,
@@ -232,8 +232,8 @@ COMPARISON = "#8C9196"
 
 INK = "#333333"
 # TEXT ONLY. Validator FAILS it as a series colour (chroma 0, outside the
-# lightness band) -- the exact amendment RULES.md section 4 carries from
-# Lorraine's chain pass 3. NEVER assign INK to a mark, bar, dot or badge fill.
+# lightness band) -- the exact amendment RULES.md section 4 carries.
+# NEVER assign INK to a mark, bar, dot or badge fill.
 # Contrast on white: 12.6:1 (floor 4.5:1) -- palette_validation.txt run 2.
 
 SURFACE = "#FFFFFF"
@@ -251,8 +251,8 @@ SURFACE = "#FFFFFF"
 
 INK_SECONDARY = "#5A5F66"
 # Secondary text: KPI-tile sublines, chart annotations (the volume gutter), chip
-# legend labels, axis tick labels, table footnotes. Lorraine's own
-# secondary ink. Contrast on SURFACE: 6.43:1 (measured, run 8) -- above the 4.5:1 body-text floor,
+# legend labels, axis tick labels, table footnotes.
+# Contrast on SURFACE: 6.43:1 (measured, run 8) -- above the 4.5:1 body-text floor,
 # so it is legal for small text, which is exactly what it is for. NEVER a mark.
 
 BORDER = "#E3E6EA"
@@ -260,21 +260,20 @@ BORDER = "#E3E6EA"
 # furniture line, never a data mark and never text.
 
 GRID = "#D9DDE2"
-# Plot gridlines and the zero line (Lorraine plot_global_breakdown_h's
-# gridcolor). Recessive by construction -- RULES section 3 "recessive grid/axes";
+# Plot gridlines and the zero line. Recessive by construction -- RULES
+# section 3 "recessive grid/axes";
 # it must never compete with a bar it sits behind.
 
 NA_MARK = "n/a"
-# Convention (Lorraine Streamlit/lib/helpers.py:111 NA_MARK): a missing
-# indicator is "n/a", never 0 and never a blank string. See INDICATOR_SPEC_v2.md
-# section 5/section 8 and ("n/a never 0"). In a chart, a
+# Convention: a missing
+# indicator is "n/a", never 0 and never a blank string ("n/a never 0"). In a chart, a
 # missing SI/ESI value is rendered as NO MARK AT ALL plus this text in the row's
 # hover -- never a dot at zero, never a dot at one.
 
 # ---------------------------------------------------------------------------
 # FAMILY 1 -- OpenAlex domains (and, by inheritance, every field, subfield and
-# topic). Provenance: BenchUp V2 `DOMAIN_COLORS` / Lorraine
-# Streamlit/lib/helpers.py:45-53, hue-for-hue. FIXED by the original brief.
+# topic). Provenance: inherited unchanged from an earlier `DOMAIN_COLORS`
+# set, hue-for-hue. FIXED, not derived from this validator.
 # ---------------------------------------------------------------------------
 # Validator run 3 (the four alone) and run 5 (with ERC), `--mode light
 # --surface #FFFFFF --pairs all`. Run 3 is DESCRIPTIVE -- these hexes are
@@ -312,7 +311,7 @@ def domain_color(domain_id) -> str:
     """Colour for an OpenAlex domain id -- the ONE inheritance point.
 
     Fields, subfields and topics have no colour of their own: they take their
-    domain's (BenchUp V2 `get_field_color` pattern). Because the ACTIVE TREE
+    domain's (a `get_field_color` inheritance pattern). Because the ACTIVE TREE
     decides which subfield -- and therefore which field and domain -- a topic
     rolls up to, colours follow the tree x basis toggles with no extra code.
 
@@ -329,10 +328,10 @@ def domain_color(domain_id) -> str:
 # ---------------------------------------------------------------------------
 # FAMILY 2 -- ERC domains (PE / LS / SH). THREE NEW hues, chosen here.
 # ---------------------------------------------------------------------------
-# Requirement (the original brief): normal-vision Delta E >= 12 from EVERY OA hue,
+# Requirement: normal-vision Delta E >= 12 from EVERY OA hue,
 # CVD-safe within the set, contrast adequate for a filled bar carrying a text
 # label. Method: candidates screened pairwise against the four OA hues with the
-# dataviz validator's own `validate` (design-system/ab/screen_erc.mjs, output
+# dataviz validator's own `validate` (a local `screen_erc.mjs` helper, output
 # in palette_validation.txt run 4a), then the surviving triad validated ALONE
 # (run 4) and TOGETHER WITH THE FOUR OA HUES (run 5), `--pairs all`.
 #
@@ -426,7 +425,7 @@ def erc_color(erc_domain) -> str:
 # ---------------------------------------------------------------------------
 # FAMILY 3 -- the UN Sustainable Development Goals.
 # ---------------------------------------------------------------------------
-# SOURCE: the official UN goal colours as supplied by the original brief. A live
+# SOURCE: the official UN goal colours, taken directly. A live
 # cross-check against un.org's communications-material page CONFIRMS
 # the governing document -- "Sustainable Development Goals Guidelines for the use
 # of the SDG logo including the colour wheel and 17 icons", the August 2019
@@ -492,12 +491,12 @@ def sdg_color(sdg_number) -> str:
 # ---------------------------------------------------------------------------
 # FAMILY 4 -- document types (the harvest's five corpus types).
 # ---------------------------------------------------------------------------
-# Provenance: Lorraine's pass-6 DOCTYPE palette (Streamlit/lib/helpers.py
-# :92-99), which was itself validated all-pairs light against Lorraine's copy of
-# the same OA domain hues -- four of the five hexes are taken over unchanged.
-# The fifth, `letter`, is NEW for BenchUp (Lorraine's corpus had conference
-# papers where BenchUp's has letters); it reuses Lorraine's `#A10A4E`, the hue
-# that slot's own validated palette already carried, rather than inventing one.
+# Provenance: four of the five hexes are taken over unchanged from an
+# already-validated DOCTYPE palette, itself validated all-pairs light against
+# the same OA domain hues. The fifth, `letter`, is NEW for BenchUp (that
+# earlier corpus had conference papers where BenchUp's has letters); it
+# reuses `#A10A4E`, the hue that slot's own validated palette already
+# carried, rather than inventing one.
 #
 # Validator run 6a (the five alone, `--pairs all`) -> ALL CHECKS PASS: worst CVD
 # 8.2 deutan (#A55F8F <-> #22A2BD, both pre-existing), worst normal-vision 15.0
@@ -521,10 +520,10 @@ def sdg_color(sdg_number) -> str:
 # 3.0 / normal 10.1 vs #667900 -- two ochres in one legend).
 
 DOCTYPE_COLORS = {
-    "article": "#22A2BD",        # teal-blue (Lorraine pass-6 "Articles")
-    "review": "#A55F8F",         # mauve (Lorraine pass-6 "Reviews")
-    "book": "#667900",           # olive (Lorraine pass-6 "Books")
-    "book-chapter": "#7838B6",   # violet (Lorraine pass-6 "Book chapters")
+    "article": "#22A2BD",        # teal-blue
+    "review": "#A55F8F",         # mauve
+    "book": "#667900",           # olive
+    "book-chapter": "#7838B6",   # violet
     "letter": "#A10A4E",         # deep crimson -- NEW for BenchUp (run 6a)
 }
 
@@ -667,8 +666,8 @@ SHARED_FRONTIER = "#821D13"
 # this hue and the vermillion ERC-SH/momentum-down hue are never both
 # reachable from the same figure.
 #
-# RE-MEASUREMENT (user ruling 5): the previous
-# `SHARED_FRONTIER` failed outright against ERC-SH/momentum-down vermillion
+# RE-MEASUREMENT: the earlier
+# `SHARED_FRONTIER` value failed outright against ERC-SH/momentum-down vermillion
 # `#D55E00` -- normal-vision 7.6, deutan 2.4, both below their hard floors, not
 # a "needs care" WARN. Two darker-red
 # candidates were re-measured against `#D55E00` (both normal AND deutan required >= 15):
@@ -782,8 +781,8 @@ RATIO_HATCH_FLOOR = 50
 # honest disclosure -- one constant to change if feedback objects).
 
 # ---------------------------------------------------------------------------
-# MOMENTUM -- the pair view's up/down/stable read (ruling 6, Lorraine
-# port; class thresholds and windows live in `collab_facts.json`, not here).
+# MOMENTUM -- the pair view's up/down/stable read (class thresholds and
+# windows live in `collab_facts.json`, not here).
 # ---------------------------------------------------------------------------
 # TEXT + GLYPH ONLY, NEVER A FILL (§2.3) -- the mandatory reason this is legal
 # at all: `up`'s own hue is ERC-LS green and `down`'s is ERC-SH/momentum-down
@@ -795,8 +794,8 @@ RATIO_HATCH_FLOOR = 50
 # `stable` moved off the shipped `INK_SECONDARY` twin `#5A5F66` (
 # a NEW finding not in the original plan: `#5A5F66` sits only ΔE 4.7 from
 # navy slot 2 `#5A6883`, near-indistinguishable even to normal vision) to
-# `#727272` -- re-measured against navy slot 2 with `wt_task2_pal_remeasure.mjs`
-# section F at ΔE 5.86, still short of the 15 mark. That residual is the same
+# `#727272` -- re-measured against navy slot 2 at ΔE 5.86, still short of the
+# 15 mark. That residual is the same
 # disposition class as the slot-3 twin's ΔE 3.7 to slot 2's fill above: a
 # TEXT-vs-FILL pairing the categorical validator does not check (chrome tokens
 # are excluded from it by this file's own convention, see INK_SECONDARY /
@@ -819,7 +818,7 @@ MOMENTUM_GLYPHS = {
     "stable": "\N{RIGHTWARDS ARROW}",
     # the four "can't classify with confidence" states share ONE neutral dash
     # (never the stable arrow -- "n.s." must not read as "stable"): aligned
-    # to collab_data's documented ladder + the Lorraine source convention.
+    # to collab_data's documented ladder.
     "ns": "\N{EN DASH}",
     "new": "\N{EN DASH}",
     "dormant": "\N{EN DASH}",
@@ -925,8 +924,8 @@ def label_accent_color(family, key) -> str:
 # ---------------------------------------------------------------------------
 # REMOVED: TYPE_COLORS and type_group
 # ---------------------------------------------------------------------------
-#  removes the badge column from every table (user ruling
-# #8: "badge column not relevant, the type filter exists"), which
+# The badge column was removed from every table (the type filter already
+# covers the need), which
 # left the institution-type identity set with no consumer. A grep over the whole
 # app before deletion
 #     grep -rn "TYPE_COLORS|type_group" --include=*.py --include=*.md app/

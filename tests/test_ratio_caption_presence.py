@@ -131,7 +131,7 @@ def test_find_six_year_basis_disclosure_key_exists_and_names_the_whole_run():
 
 def test_copy_digit_ban_still_holds_after_2c_additions():
     """A permanent guard alongside the locale ban (a sibling rule): none
-    of the 2C caption keys this module just quoted verbatim may carry a
+    of the caption keys this module just quoted verbatim may carry a
     hand-typed digit outside an approved `{placeholder}` -- re-run copy.py's
     OWN scanner here so a future edit to any COMPARE/COLLAB/FIND caption key
     cannot reintroduce a hand-typed number without this suite noticing."""

@@ -112,8 +112,8 @@ def test_bonus_year_full_matches_packed_string(index_df):
             assert g == want
 
 
-def test_ifpen_hhi_percentile_matches_manager_probe(index_df, bl):
-    """Manager fact (2026-08-29): IFPEN (I265217849) hhi_subfield=507 sits at
+def test_ifpen_hhi_percentile_matches_hand_probe(index_df, bl):
+    """Verified: IFPEN (I265217849) hhi_subfield=507 sits at
     p40 of the index; median 602. A loose corridor -- this is a coherence
     cross-check on the real baselines, not a golden-file pin."""
     row = index_df.set_index("institution_id").loc["I265217849"]

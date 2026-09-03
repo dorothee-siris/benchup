@@ -20,7 +20,7 @@ three pairs in `tests/test_compare_data.py`. The file this module
 descends from carried a much larger surface (an N-institution "Compare by"
 metric-selector matrix, ERC panels, dynamics, a pooled frontier scatter,
 grey-accounting coverage, bootstrap-CI impact-by-subfield): all of that is
-DELETED per the brief and stays only in the archive -- no other file
+DELETED and stays only in the archive -- no other file
 outside this module's fence still imports a deleted name (aside from two
 owned-elsewhere test files).
 
@@ -678,7 +678,7 @@ def frontier_positioning(ctx: dict, subs: dict, ids: list[str]) -> pd.DataFrame:
 # shared_frontier -- the mirror-chart + table data. Topic set and A/B
 # volumes are IDENTICAL to the reference version's own
 # `shared_frontier(ctx, subs, ids, pool="volume")` (golden-anchor tested);
-# every other column is a NEW per-topic addition the brief asks for.
+# every other column is a NEW per-topic addition.
 # ---------------------------------------------------------------------------
 
 SHARED_FRONTIER_COLS = [
@@ -787,7 +787,7 @@ def shared_frontier(ctx: dict, subs: dict, ids: list[str]) -> pd.DataFrame:
       vol_joint, joint_known -- `collab_topic_vols.parquet`'s
                                                    per-topic joint volume, `joint_known=False`
                                                    (`vol_joint=NaN`) when the pair is below
-                                                   P7's qualifying floor (`core_total >= 5`)
+                                                   the qualifying floor (`core_total >= 5`)
                                                    -- the floor is
                                                    checked on the PAIR, not the topic: a
                                                    qualifying pair's genuinely-zero topic
@@ -902,13 +902,13 @@ def relationship(ctx: dict, ids: list[str], subs: dict | None = None) -> dict:
                            golden `pulse`) -- its own `yearly` (2020-2025,
                            ALL doc types) is the relationship section's
                            "plain yearly totals" fallback for a pair below
-                           the P7 floor, or `None`.
+                           the qualifying floor, or `None`.
       yearly -- DataFrame(year, domain_id, domain_name, vol):
                            `collab_data.pair_domain_year` (CORE-AR 2020-2024,
                            qualifying pairs only) joined to domain names;
                            EMPTY when the pair does not qualify.
       yearly_qualifies -- False when `yearly` is empty (core_total < 5,
-                           P7's own floor) -- the page falls back to
+                           the qualifying floor) -- the page falls back to
                            `pulse["yearly"]` for a plain bar in that case.
       core_total -- `collab_pairs.core_total` (CORE-AR joint volume,
                            2020-2024), NaN when the pair never co-published.

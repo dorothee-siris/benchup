@@ -66,7 +66,7 @@ def test_strip_is_none_at_all_defaults():
 
 
 @pytest.mark.parametrize("patch,expected_substr", [
-    # R2/L29: `views_find._strip_tree` hands this function the DISPLAY label
+    # `views_find._strip_tree` hands this function the DISPLAY label
     # for an off-default taxonomy, so the strip never prints "original".
     ({"tree": copy.TREE_LABELS["original"]}, copy.TREE_LABELS["original"]),
     # Depth is fixed at CFG["depth"]["max"] == CFG["depth"]["default"]

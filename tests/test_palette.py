@@ -109,7 +109,7 @@ def _palette():
 
 
 def test_type_colors_removed_in_r1():
-    """R1 (user ruling #8) removed the badge
+    """This removed the badge
     column from every table, which left the institution-type identity set with
     no consumer. `TYPE_COLORS` and `type_group` were DELETED (grep before
     deletion returned only palette.py, this test file and two prose lines in
@@ -123,7 +123,7 @@ def test_type_colors_removed_in_r1():
 
 
 # ---------------------------------------------------------------------------
-# R1 -- the four identity families
+# the four identity families
 # ---------------------------------------------------------------------------
 HEX6 = re.compile(r"^#[0-9A-Fa-f]{6}$")
 
@@ -344,6 +344,6 @@ def test_viz_spec_has_rejected_alternative_per_compare_view_row():
     spec_path = APP_DIR / "docs" / "VIZ_SPEC.md"
     text = spec_path.read_text(encoding="utf-8")
     compare_rows = len(re.findall(r"^### 3\.\d+", text, flags=re.MULTILINE))
-    assert compare_rows >= 11, f"expected the 2B view rows in VIZ_SPEC, found {compare_rows}"
+    assert compare_rows >= 11, f"expected the Compare view rows in VIZ_SPEC, found {compare_rows}"
     find_rows = len(re.findall(r"^### 2\.\d+", text, flags=re.MULTILINE))
     assert text.count("Rejected alternative:") >= find_rows + compare_rows

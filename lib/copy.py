@@ -8,7 +8,7 @@ a threshold, a share, a median) is a `{named}` format placeholder the CALLER
 fills from CFG or the live data -- never typed here. `scan_for_digit_violations`
 at the bottom is the self-check; `tests/test_badges.py` runs it.
 
-VOICE (R2-C, `siris-voice-en`): no em dash and no "--" standing in for one
+VOICE (`siris-voice-en`): no em dash and no "--" standing in for one
 inside a user-facing string; a comma, a colon or parentheses instead. Plain
 words over jargon, because the reader is a strategy officer meeting OpenAlex
 for the first time: "histogram intersection", "excess-SI vector" and "HHI"

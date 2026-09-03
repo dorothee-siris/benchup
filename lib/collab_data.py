@@ -142,7 +142,7 @@ def _collab_pair_slice(ctx: dict, table: str, a: str, b: str) -> pd.DataFrame:
 
 
 # ============================================================================
-# The Collaborate v2 sections over ONE pair (a, b), from the `collab_pairs.
+# The Collaborate sections over ONE pair (a, b), from the `collab_pairs.
 # parquet` / `collab_pair_fields.parquet` / `collab_pair_domain_year.parquet`
 # pair files. Every table keys on (a, b) with `a` the LEXICOGRAPHICALLY
 # SMALLER institution_id (the tables' OWN convention) -- every function below
@@ -152,7 +152,7 @@ def _collab_pair_slice(ctx: dict, table: str, a: str, b: str) -> pd.DataFrame:
 # ============================================================================
 
 def _load_collab_pairs(ctx: dict, a: str, b: str) -> pd.DataFrame:
-    """Reads `collab_pairs.parquet` v2's row for this ONE
+    """Reads `collab_pairs.parquet`'s row for this ONE
     pair only, duckdb-pushed and ctx-cached per pair by
     `_collab_pair_slice` -- never the 3.58M-row whole table. Columns:
     ALL a<b indexed-institution pairs with >=1 co-published work 2020-2025,
@@ -297,7 +297,7 @@ FIELD_BREAKDOWN_NOTE = (
 
 
 def _load_collab_pair_fields(ctx: dict, a: str, b: str) -> pd.DataFrame:
-    """Reads `collab_pair_fields.parquet` v2's rows for this
+    """Reads `collab_pair_fields.parquet`'s rows for this
     ONE pair only, duckdb-pushed and ctx-cached -- never the 3.57M-row whole
     table. Pair x field, UNCAPPED (every field the pair has any joint mass
     in), bestfit tree only, same a<b/floor-5 qualifying-pair convention as
@@ -310,7 +310,7 @@ def _load_collab_pair_fields(ctx: dict, a: str, b: str) -> pd.DataFrame:
 
 def field_breakdown(ctx: dict, a: str, b: str) -> pd.DataFrame:
     """The field breakdown of the joint corpus -- one row per field the pair
-    has any joint CORE-AR mass in, from `collab_pair_fields.parquet` v2
+    has any joint CORE-AR mass in, from `collab_pair_fields.parquet`
     (UNCAPPED, bestfit-tree-only -- `.attrs['note']` carries that caveat for
     the caller's caption, and `.attrs['floor']` the qualifying-pair floor).
     Sorted by `vol` (CORE-AR) descending; empty (with the right columns) when
@@ -362,13 +362,13 @@ def momentum_display(mom_class, mom_rr, mom_p, c1, c2, facts: dict) -> tuple[str
     """SS2.3's 9-case momentum display ladder -- a PURE formatting
     function over an ALREADY-CLASSIFIED pair/field/topic row (`mom_class`/
     `mom_rr`/`mom_p` are upstream outputs from `collab_pairs`/
-    `collab_pair_fields`/`collab_pair_topics` v2; this function never
+    `collab_pair_fields`/`collab_pair_topics`; this function never
     reclassifies, and `c1`/`c2`/`facts` are accepted for signature parity
-    with the brief and future message-text branches but are not needed by
+    with future message-text branches but are not needed by
     today's 9 cases -- classification already happened upstream). Returns
     `(text, hex_colour, glyph)`; colour is NEVER the only signal -- text and
-    glyph always accompany it (WT_2BR3.md task 2.8's mandatory rule, the
-    sharpest REFUTED finding in this Wind Tunnel pass).
+    glyph always accompany it (a mandatory rule, the sharpest finding from
+    a hostile-verifier pass).
 
     The 9 cases: null/unclassified -> '—' neutral; 'weak' (0<c1<5, no
     %) -> 'weak base'; 'new' -> 'new'; 'dormant' -> 'dormant'; 'ns' (demoted
@@ -399,8 +399,8 @@ def momentum_display(mom_class, mom_rr, mom_p, c1, c2, facts: dict) -> tuple[str
 
 
 def pair_momentum(ctx: dict, a: str, b: str) -> dict | None:
-    """Pair-header momentum verdict (SS2.3): reads `collab_pairs.parquet`
-    v2's own `mom_class`/`mom_rr`/`mom_p`/`c1`/`c2` (already classified
+    """Pair-header momentum verdict (SS2.3): reads `collab_pairs.parquet`'s
+    own `mom_class`/`mom_rr`/`mom_p`/`c1`/`c2` (already classified
     upstream -- ONE drift correction per run, per SS2.3) plus each side's own
     CORE-AR window totals (`index.total_ar_full_w1/w2`, SS2.2) for the
     evidence block's d1/d2, re-oriented to the CALLER's (a, b) like every

@@ -170,7 +170,7 @@ def test_budgets():
     rebucketing) was replaced by `load_substrates` (reads
     the offline build's precomputed `app/data/scenarios/`)
     this budget now covers `load_context` + `load_substrates`, not a live
-    rebuild. Assertions unchanged (brief: "keep their assertions")."""
+    rebuild. Assertions unchanged ("keep their assertions")."""
     t0 = time.time()
     ctx = load_context(DATA_DIR)
     subs = load_substrates(ctx)

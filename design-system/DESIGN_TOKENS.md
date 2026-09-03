@@ -52,7 +52,7 @@ aspirational scale below for provenance only.
 |---|---:|---:|---|
 | Page title (`st.title`) | 44px | 700 | Streamlit default — identical across Find/Compare/Methods (`CHROME_CONTRACT.md` §1) |
 | Subsection header (`st.subheader`) | 28px | 600 | Streamlit default (`h3`) — the level every chart/table section intro uses |
-| Figure-wide default font (`FONT_PX`, `lib/charts.py`) | 12px | 400 | chart layout font; the D5 caption and the `_note` reading line both use this |
+| Figure-wide default font (`FONT_PX`, `lib/charts.py`) | 12px | 400 | chart layout font; the ratio-chart caption line and the `_note` reading line both use this |
 | Bar text / tick labels / "?" glyph (`GUTTER_FONT_PX`, `lib/charts.py`) | 11px | 400 | measured live at `rgb(90,95,102)` = `INK_SECONDARY`, matching spec exactly |
 | Table header cell (`st.dataframe`) | 16px | 700 | Streamlit default — consistent app-wide |
 | Table body cell (`st.dataframe`) | 16px | 400 | Streamlit default |
@@ -91,7 +91,7 @@ again, which is exactly how it drifted from reality the first time.
   (LEGIBILITY_BUDGETS "Table rows. working rule: add search at ~50 rows").
 - Every ranked table's score column, evidence column and type/badge column keep
   identical widths and order across all 10 lens tabs — "a reader learns each form
-  once" (Lorraine VIZ_SPEC.md §3 rule 1, `same-read-same-form`).
+  once" (`VIZ_SPEC.md` §3 rule 1, `same-read-same-form`).
 - Wide tables (concordance rank matrix, 8+ lens columns) scroll horizontally inside
   their own container; the page body never does (SIRIS house rule; ui-ux-pro-max
   ux-guidelines.csv "Table Handling": "Use horizontal scroll. overflow-x-auto
@@ -107,14 +107,14 @@ tie-inclusive-rank, undefined-lens) follows one shape:
 short text label [ⓘ tooltip trigger]
 ```
 
-**R1 change:** the optional leading coloured dot is
-GONE. removed the badge column from every table (user ruling
-#8: the type post-filter covers the need), which left the
+The optional leading coloured dot is
+GONE. The badge column was removed from every table (the type post-filter
+covers the need), which left the
 institution-type identity set with no consumer, so `lib.palette.TYPE_COLORS` and
 `type_group` were DELETED — a grep before deletion found them referenced only by
 `palette.py` itself, `tests/test_palette.py` and two prose lines in THIS file. No
 badge in the app carries a colour any more; every one is text + an optional
-tooltip trigger. Colour in R1 belongs exclusively to the four IDENTITY FAMILIES
+tooltip trigger. Colour belongs exclusively to the four IDENTITY FAMILIES
 of `VIZ_SPEC.md` §1.1 (OpenAlex domain, ERC domain, SDG, document type), one
 family per chart. The five deleted hexes stay recorded in
 `design-system/palette_validation.txt` run 1 and in `lib/palette.py`'s removal
@@ -125,7 +125,7 @@ validator run.
   red/green alone" generalises here to *any* categorical fact worth flagging.
   Concretely: `type-corrected` renders as the text "type corrected by SIRIS (was:
   {type_openalex})" and `umbrella` as the text "EXPERIMENTAL" + a tooltip
-  neither carries colour, and since R1 neither does anything else that calls
+  neither carries colour, and no other element in the app calls
   itself a badge. The same principle governs the two CHART flags that replaced
   the idea of a badge hue: a catch-all (811) topic is marked by a glyph plus
   reduced fill opacity, and a top-quartile frontier topic by an ink outline
@@ -138,18 +138,18 @@ validator run.
 
 ## 5b. tokens
 
-Three new `lib/palette.py` exports, contracted by name for the streams that
-consume them (VC, CD5) — do not rename on a future edit without updating both
+Three new `lib/palette.py` exports, contracted by name for the modules that
+consume them — do not rename on a future edit without updating both
 sides.
 
 | Export | Value | Role |
 |---|---|---|
-| `palette.SHARED_FRONTIER` | `#821D13` | **D7 ratified.** Retires old `#7A1600` (2026-09-01) — full validator pass, no exception needed: vs vermillion 22.8/23.0 (normal/deutan), vs navy trio min 20.5/16.0, contrast on white 9.84:1. See `palette.py`'s own provenance comment and `palette_validation.txt` run 37 for every number, the two rejected candidates, and the disclosed residual below. |
-| `palette.FRONTIER_SHARED_HALO` | `{"color": SURFACE, "width": 1.5}` | The non-colour differentiator on a "held by more than one institution" mark — a white/`SURFACE` outline ring, shaped as a Plotly `marker.line` dict so VC can drop it straight into the frontier scatter's marker spec. Exists because D7's own re-measurement found the residual below has no colour-only fix. |
-| `palette.WARNING_CAPTION_COLOR` | `= SHARED_FRONTIER` (by reference, not a second literal) | D5's ratio-chart warning-caption colour (CHROME_CONTRACT.md §7): red, **not bold**, 12px (`FONT_PX`), same visual weight as an ordinary `_note` reading line. Composition (never bold, never a `st.warning` banner) is the caller's job — this file exports only the hex. |
-| `palette.RATIO_HATCH_FLOOR` | `50` | **D6 AMENDED.** One user-facing sentence — "a bar hatches when it rests on fewer than 50 works over 2020–2024" — two implementations: PP and FWCI charts hatch a ROW when its own `denom_value < 50` (per-row, varies bar to bar); Share/SI/SDG-share/ERC/Dynamics charts keep their existing `vol_full_annual_mean < 10/yr` numerator trigger, because THEIR `denom_value` is the institution's constant total, not a per-row count, and applying the floor to that column would silently disable hatching (WT_2C.md claim 4: share denominators measured at 400–1,200, never below 50). |
+| `palette.SHARED_FRONTIER` | `#821D13` | **Ratified.** Retires an earlier `#7A1600` — full validator pass, no exception needed: vs vermillion 22.8/23.0 (normal/deutan), vs navy trio min 20.5/16.0, contrast on white 9.84:1. See `palette.py`'s own provenance comment and `palette_validation.txt` run 37 for every number, the two rejected candidates, and the disclosed residual below. |
+| `palette.FRONTIER_SHARED_HALO` | `{"color": SURFACE, "width": 1.5}` | The non-colour differentiator on a "held by more than one institution" mark — a white/`SURFACE` outline ring, shaped as a Plotly `marker.line` dict so it can be dropped straight into the frontier scatter's marker spec. Exists because re-measurement found the residual below has no colour-only fix. |
+| `palette.WARNING_CAPTION_COLOR` | `= SHARED_FRONTIER` (by reference, not a second literal) | The ratio-chart warning-caption colour (CHROME_CONTRACT.md §7): red, **not bold**, 12px (`FONT_PX`), same visual weight as an ordinary `_note` reading line. Composition (never bold, never a `st.warning` banner) is the caller's job — this file exports only the hex. |
+| `palette.RATIO_HATCH_FLOOR` | `50` | **Amended.** One user-facing sentence — "a bar hatches when it rests on fewer than 50 works over 2020–2024" — two implementations: PP and FWCI charts hatch a ROW when its own `denom_value < 50` (per-row, varies bar to bar); Share/SI/SDG-share/ERC/Dynamics charts keep their existing `vol_full_annual_mean < 10/yr` numerator trigger, because THEIR `denom_value` is the institution's constant total, not a per-row count, and applying the floor to that column would silently disable hatching (share denominators measured at 400–1,200, never below 50). |
 
-**D7 residual, disclosed rather than hidden (do not let a future edit drop
+**Residual, disclosed rather than hidden (do not let a future edit drop
 this):** `#821D13` clears every ΔE check with margin, but the luminance/contrast
 separation from navy slot 2 barely moves and is marginally WORSE than the old
 colour (1.75:1 vs 1.93:1) — the whole gain is a modest lightness lift capped by
@@ -159,7 +159,7 @@ reading as "similarly dark blobs" (a luminance problem) rather than about hue,
 no ΔE-passing red fully solves it alone — `FRONTIER_SHARED_HALO` is the
 compensating SHAPE signal for exactly that gap.
 
-## 6. Reconciliation vs `design-system/benchup-/MASTER.md`
+## 6. Reconciliation vs the `ui-ux-pro-max` design-system pass
 
 The ui-ux-pro-max pass returned a **B2B-SaaS marketing-adjacent "Enterprise
 Gateway" pattern** paired with a **"Data-Dense Dashboard" style** at density 8/10.
@@ -188,7 +188,7 @@ funnel). Kept vs. rejected, explicitly:
   `border-b-2` underline pattern)** — Streamlit's native `st.tabs` already does
   this; noted so a future custom tab component does not regress it.
 
-### Rejected from ui-ux-pro-max (explicit, per brief)
+### Rejected from ui-ux-pro-max (explicit)
 1. **The entire "Enterprise Gateway" pattern** (hero video/mission, mega menu,
    client-logo carousel, "Contact Sales" CTA, path-selection landing) — this is a
    marketing-site pattern; BenchUp's Menu page is a nav-card grid to two
@@ -222,7 +222,7 @@ funnel). Kept vs. rejected, explicitly:
 
 ## 7. `<slug>` for the record
 
-`design-system/benchup-/MASTER.md` — persisted, density 8/10,
+The `ui-ux-pro-max` run for this project — persisted, density 8/10,
 category "Analytics Dashboard", query "peer benchmarking analytics dashboard
 higher education research" (`--design-system` mode) + 3 targeted `--domain ux`
 queries ("ranked table dense rows readable", "active filters disclosure strip",
@@ -244,7 +244,7 @@ and the rejected candidates. The token-level consequences for this file:
 
 | Token | Value | Role |
 |---|---|---|
-| `SURFACE` | `#FFFFFF` | every figure's `paper_bgcolor` + `plot_bgcolor`; also the `--surface` of every R1 validator run |
+| `SURFACE` | `#FFFFFF` | every figure's `paper_bgcolor` + `plot_bgcolor`; also the `--surface` of every palette validator run |
 | `INK_SECONDARY` | `#5A5F66` | KPI-tile sublines, volume-gutter numbers, chip labels, axis ticks, chart annotations (6.43:1 on white — above the body-text floor) |
 | `BORDER` | `#E3E6EA` | tile/panel hairlines, the gutter's zero baseline |
 | `GRID` | `#D9DDE2` | gridlines and zero lines — must RECEDE; the low contrast is the requirement, not the defect |
@@ -264,7 +264,7 @@ NEUTRAL / INK.
   any two categories side by side.
 - **Never a dual axis.** This is why A/B #3's rival had to be built as a
   single-axis expected-share tick rather than "SI on a second x-scale": the
-  literal reading of the brief would have been the skill's #1 anti-pattern.
+  literal reading of the requirement would have been the skill's #1 anti-pattern.
 - **Colour follows the entity, never its rank.** The sort toggle re-orders rows
   and repaints nothing; `tests/test_charts.py` pins it.
 - **Selective direct labels, never a number on every point.** Applied to the
@@ -277,9 +277,9 @@ NEUTRAL / INK.
   `INK`/`INK_SECONDARY` for every number and label — a value never wears its
   series colour.
 - **Step 7, render it and look at it.** Eight PNGs at 1280 and 390 px, read
-  visually, not inferred from the code (`design-system/ab/`).
+  visually, not inferred from the code.
 
-### 8.3 `ui-ux-pro-max` R1 pass — kept
+### 8.3 `ui-ux-pro-max` pass — kept
 
 Queries: `--domain chart "horizontal bar chart ranking comparison scatter bubble"`,
 `--domain ux "expander collapsible panel KPI card scatter plot legend placement"`,
@@ -303,7 +303,7 @@ Queries: `--domain chart "horizontal bar chart ranking comparison scatter bubble
   Already satisfied: every panel's numbers ship as CSV and its caption states the
   reading (VIZ_SPEC §1.7, and no panel is a PNG-only artefact).
 
-### 8.4 `ui-ux-pro-max` R1 pass — rejected (explicit)
+### 8.4 `ui-ux-pro-max` pass — rejected (explicit)
 
 1. **"Colour axis: gradient (blue → red)" for the scatter** — rejected. That is a
    sequential ramp for a third continuous variable; the frontier scatter's colour
@@ -341,5 +341,5 @@ the digit-ban makes that a mechanical requirement, not a style preference.
 | `GUTTER_FRACTION` / `GUTTER_INSET` | 0.16 / 0.06 | the left volume gutter (A/B #4 winner) as a fraction of the x range |
 | `MARKER_PX` / `LINE_PX` / `HAIRLINE_PX` | 10 / 2 / 1 | SI dot, SI stem and every hairline — thin marks, per the dataviz mark specs |
 | `BUBBLE_MIN_PX` / `BUBBLE_MAX_PX` | 6 / 34 | frontier bubble range (area ∝ mass via a sqrt scale) |
-| `DEFAULT_GROUP_SPAN` / `DEFAULT_GROUP_FILL` | 0.8 / 0.9 | Lorraine's grouped-bar geometry, verbatim — `offsetgroup` is broken on plotly 5.24.1 |
+| `DEFAULT_GROUP_SPAN` / `DEFAULT_GROUP_FILL` | 0.8 / 0.9 | the grouped-bar geometry, verbatim — `offsetgroup` is broken on plotly 5.24.1 |
 | `SHARE_DECIMALS` / `SI_DECIMALS` | 1 / 2 | one precision level per measure (RULES §5); number formats are composed from these |

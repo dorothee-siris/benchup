@@ -19,7 +19,7 @@ would hit in a wider (non-EU27) snapshot. That row never shows up in this
 app's live data; it is a standing regression test fixture, not live coverage.
 
 `name(code)` never raises and never returns an empty string for a non-empty
-input: an unrecognised code falls back to the code itself (.3 R-F2 brief), logged once per code per process -- never a wall of
+input: an unrecognised code falls back to the code itself, logged once per code per process -- never a wall of
 repeated warnings for a wide table.
 """
 from __future__ import annotations

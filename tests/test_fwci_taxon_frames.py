@@ -81,7 +81,7 @@ def test_fwci_taxon_n_covered_floor_holds(ctx, level):
 def test_taxon_metrics_unknown_level_raises_not_silently_empty(ctx):
     """VACUITY for the level assertion `_taxon_metrics` (the merged
     share/si/pp/fwci builder `sdg_frame`/`all_subfields` both call) applies:
-    an unsupported grain -- `field`/`erc`, deleted with this stream (E12)
+    an unsupported grain -- `field`/`erc`, deleted here
     must raise, never quietly return zero rows (which would let a caller
     believe "no data" instead of "wrong/retired grain name")."""
     with pytest.raises(AssertionError):

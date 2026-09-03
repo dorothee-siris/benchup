@@ -8,7 +8,7 @@ same house rules `tests/test_charts.py` enforces on `lib/charts.py`.
 The frames are built INLINE, from `lib/charts_compare.py`'s own builder
 docstrings, rather than imported from `lib/compare_data.py`: that module is
 , built in a later wave, and this test must not block on it. The
-column names below ARE the contract this stream promises C1/C3.
+column names below ARE the contract the charts must satisfy.
 
 Run from cwd `app/`: python -m pytest tests/test_charts_compare.py -q
 """
@@ -385,7 +385,7 @@ def test_wrap_topic_label_ellipsis_only_past_the_character_budget():
 
 
 def test_wrap_topic_label_real_openalex_name_survives_whole():
-    """The manager's own example (CHROME_CONTRACT.md SS13.8): a realistic
+    """A realistic example (CHROME_CONTRACT.md SS13.8): a realistic
     25-60 char OpenAlex topic name must render in full, never ellipsised."""
     name = "Geological and Geochemical Analysis"
     assert len(name) <= X.MIRROR_LABEL_CHAR_BUDGET
@@ -683,7 +683,7 @@ def test_the_hex_scan_actually_covers_this_module():
 
 
 def test_deleted_builders_are_actually_gone():
-    """Non-vacuity proof for the C2 brief's deletion list (item 5): none of
+    """Non-vacuity proof for the deletion list (item 5): none of
     these names may be DEFINED or USED as code any more (a docstring
     module, class or function -- is free to still NAME them in prose,
     crediting what changed and why: the same "a docstring is prose for a

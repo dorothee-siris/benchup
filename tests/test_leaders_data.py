@@ -100,7 +100,7 @@ def test_star_share_range_and_nan_rule(index_df):
 
     DEVIATION found by this probe: Google UK (I4210113297)
     42 stars / 204 AR works (a tiny-denominator elite-AI-lab case) -- sits at
-    0.2059, 0.006 over the brief's stated 0.2 ceiling. Verified against real
+    0.2059, 0.006 over the stated 0.2 ceiling. Verified against real
     data (not a computation bug: n_stars and the two AR totals are each
     independently checked elsewhere in this file), so the upstream data is NOT
     altered to force it under 0.2 -- this test instead asserts the true,

@@ -37,7 +37,7 @@ def _src(name: str) -> str:
 
 
 # ============================================================================
-# E7 -- exactly one st.download_button( call site per view module
+# exactly one st.download_button( call site per view module
 # ============================================================================
 
 @pytest.mark.parametrize("filename", VIEW_FILES)
@@ -57,10 +57,10 @@ def test_exactly_one_download_button_call_site(filename):
 
 
 def test_no_download_button_call_site_outside_the_three_view_modules():
-    """E7's own scope is the per-section CSVs the Find/Compare/Collaborate
+    """This module's own scope is the per-section CSVs the Find/Compare/Collaborate
     pages used to offer -- it never touched `views_methods.py`'s own,
     pre-existing "Download METHODS_NOTE.md" button (a standing feature,
-    unrelated to any 2D metric/workbook), so that ONE extra file is
+    unrelated to any other metric/workbook), so that ONE extra file is
     disclosed and allowed here by name rather than silently excluded.
     Beyond that single, named exception, no OTHER file in `lib/` may call
     `st.download_button(` at all."""
@@ -78,7 +78,7 @@ def test_no_download_button_call_site_outside_the_three_view_modules():
 
 
 # ============================================================================
-# E7 -- workbook builders exist and return the contracted sheet counts
+# workbook builders exist and return the contracted sheet counts
 # ============================================================================
 
 def test_compare_workbook_builder_returns_exactly_seven_sheets():
@@ -92,7 +92,7 @@ def test_compare_workbook_builder_returns_exactly_seven_sheets():
 
     ctx = SC.bundle()["ctx"]
     subs = SC.get("bestfit", "full")
-    ids = ["I154202486", "I4210107283"]  # Ifremer x NIOZ, the T0 anchor pair
+    ids = ["I154202486", "I4210107283"]  # Ifremer x NIOZ, the anchor pair
 
     sheets = VC._workbook_sheets(ctx, subs, ids)
     assert len(sheets) == 7, len(sheets)

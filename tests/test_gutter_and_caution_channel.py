@@ -1,20 +1,21 @@
 """tests/test_gutter_and_caution_channel.py --, cross-cutting
-guard for E5 (the caution channel: no more hatch/hollow, solid bars +
-WARNING_CAPTION_COLOR text + dagger) and E6 (the left-gutter column: a
+guard for the caution channel (no more hatch/hollow, solid bars +
+WARNING_CAPTION_COLOR text + dagger) and the left-gutter column (a
 phantom trace + header annotation replacing the earlier bar-end "(N)" text),
 .
 
-`tests/test_hatch_rule.py` (CH2's own re-pin, the ONE granted full-module
-rewrite exception this round) already exercises the caution FORK in depth
+`tests/test_hatch_rule.py` (re-pinned, the ONE granted full-module
+rewrite exception) already exercises the caution FORK in depth
 deliberately with `gutter=False`, to isolate the caution assertions from the
 gutter feature entirely (its own docstring says so explicitly). This module
 is the one that turns the gutter ON and checks the two features TOGETHER
-(the header annotation text, the phantom trace's OWN caution colour -- CH2's
+(the header annotation text, the phantom trace's OWN caution colour --
+`test_hatch_rule.py`'s own
 docstring promises the flag reaches "its VALUE text AND its gutter-column
 text", a claim `test_hatch_rule.py` never has the gutter live to check),
 plus the module-wide "no marker.pattern anywhere" ban and the wide/narrow
 dual-variant contract `views_compare._metric_chart` builds for every
-section (E6's own caller-decides idiom).
+section (the caller-decides idiom).
 
 VACUITY, per module: every assertion is followed by an in-memory mutation
 that makes the identical check fail.
@@ -72,7 +73,7 @@ def _bars(fig) -> list:
 
 
 # ============================================================================
-# E6 -- the gutter column: phantom trace + header annotation
+# the gutter column: phantom trace + header annotation
 # ============================================================================
 
 def test_gutter_true_emits_the_phantom_trace_and_header_annotation():
@@ -117,8 +118,8 @@ def test_gutter_false_drops_both_the_phantom_trace_and_the_header():
 
 
 def test_below_floor_row_cautions_its_gutter_text_too_not_only_the_bar():
-    """E5+E6 together: the flagged row's caution colour must reach BOTH
-    texts CH2's own docstring promises -- the bar's value text AND its
+    """Both features together: the flagged row's caution colour must reach BOTH
+    texts the docstring above promises -- the bar's value text AND its
     gutter-column text -- with the gutter ACTUALLY ON this time."""
     fig = X.fig_metric_bars(_frame(), "share", [IID], slots=_slots(), names=NAMES,
                             level="field", gutter=True, gutter_header="Publications")
@@ -143,11 +144,11 @@ def test_below_floor_row_cautions_its_gutter_text_too_not_only_the_bar():
 
 
 # ============================================================================
-# E5 -- no marker.pattern (hatch), ever, in this chart
+# no marker.pattern (hatch), ever, in this chart
 # ============================================================================
 
 def test_no_marker_pattern_anywhere_in_a_rendered_metric_bars_figure():
-    """E5's own headline: `fig_metric_bars` must never emit a
+    """The headline rule: `fig_metric_bars` must never emit a
     `marker.pattern` shape on ANY trace -- bar or gutter -- for ANY metric
     this chart draws. The hatch/hollow machinery is DELETED, not merely
     unused by default. BenchUp V4 trim: `X.SELECTOR_METRICS` no longer exists, and
@@ -174,7 +175,7 @@ def test_no_marker_pattern_anywhere_in_a_rendered_metric_bars_figure():
 
 
 # ============================================================================
-# E6 -- gutter=True/False build from the same frame, differ only in the
+# gutter=True/False build from the same frame, differ only in the
 # gutter mechanism. An earlier page built a
 # CSS-media-query dual variant (`views_compare._metric_chart`, since
 # deleted) for every section; this page calls `charts_compare.two_tab_bars`

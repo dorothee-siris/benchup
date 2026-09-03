@@ -117,7 +117,7 @@ DATAFRAME_LOADERS = ["index", "fields", "subfields", "topics_dim", "erc", "sdg",
 ALIASED_TABLES = {"index": "index_df", "fields": "fields_df", "subfields": "subfields_df",
                   "erc": "erc_df", "sdg": "sdg_df"}
 
-# Measured 2026-09-03 (this file's own calibration, post-unification):
+# Measured on the shipped data (this file's own calibration, post-unification):
 # loader sweep RSS delta 429.70 MB WorkingSetSize -- ~1.6x headroom under
 # this ceiling (recalibrated DOWN from the earlier file's 900 MB; the five now-
 # aliased loaders stopped paying for a second copy of index/fields/
@@ -126,7 +126,7 @@ ALIASED_TABLES = {"index": "index_df", "fields": "fields_df", "subfields": "subf
 # process-level signal than the frame census below).
 RSS_DELTA_BUDGET_MB = 700.0
 
-# Measured 2026-09-03: frame census 91.42 MB DEDUPED BY IDENTITY (index
+# Measured on the shipped data: frame census 91.42 MB DEDUPED BY IDENTITY (index
 # 17.12 + fields 4.84 + subfields 23.47 + topics_dim 3.55 + erc 5.53 +
 # sdg 2.99 + doctype_by_year
 # 2.97 + sdg_fields 5.30 + sdg_year 8.02 + ctx.index_by_id 17.12 +
@@ -140,7 +140,7 @@ FRAME_BUDGET_MB = 450.0
 
 # The scenario-swap ceiling:
 # every RSS reading across the 6-scenario cycle must stay within this many
-# MB of the FIRST reading. Measured 2026-09-03: max delta ~300 MB (two
+# MB of the FIRST reading. Measured on the shipped data: max delta ~300 MB (two
 # basis-keyed topic-share matrices, ~172 MB each, load once each and then
 # stay resident for the rest of the process by design -- an architecture
 # note "tree/basis-invariant blocks. loaded once and shared" -- NOT a
@@ -156,8 +156,8 @@ SCENARIOS = [(tree, basis)
             for basis in ("frac", "full")]
 
 # NEW (a concurrency fix, found via a stress test, phase B): 40
-# distinct qualifying pairs, seeded, `core_total >= 20` (well above the P7
-# floor of 5 -- every function below has real rows to chew on, not empty
+# distinct qualifying pairs, seeded, `core_total >= 20` (well above the
+# qualifying floor of 5 -- every function below has real rows to chew on, not empty
 # frames). Measured pre-fix: ~1.8 MB/pair sequential slope from the
 # unbounded `ctx[key] = df` per-pair caches in `lib/collab_data.py`/
 # `lib/leaders_data.py`/`lib/compare_data.py` -- small alone, but the same
@@ -334,7 +334,7 @@ def test_scenario_cycle():
     BARE mode -- no real Streamlit server, the same "missing
     ScriptRunContext" condition this whole test file already runs under (a
     plain `python -m pytest` invocation, not `streamlit run`) -- so the
-    brief's fallback path (drive the cycle through a real `streamlit run`
+    fallback path (drive the cycle through a real `streamlit run`
     subprocess) was not needed; this test's own assertions are that
     confirmation, made permanent."""
     baseline_after_first = None

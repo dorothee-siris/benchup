@@ -22,13 +22,13 @@ a caller fills at render time from CFG or the live data. Two scopes:
       created (the Compare page and its six new lib modules)
       was covered. `SCOPE_B_FILES` below now globs lib/views_*.py rather than
       naming lib/views_find.py alone, and explicitly adds the other five new
-      modules the brief names. Two of them (lib/charts_compare.py,
+      modules. Two of them (lib/charts_compare.py,
       lib/exports_xlsx.py) hold no `import streamlit` at all -- they are
       scanned anyway (the AST walk costs nothing on a file with zero matches)
       so a future UI call added to either is covered from day one, not
       discovered by a second widening.
 
-      DEVIATION FROM THE LITERAL BRIEF WORDING ("ast walk: Call nodes whose
+      DEVIATION FROM THE LITERAL SPEC WORDING ("ast walk: Call nodes whose
       func is st.<name> or st.column_config.<name>"): lib/views_find.py
       aliases st.sidebar to `sb`, st.columns(.) to `cols`, individual
       columns to `col_a`/`col_b`/`cols[0]`, etc. (this is ordinary Streamlit
@@ -123,7 +123,7 @@ ALLOWLIST_PATH = Path(__file__).resolve().parent / "digit_allowlist.txt"
 
 # label=/help=/caption=/placeholder= only -- scope,
 # not every kwarg a Streamlit call accepts (e.g. `format=`, `page_title=` are
-# deliberately not scanned: out of the brief's named kwarg set).
+# deliberately not scanned: out of the named kwarg set).
 KW_NAMES = {"label", "help", "caption", "placeholder"}
 
 # Grounded in the real installed Streamlit API (see module docstring)
@@ -269,7 +269,7 @@ def test_allowlist_has_required_tokens_and_stays_small():
     # identifier, not a data value).
     # Later: an earlier token was retired (dead, press audit J2) and
     # "PP10_WD" took its slot at no cost to the cap; "EU27" then pushed the
-    # count to nineteen -- E1's ruled perimeter phrase ("the European
+    # count to nineteen -- the ruled perimeter phrase ("the European
     # baseline (EU27 plus the United Kingdom, Switzerland, Norway and
     # Iceland)") is typed verbatim, on first mention, on every page that
     # names the term. Cap moves 18->19 for exactly this one token, same

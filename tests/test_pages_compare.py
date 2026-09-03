@@ -64,7 +64,7 @@ def _app(ids=None, **extra_state) -> AppTest:
 
 
 def _markdown_text(at) -> str:
-    """Every rendered markdown block, joined -- C3's own captions/notes are
+    """Every rendered markdown block, joined -- captions/notes are
     HTML fragments through `chart_note`/`basis_caption`, rendered via
     `st.markdown`, not `st.caption` alone."""
     return " ".join(m.value for m in at.markdown)
@@ -254,7 +254,7 @@ def test_workbook_bytes_carry_exactly_seven_named_sheets():
 
 
 def test_workbook_still_builds_after_the_show_all_state_flip():
-    """The 2C lesson (memory: streamlit-rerun-breaks-download-button): a
+    """A known lesson (memory: streamlit-rerun-breaks-download-button): a
     manual `st.rerun` on top of a widget's own rerun poisons every
     `st.download_button` for the session. `_toggle_frontier_show_all` uses
     `on_click` with no `st.rerun` call (grep-proved below) -- this test
@@ -275,8 +275,8 @@ def test_workbook_still_builds_after_the_show_all_state_flip():
     assert before == after  # same (a, b) key -> the SAME cached bytes, workbook unaffected by the UI flag
 
     # the download button itself must still be present and clickable-looking
-    # (no exception) after the flip -- the actual regression the 2C lesson
-    # names was a SILENTLY BROKEN button, not a raised exception, so the
+    # (no exception) after the flip -- the actual regression named above
+    # was a SILENTLY BROKEN button, not a raised exception, so the
     # positive assertion (present, page still exception-free) is the real
     # proof here.
     dl_buttons = [b for b in at.download_button if b.label == copy.COMPARE["EXPORT_BUTTON"]]
@@ -285,7 +285,7 @@ def test_workbook_still_builds_after_the_show_all_state_flip():
 
 def test_no_st_rerun_call_anywhere_in_views_compare():
     """The HARD RULE, source-level: `st.rerun` never appears as LIVE CODE
-    in this stream's own file (a prose mention inside a docstring
+    in this file (a prose mention inside a docstring
     explaining the rule -- as this very test's own docstring does -- is not
     a violation; only an AST `Call` node is). `on_click` callbacks
     (`_toggle_frontier_show_all`) are the ONLY state-flip mechanism."""
@@ -321,7 +321,7 @@ def test_share_link_box_renders_the_compare_deeplink():
 def test_format_percent_is_banned_in_this_streams_own_files():
     """The hard rule: `format="percent"` is
     BANNED. `tests/test_2c_locale_ban.py` already sweeps the whole `lib/`
-    tree; this re-confirms it directly on this stream's own two files as a
+    tree; this re-confirms it directly on these two files as a
     fast, file-scoped guard."""
     for rel in ("lib/views_compare.py", "lib/exports_xlsx.py"):
         src = (APP_DIR / rel).read_text(encoding="utf-8")

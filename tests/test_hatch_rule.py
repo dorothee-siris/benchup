@@ -70,7 +70,7 @@ def _frame() -> pd.DataFrame:
 
 def _render(metric: str):
     """The one real trace this single-institution frame draws -- `gutter=False`
-    isolates the caution-CHANNEL assertions below from the separate E6 left-
+    isolates the caution-CHANNEL assertions below from the separate left-
     gutter-column feature (its own dedicated tests live in
     tests/test_charts_compare.py / tests/test_gutter_and_caution_channel.py)."""
     fig = X.fig_metric_bars(_frame(), metric, [IID], slots=_slots(), names=NAMES,
@@ -150,7 +150,7 @@ def test_ratio_hatch_metrics_vocabulary_is_exactly_pp():
     """The fork itself, not just its effect: `RATIO_HATCH_METRICS` must name
     exactly the one metric with a genuinely per-row diagnostic denominator
     that this trimmed chart still draws -- `fwci` is gone with the retired
-    selector (C2's own deletion), so it can no longer be a member."""
+    selector, so it can no longer be a member."""
     assert set(X.RATIO_HATCH_METRICS) == {"pp"}
     assert set(X.RATIO_HATCH_METRICS) <= set(X.METRICS)
     assert set(X.METRICS) == {"share", "pp"}

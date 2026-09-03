@@ -47,7 +47,7 @@ from lib.engine import scenario_cache as SC
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 IFREMER = "I154202486"
-NIOZ = "I4210107283"  # the T0 anchor pair
+NIOZ = "I4210107283"  # the anchor pair
 
 
 @pytest.fixture(scope="module")
@@ -66,7 +66,7 @@ def share_refs() -> pd.DataFrame:
 
 
 # ============================================================================
-# E8 -- top_subfields/sdg_frame's eu_mean_share cross-checks share_refs.parquet
+# top_subfields/sdg_frame's eu_mean_share cross-checks share_refs.parquet
 # ============================================================================
 
 def test_eu_mean_share_matches_share_refs_parquet_independently(ctx, subs, share_refs):
@@ -101,14 +101,14 @@ def test_eu_mean_share_matches_share_refs_parquet_independently(ctx, subs, share
 
 
 # ============================================================================
-# E8 -- a 0.0 reference survives, data layer through the chart layer
+# a 0.0 reference survives, data layer through the chart layer
 # ============================================================================
 
 def test_a_zero_reference_survives_from_frame_to_chart():
     """A genuine 0.0 `ref_value` reaches `charts_compare.fig_metric_bars` as
     a drawn diamond reference marker -- `_add_reference`'s own docstring
     promises `np.isfinite`, never truthiness. Synthetic frame (the SAME
-    `two_tab_bars`/`fig_metric_bars` input contract C3's own page builds),
+    `two_tab_bars`/`fig_metric_bars` input contract the page builds),
     since the point under test is the CODE PATH, not any one real anchor's
     own reference value on this snapshot."""
     from lib import charts_compare as X

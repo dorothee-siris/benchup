@@ -146,7 +146,7 @@ article-and-review output over the same window (`index.parquet` `n_stars`/`star_
 institution with a handful of highly cited papers can post a very high share on a very small
 base. Google (United Kingdom) illustrates the case on this snapshot, with a 20.6% star share
 resting on a small output (measured live as the index row with the highest `star_share`; 42
-stars over 204 articles and reviews, P5 finding); the raw count sits beside the share for exactly
+stars over 204 articles and reviews); the raw count sits beside the share for exactly
 this reason, so a high share is never read without its own denominator.
 
 ## The relationship

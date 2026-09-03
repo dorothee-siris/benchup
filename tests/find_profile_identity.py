@@ -2,11 +2,11 @@
 tests/find_profile_identity.py -- acceptance step 5.
 
 For the 12 seeds in the reference profile golden, recomputes the
-SIX legacy profile-header KPI values through this stream's OWN code path
+SIX legacy profile-header KPI values through the current code path
 (`lib.engine.scenario_cache.bundle` / `.get`, the same objects
 `views_find._render_profile` -> `_card_specs` reads) on the default scenario
 (`bestfit`/`frac`, matching the golden's own `default_scenario`), and asserts
-EXACT equality against the golden -- the new P5 KPIs (star papers, topics
+EXACT equality against the golden -- the two newer KPIs (star papers, topics
 led) are excluded on purpose: they are NEW figures with their own tier-A eval, not part of this identity claim.
 
 Exit 0 on a clean match; prints a diff and exits 1 on the first mismatch.

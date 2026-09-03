@@ -46,7 +46,7 @@ CNRS = "I1294671590"
 # ============================================================================
 
 def test_pulse_pinned_anchor_cnrs_strasbourg_table_order(ctx):
-    """Manager-pinned fact: copubs_total 12694,
+    """Pinned fact: copubs_total 12694,
     rank_in_b 1 -- called in the TABLE's own a<b order (CNRS < Strasbourg
     lexicographically)."""
     got = CL.pulse(ctx, CNRS, STRASBOURG)
@@ -103,8 +103,8 @@ def test_field_breakdown_matches_collab_pair_fields_anchor(ctx):
     """RE-DERIVED: `vol_total`
     -> `vol` (rebased all-types/2020-2025 -> CORE-AR articles+reviews/2020-
     2024) and `mean_citations` DROPPED entirely, superseded by `fwci_median`
-    (ruling 4, SS2.2 dropped_column note). Independent anchor, re-read RAW off
-    `collab_pair_fields.parquet` v2 (also cross-referenced against
+    (SS2.2 dropped_column note). Independent anchor, re-read RAW off
+    `collab_pair_fields.parquet` (also cross-referenced against
     an OpenAlex-diagnostic-verified `computed_vol`/
     `computed_n_top10`/`computed_n_covered` for this exact pair/field, see
     `test_golden_numbers.py`): CNRS x Strasbourg's largest joint field

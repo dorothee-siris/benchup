@@ -1,7 +1,6 @@
 """
-tests/test_decisions_log_rules.py -- two decisions-log
-rules this app's own page/copy carry out, named explicitly in
-the "Decisions log" table and in the build brief.
+tests/test_decisions_log_rules.py -- two rules this app's own page/copy
+carry out, named explicitly in the "Decisions log" table.
 
 An earlier version of this file tested
 `compare_data.metric_frame`'s old-column contract, `JOINT_TOPICS_COLS`,
@@ -11,18 +10,18 @@ own rewrite (the whole N-institution
 survives to re-test; `tests/test_compare_data.py`
 and `tests/test_compare_golden_anchors.py` already cover the
 DATA layer for the new API in depth. What remains genuinely relevant here is the
-VIEW-level disclosure of two decisions-log rules:
+VIEW-level disclosure of two rules:
 
   1. "Joint volume per shared-frontier topic shown only for pairs with
-     core_total >= 5 (P7 qualifying floor); below it the joint segment is
+     core_total >= 5 (the qualifying floor); below it the joint segment is
      absent and the caption says why".
   2. "Relationship yearly stack sums to the pair's joint articles+reviews
-     THAT CARRY A PRIMARY TOPIC. C3's caption must say 'joint articles
+     THAT CARRY A PRIMARY TOPIC. The caption must say 'joint articles
      and reviews with a subject topic'. when Sigma yearly < core_total" -- the topicless-works caption.
 
-Plus the grep proof this stream's own acceptance line asks for: no
-reference to the deleted `state.COLLAB_CAP` survives anywhere under this
-stream's fence.
+Plus the grep proof this file's own acceptance line asks for: no
+reference to the deleted `state.COLLAB_CAP` survives anywhere under the
+files this module owns.
 
 Run from cwd `app/`: python -m pytest tests/test_decisions_log_rules.py -q
 """
@@ -40,7 +39,7 @@ from lib.engine import scenario_cache as SC
 APP_DIR = Path(__file__).resolve().parents[1]
 
 IFREMER = "I154202486"
-NIOZ = "I4210107283"  # T0 anchor pair -- qualifies, no topicless residual
+NIOZ = "I4210107283"  # anchor pair -- qualifies, no topicless residual
 TOPICLESS_A, TOPICLESS_B = "I70900168", "I861853513"  # a real pair with a
 # genuine topicless residual (core_total=426, Sigma(yearly.vol)=425 -- probed
 # live, duckdb, 2026-09-03), used to prove the flag is REACHABLE, not just
@@ -58,7 +57,7 @@ def subs():
 
 
 # ---------------------------------------------------------------------------
-# 1. joint segment absent below the P7 floor (shared_frontier.joint_known)
+# 1. joint segment absent below the qualifying floor (shared_frontier.joint_known)
 # ---------------------------------------------------------------------------
 
 def test_shared_frontier_joint_known_is_true_for_a_qualifying_pair(ctx, subs):
@@ -95,8 +94,8 @@ def test_shared_frontier_tip_names_the_p7_floor_in_words():
 # ---------------------------------------------------------------------------
 
 def test_relationship_topicless_note_is_false_for_the_t0_anchor_pair(ctx, subs):
-    """The T0 anchor pair's yearly breakdown sums EXACTLY to core_total
-    (P2's own finding: 99.7% of qualifying pairs are exact) -- the flag
+    """The anchor pair's yearly breakdown sums EXACTLY to core_total
+    (measured: 99.7% of qualifying pairs are exact) -- the flag
     must read False here, never a blanket True."""
     rel = CD.relationship(ctx, [IFREMER, NIOZ], subs)
     assert rel["topicless_note"] is False
@@ -113,7 +112,7 @@ def test_relationship_topicless_note_is_true_for_a_real_residual_pair(ctx, subs)
     assert rel["topicless_note"] is True
     assert rel["yearly"]["vol"].sum() < rel["core_total"]
 
-    # VACUITY: the T0 pair's own (non-residual) yearly frame does NOT trip
+    # VACUITY: the anchor pair's own (non-residual) yearly frame does NOT trip
     # the same flag -- proves the True above is a property of THIS pair's
     # data, not a bug that always returns True.
     clean = CD.relationship(ctx, [IFREMER, NIOZ], subs)
@@ -121,7 +120,7 @@ def test_relationship_topicless_note_is_true_for_a_real_residual_pair(ctx, subs)
 
 
 def test_yearly_caption_names_a_subject_topic_and_composes_the_topicless_note():
-    """C3's own caption rule: the base sentence says
+    """The caption rule: the base sentence says
     "with a subject topic"; the topicless addendum is appended ONLY when
     the pair's own flag is set."""
     Cw = copy.COMPARE
@@ -147,19 +146,19 @@ STREAM_C3_OWNED_FILES = (
     "tests/test_narrative.py", "tests/test_matrix.py", "tests/test_compare_golden_anchors.py",
     "tests/test_find_benchmark_section.py", "tests/test_badges.py", "tests/test_evidence.py",
 )
-# copy.py is scanned by its own COMPARE-dict span only (E10: a plain
-# whole-file grep would also flag another stream's OWN, still-live section
+# copy.py is scanned by its own COMPARE-dict span only (a plain
+# whole-file grep would also flag another, still-live section
 # of that shared file -- COLLAB_CAP is legitimately still referenced
-# elsewhere in copy.py's own comment prose about OTHER streams' carry-over
-# items, which is not this stream's fence to fix).
+# elsewhere in copy.py's own comment prose about other carry-over
+# items, which is out of scope for this check).
 
 
 def test_no_collab_cap_reference_survives_under_this_streams_own_fence():
-    """ carry-over (E3's own finding): `state.COLLAB_CAP`
-    was deleted with the shortlist; every file THIS STREAM owns
-    must carry no reference to it. Scoped to C3's own fence (§3.0) -- a
-    reference in another stream's file (e.g. `tests/ui/smoke.py`, T2's own,
-    not yet rewritten per the ledger) is that stream's job, not this
+    """ carry-over: `state.COLLAB_CAP`
+    was deleted with the shortlist; every file this module owns
+    must carry no reference to it. Scoped to the files listed above -- a
+    reference elsewhere (e.g. `tests/ui/smoke.py`, owned by another
+    module, not yet rewritten) is that module's job, not this
     guard's to fail on."""
     hits = []
     for rel in STREAM_C3_OWNED_FILES:

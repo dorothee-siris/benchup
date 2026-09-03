@@ -95,7 +95,7 @@ def test_every_placeholder_is_documented():
                            for name in names} - documented)
     assert not undocumented, (
         "placeholder(s) used in copy.METHODS with no entry in copy.METHODS_SOURCES "
-        f"(stream M cannot fill them): {undocumented}")
+        f"(no source documented for them): {undocumented}")
 
 
 def test_methods_sources_has_no_dead_entries():

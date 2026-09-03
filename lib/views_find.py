@@ -450,7 +450,7 @@ def _identity_kind(card: dict, row) -> tuple[str, str | None]:
 
     A corrected type renders INLINE -- "government* (was: facility)" -- with
     the star, and only the star, in red. That is the whole of what used to be
-    a second badge, and it is why the 2A "umbrella and type-corrected are
+    a second badge, and it is why the "umbrella and type-corrected are
     mutually exclusive" assertion could be retired instead of being satisfied
     by hiding one of two true facts (ten institutions carry both).
 

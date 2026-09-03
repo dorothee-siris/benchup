@@ -19,7 +19,7 @@ Six claims, one section each:
 
   2. EIGHT CARDS. Card count and order, ONE small line each
      (the index baseline for five of the original six, the fractional-counting
-     note for publications, the pool/citation-window sentence for the two P5
+     note for publications, the pool/citation-window sentence for the two newer
      KPIs), the name-first anatomy, the PP card WITHOUT its interval line, and
      a `?` tooltip on every card carrying the methodology that used to print
      under it.
@@ -197,7 +197,7 @@ def _seed_card_and_row(iid: str):
 def test_the_profile_shows_eight_cards_each_with_exactly_one_small_line(profile_app):
     """-6 +: eight cards, one small line each. FIVE of
     the six original carry the index baseline (the publications card carries
-    the fractional note instead); the two P5 KPIs (star papers, topics led)
+    the fractional note instead); the two newer KPIs (star papers, topics led)
     carry their own pool/citation-window sentence, never the baseline
     template -- so the baseline count stays 5, not N_CARDS - 1."""
     cards = _cards(profile_app)
@@ -431,7 +431,7 @@ def test_the_breakdown_control_label_is_collapsed_but_still_set(profile_app):
 # ------------------------------- 6. the ten crashing profiles -----
 
 # Every institution in the index that is BOTH an umbrella (volume against its
-# country-type median) and type-corrected. Under the 2A L7 invariant each of
+# country-type median) and type-corrected. Under the L7 invariant each of
 # these raised an AssertionError out of `badges.badges_for`, which took the
 # whole profile down -- the gate hit it on Ifremer. The list is pinned here as
 # DATA rather than recomputed, so a future index that quietly stops correcting

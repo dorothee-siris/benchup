@@ -61,7 +61,7 @@ def test_subfields_table_columns_and_share_sum(ctx, subs_bestfit, seed_id):
 
 @pytest.mark.parametrize("seed_id", SEEDS)
 def test_subfields_table_si_status_thresholds_and_unfloored_si(ctx, subs_bestfit, seed_id):
-    """R2 L34: si_status thresholds are exact on `vol_frac` (a direct
+    """si_status thresholds are exact on `vol_frac` (a direct
     recount from the frame), and si is now DEFINED (unfloored) for every
     solid/thin row -- only "none" rows may still be NaN. Where the frame's
     own ratified-floor si IS defined (vol_frac >= 30), our recomputed si is
@@ -93,7 +93,7 @@ def test_subfields_table_si_status_thresholds_and_unfloored_si(ctx, subs_bestfit
 
 @pytest.mark.parametrize("seed_id", SEEDS)
 def test_fields_table_si_status(ctx, subs_bestfit, seed_id):
-    """L34: fields carry no floor at all (data_contract.yaml) -- solid
+    """Fields carry no floor at all (data_contract.yaml) -- solid
     whenever vol_frac > 0 and si is defined, "thin" never appears at this
     grain."""
     df = P.fields_table(ctx, subs_bestfit, seed_id)
@@ -103,7 +103,7 @@ def test_fields_table_si_status(ctx, subs_bestfit, seed_id):
 
 
 def test_fields_table_follows_the_tree(ctx, subs_bestfit, subs_original):
-    """bug #5 (R1 triage): fields_table under `original` differs from
+    """bug #5: fields_table under `original` differs from
     `bestfit` for at least one of 3 seeds."""
     any_diff = False
     for seed_id in SEEDS:
@@ -139,7 +139,7 @@ def test_topics_table_rank_volume_unique_1_to_n(ctx, subs_bestfit, seed_id):
 
 
 def test_topics_table_share_matches_topics_all_direct_recompute_both_bases(ctx, subs_bestfit, subs_full):
-    """P1 removed `substrates._topic_share_values`; `topics_table` now reads
+    """An earlier change removed `substrates._topic_share_values`; `topics_table` now reads
     the same values off `subs['l3']['share']` (its precomputed dense matrix)
     instead -- proven here against an INDEPENDENT recompute straight off
     `topics_all.parquet` (frac = `share_frac` verbatim; full = vol_full over
@@ -179,7 +179,7 @@ def test_yearly_by_domain_matches_index_by_year(ctx, subs_bestfit, seed_id):
     artefact-level gap (topics_all's topic grain vs the run's raw by-year
     count), not a join bug here -- reported with a documented tolerance,
     never silently forced to equality ( spirit)."""
-    # Manager edit (R1, 2026-08-29): the gap above is now carried explicitly as an
+    # Update: the gap above is now carried explicitly as an
     # "Unclassified" domain row per year (P.UNCLASSIFIED_DOMAIN_ID), so the domain
     # view sums to the SAME per-year total as the document-type view (both = the
     # index's by-year bookkeeping) -- the swap between the two never changes a

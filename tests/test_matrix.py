@@ -4,14 +4,14 @@ matrix. No Streamlit import: pure
 `lib.engine` + `lib.filters`, the same layer `tests/test_filters.py` and
 `tests/test_golden_lenses.py` already exercise.
 
-SCOPE NOTE on the assertion budget: the brief enumerates a full cross
+SCOPE NOTE on the assertion budget: a full cross
 product (3 seeds x 3 scenarios x 2 depths x 4 C1/L7 combinations x 6 filter
 settings = 432 combinations). `apply_filters`' predicates are independent
 per-field `continue` guards (lib/filters.py) and `cut_with_ties` never looks
 at filter state (lib/engine/lenses.py) -- there is no cross-interaction for
 the full product to catch that exercising each dimension at least once per
 seed, plus one dedicated combined-filter case, would not already catch. So
-this file runs every check the brief names at least once per seed (and per
+this file runs every check named above at least once per seed (and per
 scenario where the scenario is the point of the check), consolidates
 per-lens/per-row work into one `all(.)` per assertion, and stays in the
 "~150 assertions" ballpark that way rather than by copy-pasting -- measured
@@ -185,7 +185,7 @@ def test_depth_and_c1_l7_toggle_matrix(seed, ctx, subs_default):
 def test_depth_matrix_holds_on_non_default_scenarios(seed, scenario_name, fixture_name, ctx, request):
     """Same core invariant (cut is subset/order-preserving/NaN-free,
     concordance k<=n and n==n_defined), re-run against the two non-default
-    scenarios named in the brief -- one different tree, one different
+    scenarios -- one different tree, one different
     basis -- at the default depth only (the tree/basis dimension is the
     point of this test, not another full depth/toggle sweep)."""
     subs = request.getfixturevalue(fixture_name)
