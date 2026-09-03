@@ -83,9 +83,10 @@ again, which is exactly how it drifted from reality the first time.
 
 - Row height: compact (`st.dataframe` default density is already close; do not
   add custom CSS padding beyond `space-2`).
-- Depth default 30 rows on-screen, one click to 50 (INDICATOR_SPEC_v2 §1/§9 #1)
-  — never render the full ranking inline; tail is searchable +
-  downloadable (RULES §9.9 "top-N cuts amputating the tail").
+- Depth fixed at 50 rows on-screen for every lens/concordance/aspirational
+  table (the old default-30-click-to-50 radio is retired) — never render the
+  full ranking inline; tail is searchable + downloadable (RULES §9.9 "top-N
+  cuts amputating the tail").
 - Above ~50 rows visible at once, a search/filter box is mandatory, not optional
   (LEGIBILITY_BUDGETS "Table rows. working rule: add search at ~50 rows").
 - Every ranked table's score column, evidence column and type/badge column keep

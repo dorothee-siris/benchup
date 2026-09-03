@@ -207,12 +207,12 @@ def test_lens_concordance_table_names_every_display_code_and_internal_id():
 
 def test_matching_section_states_depth_and_concordance():
     """D17: the benchmark depth is fixed at 50 (the 30/50 radio is retired);
-    concordance stays a separate constant at 30."""
+    the concordance counts each lens's top-50, the same depth as the ranked lists."""
     from lib.app_config import CFG
     from lib.views_methods import methods_values
 
     assert CFG["depth"]["max"] == 50
-    assert CFG["concordance_N"] == 30
+    assert CFG["concordance_N"] == 50
     values = methods_values()
     assert values["depth_max"] == 50
-    assert values["concordance_n"] == 30
+    assert values["concordance_n"] == 50

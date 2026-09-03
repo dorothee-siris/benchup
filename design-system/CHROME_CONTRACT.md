@@ -205,10 +205,10 @@ the pair-topic table.
   now use the name-as-link convention; the separate "Open" column and its
   `copy.COLLAB["COL_LINK"]` key are retired. One link idiom app-wide.
 - **Long-list pattern — two different, both valid, never mixed on one table:**
-  - **Find lens/concordance/aspirational tables:** app-wide depth radio `{30, 50}`
-    (`ctl-depth`, sidebar-adjacent controls row) + tail search + full-ranking CSV
-    export. Row-count caption: *"Showing the top {N} of {M} ranked institutions
-    (depth {N})"*.
+  - **Find lens/concordance/aspirational tables:** depth is fixed at 50 for
+    every lens, concordance and aspirational table (no on-screen control) +
+    tail search + full-ranking CSV export. Row-count caption:
+    *"Showing the top {N} of {M} ranked institutions (depth {N})"*.
   - **The pair-topic tables:** per-table `ROWS_DEFAULT = 20` + one **"Show all
     {N}"** button. Row-count
     caption: *"{n} rows shown of {N}."*

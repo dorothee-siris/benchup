@@ -146,8 +146,9 @@ that changes one section lives at the head of that section.**
    now reads two independent search slots directly instead.
 
 **Controls row (at the head of the Benchmark section, above the lens tabs):**
-depth radio · C1 checkbox · L7 checkbox — each with a `help=` tooltip that
-explains the option rather than naming it — then a **"Post-filters" expander**
+C1 checkbox · L7 checkbox (depth is fixed at 50, no control needed) — each
+with a `help=` tooltip that explains the option rather than naming it — then
+a **"Post-filters" expander**
 holding type, country, exclude-own-country, size range, scale guard and family.
 C1 and L7 stay two SEPARATE affordances, never bundled, and L7 stays the visibly
 more discouraging of the two (INDICATOR_SPEC_v2 §1.8/§1.9, ruling 8).
@@ -173,12 +174,13 @@ Appears directly under the page title, one line, and **names every off-default
 dimension by itself** — never a generic "filters active" line (COMPOSITION_AND_CONTROLS.md
 Control layer #3). Parametric caption, e.g.:
 
-> Filtered by: tree = original · depth = 50 · type = education, facility · scale guard on
+> Filtered by: tree = original · type = education, facility · scale guard on
 
 `None` (the strip renders nothing) **iff** tree = bestfit AND basis = frac AND
-depth = 30 AND C1 off AND L7 off AND every post-filter is at its default — this
-exact predicate is the non-vacuity target for toggle × filter matrix
-test (`test_matrix.py`).
+C1 off AND L7 off AND every post-filter is at its default — depth has no
+control any more (fixed at 50 app-wide) so it is never an off-default
+dimension and never appears in this strip — this exact predicate is the
+non-vacuity target for toggle × filter matrix test (`test_matrix.py`).
 
 ### 1.5 Badge grammar
 
@@ -205,8 +207,8 @@ not a styling preference, and `badges.py` asserts it in code.
   L8 "lens undefined → explicit reason, never a silent empty list") — e.g. "L2f
   is undefined for this seed: 0 shared-specialisation cells clear the ≥30-paper
   floor."
-- **Thin** (few candidates returned, e.g. a small seed whose top-30 has fewer
-  than 30 real rows before ties): show the true n and continue — never pad, never
+- **Thin** (few candidates returned, e.g. a small seed whose top-50 has fewer
+  than 50 real rows before ties): show the true n and continue — never pad, never
   suppress the mark (RULES §8 Thin, tie rule: never pad).
 - **Concordance caption always states both N and n** parametrically — "found in
   the top-{N} of {k} of {n} lenses defined for this seed" — n shrinks when C1/L7
@@ -458,13 +460,14 @@ interval mark is not optional here even if it loses the general-purpose A/B.
 
 ### 2.6 Depth control
 
-**Decision sentence:** *After choosing 30 or 50, the analyst knows exactly how
-many rows they are looking at out of how many computed, and that the rest is
-one search or one download away, not gone.*
+**Decision sentence:** *Depth is fixed at 50 for every Find lens, concordance
+and aspirational table, so the analyst always knows exactly how many rows
+they are looking at out of how many computed, and that the rest is one
+search or one download away, not gone.*
 
 | Form id | Form & encoding | Interaction | Empty-state | Export |
 |---|---|---|---|---|
-| `ctl-depth` | two-option segmented control, `{30, 50}`, default 30 (INDICATOR_SPEC_v2 §1/§9 #1); caption under every table: "showing top {N} of {M} ranked — search the tail or download" (RULES §9.9) | one click flips depth app-wide for the current lens tab; `M` and `N` are always read from the live ranking, never typed | — (depth never empties a non-empty ranking) | — (the caption itself is not exportable; the CSV always carries the full ranking regardless of the on-screen depth) |
+| `ctl-depth` | **RETIRED.** The two-option depth segmented control is gone; depth is fixed at 50 app-wide (`config.yaml`'s `depth.default == depth.max == 50`, single source). Caption under every table: "showing top {N} of {M} ranked — search the tail or download" (RULES §9.9) | none — there is no control; `M` and `N` are always read from the live ranking, never typed | — (depth never empties a non-empty ranking) | — (the caption itself is not exportable; the CSV always carries the full ranking regardless of the on-screen depth) |
 
 **Rejected alternative:** a continuous slider over the full ranking length
 rejected per R4.6 simplicity ("ONE global control, not a
@@ -1020,9 +1023,9 @@ classified publications at all).**
 
 ### 2.21 Controls row (Benchmark section head)
 
-- **Form.** One horizontal row directly above the lens tab strip: depth radio ·
-  C1 checkbox · L7 checkbox · a "Post-filters" expander. See §1.3 for the
-  sidebar/section split and the unchanged widget keys.
+- **Form.** One horizontal row directly above the lens tab strip: C1 checkbox ·
+  L7 checkbox · a "Post-filters" expander (depth is fixed at 50, no control
+  needed). See §1.3 for the sidebar/section split and the unchanged widget keys.
 - **Encoding.** No colour, no chart. Each control carries a `help=` tooltip that
   explains what the option DOES, not what it is called — the complaint
   was that the sidebar named options without explaining them.
@@ -1970,7 +1973,7 @@ day.
 
 Named here per this stream's brief item 5; **resolved by ** against
 real engine output (`app/lib/engine`, University of Gdańsk `I40413290`, L1
-top-30) with Playwright screenshots at 1280 px, appended to this file as a new
+top-50) with Playwright screenshots at 1280 px, appended to this file as a new
 "§4 A/B verdict" section (the one exception to D0's exclusive ownership of this
 file).
 
@@ -1982,12 +1985,12 @@ file).
 | B | A Plotly ranked-dot chart, one dot per row at its score, sharing the table's row order |
 
 **Measured criterion:** rows legible above the fold at 1280 px (how many of the
-top 30 are visible without scrolling); label-truncation count (institution
+top 50 are visible without scrolling); label-truncation count (institution
 names cut off); zero-baseline compliance (RULES honesty rule 1 — does the form
 imply a false zero or a false ceiling); an honest read of ties (does the form
 visually distinguish two rows tied at the same competition rank, or wrongly
 imply one beats the other).
-**Real seed to render:** University of Gdańsk (`I40413290`), L1, top-30.
+**Real seed to render:** University of Gdańsk (`I40413290`), L1, top-50.
 **Downstream consequence already fixed regardless of winner:** the Aspirational
 tab (§2.5) never uses Candidate A alone, because A cannot render a confidence
 interval (see §2.5's own rejected-alternative note).
@@ -2006,7 +2009,7 @@ honest read of ties/undefined cells (does a blank cell in the matrix read as
 "not found" or ambiguously as "not computed" — RULES honesty rule 12, "'0' is
 not 'not computed'").
 **Real seed to render:** University of Gdańsk (`I40413290`), the 8 default
-lenses at N=30.
+lenses at N=50.
 
 ---
 

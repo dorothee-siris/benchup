@@ -91,6 +91,8 @@ def test_golden_seed(engine, path):
 
     # ---- (2) concordance, golden 7-lens set ----
     g_conc = gold["concordance"]
+    # reference lists were generated at N=30; the app runs the same function at
+    # CONCORDANCE_N -- this pins the algorithm, not the product setting.
     rows30 = concordance(ctx, rankings, GOLDEN_CONCORDANCE_LENSES, N=30)
     assert [r["institution_id"] for r in rows30] == g_conc["N30_top50_ids"], f"{iid}: concordance N=30 top-50 ids"
     rows20 = concordance(ctx, rankings, GOLDEN_CONCORDANCE_LENSES, N=20)

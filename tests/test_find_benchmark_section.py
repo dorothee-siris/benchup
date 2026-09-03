@@ -49,7 +49,7 @@ import pytest
 
 from lib import copy
 from lib.engine import (
-    ALL_LENSES, DEFAULT_LENSES, aspirational, aspirational_frontier, load_substrates,
+    ALL_LENSES, CONCORDANCE_N, DEFAULT_LENSES, aspirational, aspirational_frontier, load_substrates,
     concordance, load_context, rank_all,
 )
 from lib.ranked import _rank_under_text, works_link_named
@@ -159,7 +159,8 @@ def test_romanian_ministry_excluded_from_every_lens_list_for_three_probe_seeds(c
             for lens in ALL_LENSES:
                 if target in r[lens]["sorted_ids"]:
                     hits.append((seed, lens))
-            if any(target == row["institution_id"] for row in concordance(ctx_, r, DEFAULT_LENSES, 30)):
+            if any(target == row["institution_id"]
+                   for row in concordance(ctx_, r, DEFAULT_LENSES, CONCORDANCE_N)):
                 hits.append((seed, "concordance"))
             l1 = r["L1"]
             if not l1["undefined"] and any(row["institution_id"] == target
@@ -285,7 +286,7 @@ def test_format_rows_and_concordance_drop_the_separate_link_column():
     crow = {"institution_id": "I1", "display_name": "Alpha U", "country_code": "FR",
             "type": "education", "k": 1, "n": 3, "hit_lenses": ["L1", "L3"],
             "total_full_2020_2024": 100.0, "total_frac_2020_2024": 50.0}
-    cdf = format_concordance([crow], lenses=["L1", "L3", "L0"], N=30)
+    cdf = format_concordance([crow], lenses=["L1", "L3", "L0"], N=CONCORDANCE_N)
     assert "institution_link" not in cdf.columns
     # : hit_lenses chips are DISPLAY codes -- internal "L3" prints "L2".
     assert cdf.iloc[0]["hit_lenses"] == "L1, L2"

@@ -27,6 +27,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from ..app_config import CFG
 from . import lens_lib as L
 
 ALL_LENSES = ["L0", "L1", "L3", "F1", "L2f", "L4", "L5", "L6", "L7", "C1"]
@@ -34,7 +35,7 @@ DEFAULT_LENSES = ["L0", "L1", "L3", "F1", "L2f", "L4", "L5", "L6"]          # L1
 GOLDEN_CONCORDANCE_LENSES = ["L1", "L3", "F1", "L2f", "L4", "L5", "L6"]     # gen_lists_v2
 RANK_VISIBLE_MAX = 50
 DEPTH = 50
-CONCORDANCE_N = 30
+CONCORDANCE_N = int(CFG["concordance_N"])
 
 
 # --------------------------------------------------------- tie-aware cuts ---

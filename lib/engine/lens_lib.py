@@ -36,7 +36,6 @@ TREES = ("original", "conservative", "bestfit")
 G6_FLOOR_DEFAULT = 30.0
 THETA_DEFAULT = 1.5
 TOP_K_DEFAULT = 20
-CONCORDANCE_N_DEFAULT = 20
 
 # D19 face-validity seeds, R2.7 Gdansk anchor = University of Gdansk (Gdansk
 # Tech discarded). Short OpenAlex ids, matching data/artefacts_eu institution_id.

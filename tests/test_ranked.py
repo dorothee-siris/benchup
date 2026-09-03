@@ -13,14 +13,16 @@ from pathlib import Path
 import pytest
 
 from lib.app_config import CFG
-from lib.engine import DEFAULT_LENSES, build_rows, concordance, load_context, load_substrates, rank_all
+from lib.engine import (
+    CONCORDANCE_N, DEFAULT_LENSES, build_rows, concordance, load_context, load_substrates, rank_all,
+)
 from lib.palette import NA_MARK
 from lib.ranked import concordance_caption, depth_caption, format_concordance, format_rows
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 SEED = "I40413290"  # University of Gdansk
 DEPTH = 30
-N = 30
+N = CONCORDANCE_N
 WINDOW_START, WINDOW_END = CFG["window"]
 
 
@@ -177,5 +179,5 @@ def test_format_concordance_two_size_columns_and_country_name(conc_rows):
 
 
 def test_concordance_caption_parametric():
-    cap = concordance_caption(8, 30, 50)
-    assert "8" in cap and "30" in cap and "50" in cap
+    cap = concordance_caption(8, CONCORDANCE_N, 50)
+    assert "8" in cap and str(CONCORDANCE_N) in cap and "50" in cap
