@@ -45,6 +45,7 @@ import re
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from lib import copy
@@ -303,3 +304,47 @@ def test_rank_under_text_prints_display_codes_not_internal_ids():
 def test_rank_under_text_na_mark_when_absent():
     from lib.palette import NA_MARK
     assert _rank_under_text({}) == NA_MARK
+
+
+# --------------------------------------------------- 6. scale guard (D25)
+
+def test_aspirational_sheet_frame_identical_with_guard_on_or_off(ctx, subs):
+    """D25: the aspirational tab (and its workbook-sheet twin) is EXEMPT
+    from the scale guard -- toggling it must never change that one frame."""
+    from lib import views_find
+
+    seed_id = "I40413290"
+    rankings = rank_all(ctx, subs, seed_id)
+    seed_row = ctx["index_by_id"].loc[seed_id]
+    bundle = {"ctx": ctx}
+    base = dict(types=None, countries=None, exclude_own_country=False,
+               size_range=None, family_min=None)
+    off = views_find._aspirational_sheet_frame(bundle, rankings, {**base, "scale_guard": False},
+                                               seed_row)
+    on = views_find._aspirational_sheet_frame(bundle, rankings, {**base, "scale_guard": True},
+                                              seed_row)
+    pd.testing.assert_frame_equal(off, on)
+
+
+def test_find_strip_names_the_ratio_and_a_removed_count_when_guard_is_on():
+    """Live AppTest (D25): switching the scale guard on must make the
+    "Filtered by..." strip name the flat ratio and how many candidates it
+    removed from the current lens."""
+    pytest.importorskip("streamlit.testing.v1")
+    from streamlit.testing.v1 import AppTest
+
+    from lib.app_config import CFG
+
+    app_dir = Path(__file__).resolve().parents[1]
+    find_page = str(app_dir / "pages" / "1_\U0001F50E_Find.py")
+    at = AppTest.from_file(find_page, default_timeout=180)
+    at.session_state["seed_id"] = "I68947357"
+    at.run()
+    assert not at.exception, [str(e) for e in at.exception]
+    at.checkbox(key="f_guard").set_value(True)
+    at.run()
+    assert not at.exception, [str(e) for e in at.exception]
+    ratio_disp = f"{CFG['scale_guard']['ratio']:g}"
+    texts = " ".join(m.value for m in at.markdown)
+    assert f"{ratio_disp}×" in texts, texts
+    assert "removed" in texts, texts

@@ -163,7 +163,7 @@ STRIP_TYPE = "type: {types}"
 STRIP_COUNTRY = "country: {countries}"
 STRIP_EXCLUDE_OWN_COUNTRY = "the seed's own country excluded"
 STRIP_SIZE_RANGE = "size between {lo}-{hi} publications"
-STRIP_SCALE_GUARD = "scale guard on"
+STRIP_SCALE_GUARD = "scale guard on (within {ratio}× of the seed's size{suffix})"
 STRIP_FAMILY = "family filter on (L0 field overlap at or above {threshold})"
 
 # --------------------------------------------------------- empty states -----
@@ -213,9 +213,10 @@ FIND = {
     "COUNTRY_LABEL": "Country",
     "EXCLUDE_OWN_LABEL": "Exclude the seed's own country",
     "SIZE_LABEL": "Size range (full counting)",
-    "SCALE_GUARD_LABEL": "Scale guard (comparable size band)",
-    "SCALE_GUARD_HELP": ("Keeps candidates within a size ratio of the seed; the ratio is banded "
-                         "by the seed's own size."),
+    "SCALE_GUARD_LABEL": "Scale guard (within {ratio}× of the seed's size)",
+    "SCALE_GUARD_HELP": ("Keeps candidates within {ratio}× of the seed's size, in either direction; "
+                         "when it is on, the line above names how many it removed from the current "
+                         "lens."),
     "FAMILY_LABEL": "Family filter (field overlap)",
     "FAMILY_HELP": "Keeps candidates whose L0 field overlap with the seed is at or above {threshold}.",
     # ---- the two independent-slot pickers Find and Compare both use

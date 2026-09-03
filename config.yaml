@@ -19,9 +19,7 @@ scenario:
     basis: [frac, full]                      # the two counting bases a reader can switch between
 
 scale_guard:
-  lt_20k: 8                     # below 20,000 works, two institutions can differ up to 8x in size and still be compared
-  ge_20k: 4                     # at or above 20,000 works, the same guard tightens to 4x -- a flat multiplier is not size-safe
-  band_threshold_works: 20000   # the size, in full-counted works, where the guard switches from 8x to 4x
+  ratio: 3   # opt-in post-filter: two institutions may differ up to this many times in size and still be compared
 
 umbrella_badge:
   types: [government, funder, facility, nonprofit]  # institution types eligible for the umbrella-organisation badge

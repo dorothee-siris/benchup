@@ -36,24 +36,57 @@ def test_exclude_own_country_removes_every_fr_row(engine):
     assert all(str(r["country_code"]) != "FR" for r in out)
 
 
-def test_scale_guard_gdansk_multiplier_8(engine):
-    rows, seed_row = _rows_and_seed(engine, "I40413290", depth=50)  # 8,786 works < 20k -> m=8
+def test_scale_guard_ratio_is_flat_three():
+    """D25: config.yaml's scale_guard is a single flat ratio -- the old
+    two-tier size band and its own switchover threshold are gone."""
+    assert CFG["scale_guard"] == {"ratio": 3}
+
+
+def test_scale_guard_flat_ratio_below_old_20k_threshold(engine):
+    rows, seed_row = _rows_and_seed(engine, "I40413290", depth=50)  # Gdansk, 8,786 works
+    ratio = CFG["scale_guard"]["ratio"]
     out = apply_filters(rows, seed_row=seed_row, scale_guard=True)
     assert len(out) < len(rows)
     seed_total = float(seed_row["total_full_2020_2024"])
     for r in out:
         other = r["total_full_2020_2024"]
-        assert max(seed_total, other) / min(seed_total, other) <= 8 + 1e-9
+        assert max(seed_total, other) / min(seed_total, other) <= ratio + 1e-9
 
 
-def test_scale_guard_bologna_multiplier_4(engine):
-    rows, seed_row = _rows_and_seed(engine, "I9360294", depth=50)  # 41,693 works >= 20k -> m=4
+def test_scale_guard_flat_ratio_at_or_above_old_20k_threshold(engine):
+    """Same ratio as the seed above -- proves the old size band (a
+    stricter multiplier for the largest institutions) is gone: a seed on
+    either side of that old switchover point is guarded identically."""
+    rows, seed_row = _rows_and_seed(engine, "I9360294", depth=50)  # Bologna, 41,693 works
+    ratio = CFG["scale_guard"]["ratio"]
     out = apply_filters(rows, seed_row=seed_row, scale_guard=True)
     assert len(out) < len(rows)
     seed_total = float(seed_row["total_full_2020_2024"])
     for r in out:
         other = r["total_full_2020_2024"]
-        assert max(seed_total, other) / min(seed_total, other) <= 4 + 1e-9
+        assert max(seed_total, other) / min(seed_total, other) <= ratio + 1e-9
+
+
+def test_scale_guard_candidate_at_3_1x_removed_2_9x_kept_larger_candidate():
+    seed_row = {"total_full_2020_2024": 10_000.0, "country_code": "XX"}
+    rows = [
+        {"total_full_2020_2024": 29_000.0, "institution_id": "under_2_9x"},  # 2.9x -> kept
+        {"total_full_2020_2024": 31_000.0, "institution_id": "over_3_1x"},   # 3.1x -> removed
+    ]
+    out = apply_filters(rows, seed_row=seed_row, scale_guard=True)
+    assert {r["institution_id"] for r in out} == {"under_2_9x"}
+
+
+def test_scale_guard_symmetric_for_smaller_candidates():
+    """The ratio test is max/min, so a candidate SMALLER than the seed by
+    the same factor is guarded identically to one that is larger."""
+    seed_row = {"total_full_2020_2024": 10_000.0, "country_code": "XX"}
+    rows = [
+        {"total_full_2020_2024": 10_000.0 / 2.9, "institution_id": "smaller_2_9x"},  # kept
+        {"total_full_2020_2024": 10_000.0 / 3.1, "institution_id": "smaller_3_1x"},  # removed
+    ]
+    out = apply_filters(rows, seed_row=seed_row, scale_guard=True)
+    assert {r["institution_id"] for r in out} == {"smaller_2_9x"}
 
 
 def _defaults():

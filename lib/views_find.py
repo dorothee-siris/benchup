@@ -1098,6 +1098,20 @@ def _same_country_share(rankings: dict, ctx: dict, seed_row, depth: int) -> str:
     return f"{same / len(ids):.0%}"
 
 
+def _scale_guard_removed_count(bundle: dict, rankings: dict, seed_row) -> int:
+    """How many candidates the scale guard alone drops from the default
+    lens's full ranking, independent of every other post-filter -- the
+    number the "Filtered by..." strip names once the guard is switched on
+    (D25)."""
+    ranking = rankings.get(CFG["lenses"]["default"][0])
+    if ranking is None or ranking["undefined"]:
+        return 0
+    lite = bundle["lite"]
+    rows = [lite[i] for i in ranking["sorted_ids"] if i in lite]
+    kept = apply_filters(rows, seed_row=seed_row, scale_guard=True)
+    return len(rows) - len(kept)
+
+
 def _post_filters(bundle: dict, rankings: dict, seed_row, depth: int) -> dict:
     """L16/L6: every post-filter opt-in and off by default, moved out of the
     sidebar into the controls row's expander with its widget KEYS unchanged.
@@ -1120,8 +1134,10 @@ def _post_filters(bundle: dict, rankings: dict, seed_row, depth: int) -> dict:
     hi_all = int(np.ceil(idx["total_full_2020_2024"].max()))
     lo, hi = st.slider(copy.FIND["SIZE_LABEL"], lo_all, hi_all, (lo_all, hi_all),
                        key="f_size", **state.PERSIST)
-    guard = st.checkbox(copy.FIND["SCALE_GUARD_LABEL"], value=False,
-                        help=copy.FIND["SCALE_GUARD_HELP"], key="f_guard", **state.PERSIST)
+    ratio_disp = f"{CFG['scale_guard']['ratio']:g}"
+    guard = st.checkbox(copy.FIND["SCALE_GUARD_LABEL"].format(ratio=ratio_disp), value=False,
+                        help=copy.FIND["SCALE_GUARD_HELP"].format(ratio=ratio_disp),
+                        key="f_guard", **state.PERSIST)
     thr = CFG["family_filter_threshold"]
     fam = st.checkbox(copy.FIND["FAMILY_LABEL"], value=False,
                       help=copy.FIND["FAMILY_HELP"].format(threshold=thr),
@@ -1507,10 +1523,13 @@ def _render_aspirational(bundle: dict, rankings: dict, filters: dict, seed_row,
         if fallback_rows:
             fallback = True
             rows = fallback_rows
-    kept = apply_filters(rows, seed_row=seed_row, family_scores=None, **filters)
+    # D25: the aspirational tab is EXEMPT from the scale guard -- every
+    # other post-filter still applies.
+    asp_filters = {**filters, "scale_guard": False}
+    kept = apply_filters(rows, seed_row=seed_row, family_scores=None, **asp_filters)
     if not kept:
         if rows:
-            st.info(explain_empty(filters, seed_row))
+            st.info(explain_empty(asp_filters, seed_row))
         else:
             st.info(copy.FIND["ASP_EMPTY"].format(seed=seed_row["display_name"]))
         return
@@ -1671,7 +1690,10 @@ def _aspirational_sheet_frame(bundle: dict, rankings: dict, filters: dict, seed_
         if fallback_rows:
             fallback = True
             rows = fallback_rows
-    kept = apply_filters(rows, seed_row=seed_row, family_scores=None, **filters)
+    # D25: the aspirational tab (and this, its workbook-sheet twin) is
+    # EXEMPT from the scale guard -- every other post-filter still applies.
+    kept = apply_filters(rows, seed_row=seed_row, family_scores=None,
+                         **{**filters, "scale_guard": False})
     if not kept:
         return pd.DataFrame(columns=_ASPIRATIONAL_SHEET_COLUMNS)
     if fallback:
@@ -1796,9 +1818,11 @@ def render() -> None:
     ctl = {**scenario, **benchmark}
     lenses = _lenses_shown(ctl)
     _lens_guide(lenses)
+    guard_removed = (_scale_guard_removed_count(bundle, rankings, seed_row)
+                     if filters.get("scale_guard") else None)
     strip = active_controls_strip(tree=_strip_tree(ctl["tree"]), basis=ctl["basis"],
                                   depth=ctl["depth"], c1_on=ctl["c1_on"], l7_on=ctl["l7_on"],
-                                  filters=filters)
+                                  filters=filters, scale_guard_removed=guard_removed)
     if strip:
         with strip_slot.container(key="strip"):
             st.markdown(strip)
