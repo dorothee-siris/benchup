@@ -14,7 +14,7 @@ untapped, shared_topics and joint_profile over app/lib app/pages app/Menu.py
 showed zero importers outside this file before deletion, `views_collab.py`
 already gone, `views_compare.py` imports nothing from `collab_data` yet).
 
-, updated P2: this module's parquets
+This module's parquets
 (`collab_pairs`, `collab_pair_fields`, `collab_pair_domain_year`) are NEVER
 read whole into pandas here -- every consumer wants exactly one (a, b)
 pair's rows, so `_collab_pair_slice` below runs a duckdb `WHERE a = ? AND
@@ -32,7 +32,7 @@ VARCHAR (Python `str`), not pandas `category` -- `_collab_pair_slice` casts
 the known category columns (`a`, `b`, `topic_id`, `mom_class`,
 `erc_top_panel`) back to `category` on the returned slice so every
 downstream comparison, `.map` and `groupby(observed=)` sees the exact
-dtype a whole-table `pd.read_parquet` used to hand it (E2/E3).
+dtype a whole-table `pd.read_parquet` used to hand it.
 """
 from __future__ import annotations
 
@@ -52,7 +52,7 @@ from . import profile_data as P
 
 _COLLAB_CATEGORY_COLS = ("a", "b", "topic_id", "mom_class", "erc_top_panel")
 
-# D11/D12 concurrency fix (stress phase B, STRESS_2026-09-03_1302.md): three
+# A concurrency fix, found via a stress test (phase B): three
 # concurrent sessions browsing many distinct pairs each call this module's
 # duckdb pushdowns, and the ctx-cached slice used to accumulate forever --
 # one entry per (table, pair) ever requested, never evicted. `_DUCK_LOCK`
@@ -257,7 +257,7 @@ def pulse(ctx: dict, a: str, b: str) -> dict | None:
     Returns `None` when the pair has never co-published at all.
     Pinned anchor: `pulse(ctx, "I1294671590", "I68947357")` (CNRS, Strasbourg
     the table's own a<b order) -> copubs_total 12694, rank_in_a 16,
-    rank_in_b 1 (manager-verified fact, CD brief)."""
+    rank_in_b 1 (verified against the underlying table)."""
     lo, hi = (a, b) if a < b else (b, a)
     row = _load_collab_pairs(ctx, a, b)  # already pushed down to this ONE pair
     if row.empty:

@@ -29,8 +29,8 @@ from `index.parquet`/`topics_all.parquet` by hand:
     bypassing `profile_data.topics_table` (a different loader, a different
     query engine call).
 
-Anchor pair: Ifremer x NIOZ (I154202486 / I4210107283), the T0 golden anchor
-pair every other stream's own suite already uses.
+Anchor pair: Ifremer x NIOZ (I154202486 / I4210107283), the same golden
+anchor pair the rest of this suite already uses.
 
 VACUITY: every anchor is followed by an in-memory mutation of the SAME
 comparison that makes it fail -- proving the check reads real data, not a

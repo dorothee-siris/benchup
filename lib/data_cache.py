@@ -21,10 +21,10 @@ from lib.engine import scenario_cache as _SC
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
 
-# D11 "one copy of each table": the five loaders
+# "One copy of each table": the five loaders
 # below used to each `pd.read_parquet` their own copy of a file
 # `lib.engine.scenario_cache.bundle`'s `ctx` (via `load_context`) ALSO
-# reads -- 206 MB of duplication per the 2E census. Each now returns the
+# reads -- 206 MB of duplication, measured directly. Each now returns the
 # VERY SAME object held in `bundle["ctx"]`, proven byte-identical with
 # `pd.testing.assert_frame_equal` in `tests/test_ram_budget.py` before this
 # change (a perturbation test there proves the assertion is not vacuous).
@@ -47,7 +47,7 @@ def _ctx_frame(key: str) -> pd.DataFrame:
 def index() -> pd.DataFrame:
     """Institution index: identity, type (patched), country, size, links. One row per institution.
 
-    Aliased to `scenario_cache.bundle["ctx"]["index_df"]` (D11) -- same object as
+    Aliased to `scenario_cache.bundle["ctx"]["index_df"]` -- same object as
     `load_context`'s own read of this file, never a second copy."""
     return _ctx_frame("index_df")
 
@@ -56,7 +56,7 @@ def index() -> pd.DataFrame:
 def fields() -> pd.DataFrame:
     """Field-grain shape/SI per institution x tree (L0 substrate).
 
-    Aliased to `scenario_cache.bundle["ctx"]["fields_df"]` (D11) -- same object as
+    Aliased to `scenario_cache.bundle["ctx"]["fields_df"]` -- same object as
     `load_context`'s own read of this file, never a second copy."""
     return _ctx_frame("fields_df")
 
@@ -65,7 +65,7 @@ def fields() -> pd.DataFrame:
 def subfields() -> pd.DataFrame:
     """Subfield-grain shape/SI per institution x tree (L1/L2f substrate).
 
-    Aliased to `scenario_cache.bundle["ctx"]["subfields_df"]` (D11) -- same object as
+    Aliased to `scenario_cache.bundle["ctx"]["subfields_df"]` -- same object as
     `load_context`'s own read of this file, never a second copy."""
     return _ctx_frame("subfields_df")
 
@@ -74,7 +74,7 @@ def subfields() -> pd.DataFrame:
 def topics_dim() -> pd.DataFrame:
     """Topic taxonomy dimension: domain/field/subfield/topic names, frontier scores, is_excluded.
 
-    NOT aliased (D11): `ctx["topics_dim_df"]` is a 12-of-29-column SUBSET
+    NOT aliased: `ctx["topics_dim_df"]` is a 12-of-29-column SUBSET
     (`substrates.TOPICS_DIM_COLS`) of this file, a genuinely different
     object, not a duplicate read -- `tests/test_ram_budget.py` proves the
     two are unequal so this stays an independent read."""
@@ -85,7 +85,7 @@ def topics_dim() -> pd.DataFrame:
 def erc() -> pd.DataFrame:
     """ERC panel shares/mass/SI per institution (L4/L5 substrate).
 
-    Aliased to `scenario_cache.bundle["ctx"]["erc_df"]` (D11) -- same object as
+    Aliased to `scenario_cache.bundle["ctx"]["erc_df"]` -- same object as
     `load_context`'s own read of this file, never a second copy."""
     return _ctx_frame("erc_df")
 
@@ -94,7 +94,7 @@ def erc() -> pd.DataFrame:
 def sdg() -> pd.DataFrame:
     """SDG shares/ESI/mass per institution (L6/L7 substrate).
 
-    Aliased to `scenario_cache.bundle["ctx"]["sdg_df"]` (D11) -- same object as
+    Aliased to `scenario_cache.bundle["ctx"]["sdg_df"]` -- same object as
     `load_context`'s own read of this file, never a second copy."""
     return _ctx_frame("sdg_df")
 

@@ -67,8 +67,8 @@ def workbook_bytes(sheets) -> bytes:
 
 def workbook_filename(ids) -> str:
     """"BenchUp_compare_<A>_<B>.xlsx". No tree/basis suffix
-    any more: Compare is PINNED to the best-fit taxonomy and full counting
-    (D10), so a scenario suffix would name a setting that never varies."""
+    any more: Compare is PINNED to the best-fit taxonomy and full counting,
+    so a scenario suffix would name a setting that never varies."""
     return "BenchUp_compare_" + "_".join(str(i) for i in ids) + ".xlsx"
 
 

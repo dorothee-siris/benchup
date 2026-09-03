@@ -8,9 +8,9 @@ umbrella_badge.basis_column), never `type_openalex`, specifically because the
 three type-corrected TO education -- as umbrellas at the same time their own
 correction says "this is really education".
 
--1a RETIRES the L7 "umbrella and type-corrected are mutually exclusive"
+This retires the L7 "umbrella and type-corrected are mutually exclusive"
 invariant, and with it the assertion that enforced it. The invariant held while
-the two flags were drawn from disjoint populations; the / R2 type overrides
+the two flags were drawn from disjoint populations; the type overrides
 made ten institutions (Ifremer, TNO, CNR, SINTEF, DLR, Ikerbasque, DZHK, DZNE,
 DZL, DZIF) legitimately BOTH -- an umbrella by volume against its country-type
 median AND corrected away from the type OpenAlex records. Every one of them

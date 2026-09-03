@@ -74,8 +74,8 @@ def test_shared_frontier_joint_known_is_true_for_a_qualifying_pair(ctx, subs):
 
 
 def test_shared_frontier_tip_names_the_p7_floor_in_words():
-    """The chart's own caption states the rule in words (D5's brief:
-    "the caption says why") -- `copy.COMPARE["SHARED_FRONTIER_TIP"]`,
+    """The chart's own caption states the rule in words
+    ("the caption says why") -- `copy.COMPARE["SHARED_FRONTIER_TIP"]`,
     filled from `charts_compare.JOINT_FLOOR`, never a hand-typed number."""
     from lib import charts_compare as X
 

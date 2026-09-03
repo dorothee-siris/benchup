@@ -1,5 +1,5 @@
 """
-tests/stress/cycle_scenarios.py -- BUILD_PLAN.md D12/T1 phase C: a BARE process
+tests/stress/cycle_scenarios.py -- phase C: a BARE process
 (no Streamlit server, no browser) that calls `scenario_cache.bundle()` then
 `scenario_cache.get(tree, basis)` for all six (tree, basis) scenarios in
 sequence, sampling this process's own RSS after each. Reuses the logic of

@@ -7,10 +7,10 @@ than a hardcoded one) so a regression that slipped past the anchor tests
 would still be caught here.
 
 , (2026-09-03): ERC and field grain are DELETED from
-this codebase ( stays the archive, E12) -- this file is rewritten to sweep
+this codebase (the code stays only in the archive) -- this file is rewritten to sweep
 only the two surviving grains, `subfield` and `sdg`. The file's own
-"D2 (bar=MEDIAN, hover=MEAN+n_covered) / D3 (reference is the European
-CORPUS-MEDIAN work-FWCI, a real 0.0 must survive untouched)" invariants are
+"bar=MEDIAN, hover=MEAN+n_covered / reference is the European
+CORPUS-MEDIAN work-FWCI, a real 0.0 must survive untouched" invariants are
 kept verbatim -- they are facts about the shipped `fwci_taxa*.parquet`
 tables, not about which grains `compare_data.py` still exposes.
 

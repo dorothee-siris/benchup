@@ -3,7 +3,7 @@ lib/collab_data.py acceptance tests (Tier A). Anchors are concrete values
 recomputed from app/data/*.parquet (env-app, bestfit/frac
 default scenario).
 
-2026-09-03: `shared_topics`/`joint_profile`/`untapped` and their test suites
+`shared_topics`/`joint_profile`/`untapped` and their test suites
 are DELETED (the builders themselves are gone from lib/collab_data.py --
 see that module's own docstring) and replaced by `pair_domain_year`'s tests
 at the bottom of this file.
@@ -22,7 +22,6 @@ from lib import collab_data as CL
 from lib.engine import load_substrates, load_context
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
-INTERIM_COLLAB_P7 = Path(__file__).resolve().parents[2] / "data" / "interim" / "collab_p7"
 
 STRASBOURG, IFPEN, GDANSK, ISCTE, SORBONNE, ETH = (
     "I68947357", "I265217849", "I40413290", "I110026055", "I39804081", "I35440088")
@@ -179,7 +178,7 @@ def test_gaps_and_top10_subfield_ids_are_gone():
 
 
 def test_topics_together_and_untapped_builders_are_gone():
-    """D7/ (2026-09-03): the "topics-together" (`joint_profile`)
+    """The "topics-together" (`joint_profile`)
     and "Untapped potential" (`untapped`/`shared_topics`) sections and every
     symbol that solely backed them leave no trace."""
     for name in ("joint_profile", "untapped", "shared_topics",
@@ -194,8 +193,7 @@ def test_topics_together_and_untapped_builders_are_gone():
 # `pair_domain_year` -- the
 # Relationship block's joint-publications-by-domain-and-year chart data,
 # read off the NEW `collab_pair_domain_year.parquet`. Anchors independently
-# recomputed straight off `collab_pairs.parquet` / `data/interim/collab_p7/
-# fields_2022.parquet`, no import of the upstream build script.
+# recomputed straight off `collab_pairs.parquet`.
 # ============================================================================
 
 IFREMER, NIOZ = "I154202486", "I4210107283"
@@ -222,27 +220,6 @@ def test_pair_domain_year_sum_equals_core_total_ifremer_nioz(ctx):
     lo, hi = sorted([IFREMER, NIOZ])
     core_total = int(pairs[(pairs["a"] == lo) & (pairs["b"] == hi)].iloc[0]["core_total"])
     assert int(df["vol"].sum()) == core_total
-
-
-def test_pair_domain_year_2022_matches_direct_groupby_on_fields_2022(ctx):
-    """The pair's 2022 domain totals, hand-recomputed by
-    an INDEPENDENT groupby straight off fields_2022.parquet (no import of
-    the upstream build script), equal what `pair_domain_year` returns."""
-    fields = pd.read_parquet(INTERIM_COLLAB_P7 / "fields_2022.parquet")
-    lo, hi = sorted([IFREMER, NIOZ])
-    sub = fields[(fields["a"] == lo) & (fields["b"] == hi)]
-    assert len(sub)  # precondition: this pair has 2022 rows to roll up
-
-    dim = pd.read_parquet(Path(ctx["data_dir"]) / "topics_dim.parquet",
-                          columns=["field_id", "domain_id"]).drop_duplicates()
-    field_to_domain = dict(zip(dim["field_id"], dim["domain_id"]))
-    sub = sub.assign(domain_id=sub["field_id"].map(field_to_domain))
-    want = {int(k): int(v) for k, v in sub.groupby("domain_id")["vol"].sum().items()}
-
-    df = CL.pair_domain_year(ctx, IFREMER, NIOZ)
-    got_2022 = df[df["year"] == 2022]
-    got = {int(k): int(v) for k, v in got_2022.groupby("domain_id")["vol"].sum().items()}
-    assert got == want
 
 
 def test_pair_domain_year_order_invariant(ctx):

@@ -7,23 +7,22 @@ keys, same values) -- the population-wide context plus the search index,
 umbrella flags/medians, catch-all shares, normalised names for the tail
 search, the domain-id -> name map, and the lightweight per-institution
 `lite` dict `lib/filters.py:apply_filters` reads. `views_find.py` keeps its
-own copy for now; this module is the ONE will import from at
-merge, per 's file-ownership table and the manager's wave-2
-dispatch note.
+own copy for now; this module is the ONE `views_find.py` will import from
+once it stops keeping its own copy.
 
-D11 "one copy of each table" -- the ONE deliberate deviation from a literal
+"One copy of each table" -- the ONE deliberate deviation from a literal
 line-for-line port: the original `_bundle` called `lib.data_cache.index`
 and `lib.data_cache.topics_dim` as two SEPARATE reads of files `load_context`
 below ALSO reads (`index.parquet` in full; `topics_dim.parquet` as the
 `TOPICS_DIM_COLS` subset). Reading `index.parquet` twice was exactly the
-kind of duplication D11 forbids, so this version takes `idx` and the two
-`topics_dim` columns it needs (`domain_id`, `domain_name`, `field_id` -- both
-present in `ctx["topics_dim_df"]`'s column subset) FROM `ctx` instead of
+kind of duplication this rule forbids, so this version takes `idx` and the
+two `topics_dim` columns it needs (`domain_id`, `domain_name`, `field_id` --
+both present in `ctx["topics_dim_df"]`'s column subset) FROM `ctx` instead of
 calling back into `lib.data_cache` -- proven value-identical to the old
 `index`/`topics_dim` calls with `pd.testing.assert_frame_equal` in
 `tests/test_ram_budget.py`. This also keeps the import graph one-directional:
 `lib.data_cache` imports `lib.engine.scenario_cache` (to alias its own
-loaders onto this module's `bundle["ctx"]`, D11 task 2) and NEVER the
+loaders onto this module's `bundle["ctx"]`) and NEVER the
 other way -- `lib.engine` imports nothing from `lib.data_cache`, anywhere.
 
 `get(tree, basis)` replaces `views_find.py:_subs` (which cached THREE
@@ -34,14 +33,14 @@ permanent stress harness can run its broken-control
 at a higher entry count without a code change) around `load_substrates`. Streamlit's own
 `cache_resource` already de-duplicates concurrent calls for the SAME
 (tree, basis) key (one build, every waiting caller gets the result) -- the
-module-level `_LOAD_LOCK` below is for the OTHER case D11 calls out: two
+module-level `_LOAD_LOCK` below is for the OTHER case this rule calls out: two
 sessions requesting DIFFERENT scenarios at the same moment. Without the
 lock both would build (and briefly hold) their own multi-hundred-MB
 substrate dict concurrently; the lock serialises the two builds so only one
 extra scenario is ever under construction at once, which is what keeps the
-3-session worst case under D11's 1.8 GB ceiling.
+3-session worst case under the 1.8 GB ceiling.
 
-Tree/basis-invariant blocks (D11 architecture note, "loaded once and
+Tree/basis-invariant blocks ("loaded once and
 shared, not re-read per scenario"): nothing to do here -- `substrates.py`
 already caches them at ITS OWN module level (`_TOPIC_SHARE_CACHE` keyed by
 basis for l3/f1, `_COMMON_CACHE` unconditionally for l4-l7), independent of
@@ -66,22 +65,22 @@ from lib.search import build_search_index, normalize
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
-# Same two co-publication columns `views_find.py` promotes to cards
-#  copied here because `_extra_baselines` (below) is the
+# Same two co-publication columns `views_find.py` promotes to cards --
+# copied here because `_extra_baselines` (below) is the
 # function that builds their baseline entry, and it moved with `_bundle`.
 INTL_COLUMN = "intl_share"
 COMPANY_COLUMN = "company_share"
 
-# D11: only ONE scenario dict resident at a time in normal operation. The
+# Only ONE scenario dict resident at a time in normal operation. The
 # stress harness's broken-control run overrides this via the environment
-#  to reproduce the pre-fix crash path.
+# to reproduce the pre-fix crash path.
 _SCENARIO_ENTRIES = int(os.environ.get("BENCHUP_SCENARIO_ENTRIES", "1"))
 
 # Serialises scenario BUILDS across different (tree, basis) keys -- see the
 # module docstring. `st.cache_resource` already handles the same-key case.
 _LOAD_LOCK = threading.Lock()
 
-# D12 concurrency fix: the last (tree, basis) `get()` actually built, guarded
+# The last (tree, basis) `get()` actually built, guarded
 # by `_LOAD_LOCK` -- lets `get()` tell "same scenario, cache hit" from
 # "different scenario, about to swap" BEFORE calling through to the
 # `st.cache_resource`-wrapped builder, so it can evict the old entry first.
@@ -124,7 +123,7 @@ def bundle() -> dict:
                                "total_full_2020_2024": (None if pd.isna(r.total_full_2020_2024)
                                                         else float(r.total_full_2020_2024))}
             for r in idx.itertuples(index=False)}
-    # R2/L31: the KPI baselines are one pass over the whole index, so they are
+    # The KPI baselines are one pass over the whole index, so they are
     # built HERE (inside the process-wide cache_resource) rather than per rerun.
     # `bonus_year_full` is the one DERIVED KPI -- `baselines.KPI_COLUMNS` holds
     # its parser, so the per-institution bonus-year count is read through the
@@ -151,13 +150,13 @@ def _get_cached(tree: str, basis: str) -> dict:
 
 
 def get(tree: str, basis: str) -> dict:
-    """The ONE resident (tree, basis) scenario's substrates (D11). Bounded
+    """The ONE resident (tree, basis) scenario's substrates. Bounded
     by `BENCHUP_SCENARIO_ENTRIES` (default 1): switching scenario evicts the
     previous dict from Streamlit's cache (LRU) rather than accumulating a
     second one, which is what `tests/test_scenario_cycle` proves end to end.
 
-    EVICT-BEFORE-BUILD (D12 concurrency fix, stress phase B,
-    STRESS_2026-09-03_1302.md): `st.cache_resource`'s own LRU eviction only
+    EVICT-BEFORE-BUILD (a concurrency fix found via a stress test, phase B):
+    `st.cache_resource`'s own LRU eviction only
     fires AFTER the decorated function returns a NEW entry -- a plain
     `@st.cache_resource(max_entries=1)` wrapped straight around
     `load_substrates` therefore builds the NEW multi-hundred-MB scenario

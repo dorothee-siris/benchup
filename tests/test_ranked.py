@@ -77,7 +77,7 @@ def test_format_rows_link_has_seed_free_id_and_window_years(l1_rows):
 
 
 def test_format_rows_no_nan_score_and_str_type(l1_rows):
-    # D9: `score` is now pre-scaled 0-100 (was
+    # `score` is now pre-scaled 0-100 (was
     # 0-1) so `ranked.pct_progress_column`'s printf format ("%.1f%%") renders
     # period-decimal regardless of host locale -- see `ranked._pct100`.
     df = format_rows(l1_rows, lens="L1", depth=DEPTH)

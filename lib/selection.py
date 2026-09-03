@@ -2,7 +2,7 @@
 app/lib/selection.py -- query-param parsing, deep-link helpers, and the
 Compare page's two search slots.
 
- (BenchUp trim, D1): Compare is now two independent search slots
+Compare is now two independent search slots
 (same matcher Find uses), not a shared, ordered, capped list read by three
 pages. `render_slots` replaces the old shared-list sidebar and the
 list-only slot pickers built on it; the `?pair=` deep link and its `pair_from`
@@ -110,8 +110,8 @@ def _labels_key(i: int) -> str:
     return f"compare_slot_labels_{i}"
 
 
-SLOT_HELP_TEMPLATE = "OpenAlex id: {iid}"  # manager follow-up 2026-09-03 (M owns copy.py
-# this wave -- kept inline per that instruction): the widget's own `?` help,
+SLOT_HELP_TEMPLATE = "OpenAlex id: {iid}"  # kept inline rather than moved to
+# copy.py (the widget's own `?` help,
 # never a per-option one (Streamlit's selectbox carries one help string for
 # the whole widget, not per row) -- the raw id stays available on request,
 # never as the ON-SCREEN option text (see `_display_name` below).
@@ -123,11 +123,11 @@ def _display_name(iid: str) -> str:
     `state.set_find_seed` never ran a query, so it was never added to
     `labels` (`hit_label`'s own dict, built only from `hits` below), and
     `_fmt`'s old fallback (`_labels.get(iid, iid)`) printed the raw
-    OpenAlex id verbatim -- manager follow-up 2026-09-03.
+    OpenAlex id verbatim.
 
     `lib.data_cache.index` is the single `@st.cache_resource`-backed
     institution table already aliased to the engine ctx's own `index_df`
-    (D11) -- calling it here costs nothing beyond one boolean-mask row
+    -- calling it here costs nothing beyond one boolean-mask row
     lookup, never a second file read. Falls back to the raw id only if it
     is somehow absent from the index (should not happen: every id a slot
     can hold was validated against `known_ids` before it got there)."""

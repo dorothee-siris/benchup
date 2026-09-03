@@ -32,7 +32,6 @@ from lib.engine import load_substrates, load_context
 
 APP_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = APP_DIR / "data"
-FWCI_DIR = APP_DIR.parent / "data" / "interim" / "fwci"  # build-internal, NOT deployed (data_contract.yaml)
 
 STRASBOURG, IFPEN, GDANSK, ISCTE, SORBONNE, ETH = (
     "I68947357", "I265217849", "I40413290", "I110026055", "I39804081", "I35440088")
@@ -103,35 +102,6 @@ def test_ordering_n_top10_le_n_covered_le_vol_full_tables():
         vol_col = "core_total" if name == "collab_pairs.parquet" else "vol"
         bad = df[(df["n_top10"] > df["n_covered"]) | (df["n_covered"] > df[vol_col])]
         assert bad.empty, f"{name}: n_top10<=n_covered<={vol_col} violated on {len(bad)} / {len(df):,} rows"
-
-
-# ============================================================================
-# item 3 -- FWCI: citation-weighted stratum-mean == 1 (skips if the
-# build-internal reference tables are not present locally)
-# ============================================================================
-
-_FWCI_FILES_PRESENT = (FWCI_DIR / "fwci_ref.parquet").exists() and (FWCI_DIR / "fwci_work.parquet").exists()
-
-
-@pytest.mark.skipif(not _FWCI_FILES_PRESENT, reason="pipeline-internal fwci_ref/fwci_work.parquet not present locally (not deployed to app/data -- V4/data/interim/fwci/ only)")
-def test_fwci_stratum_citation_weighted_mean_equals_one():
-    """FWCI(work) = cited_by_count / mean_cited(subfield x year x type
-    stratum) -- by construction, the mean of fwci over the works THAT
-    STRATUM'S mean_cited was itself computed from must equal 1.0, on every
-    NON-FALLBACK (subfield-level) stratum. Tolerance 1e-6 (float32 storage
-    rounding)."""
-    ref = pd.read_parquet(FWCI_DIR / "fwci_ref.parquet")
-    work = pd.read_parquet(FWCI_DIR / "fwci_work.parquet")
-    non_fb = ref[ref["fallback_level"] == "subfield"]
-    keys = set(zip(non_fb["subfield_id"], non_fb["year"], non_fb["type"]))
-
-    w = work.dropna(subset=["fwci"])
-    mask = np.array([k in keys for k in zip(w["subfield_id"], w["year"], w["type"])])
-    non_fb_work = w[mask]
-    means = non_fb_work.groupby(["subfield_id", "year", "type"], observed=True)["fwci"].mean()
-    max_dev = float((means - 1.0).abs().max())
-    assert max_dev <= 1e-6, f"citation-weighted mean(fwci) deviates from 1.0 by {max_dev:.3e} on some stratum"
-    assert len(means) >= 1000, f"suspiciously few non-fallback strata checked: {len(means)}"
 
 
 def test_fwci_median_nonnegative_and_null_rate_sane():

@@ -1,19 +1,19 @@
 """
-tests/test_pages_compare.py -- BenchUp V4 trim,: AppTest
+tests/test_pages_compare.py -- AppTest
 page-render tests for `pages/2_(scales)_Compare.py` and the render helpers
 in `lib/views_compare.py`.
 
-REWRITTEN END TO END for the trim. The pre-trim page
+REWRITTEN END TO END. The earlier page
 offered an N-institution "Compare by" metric-selector matrix, ERC panels,
 field-grain dynamics, a pooled frontier scatter, coverage and impact-by-
 subfield -- every one of those sections, and the frame builders behind them,
-is DELETED. D1 fixes Compare at EXACTLY two institutions (two search
+is DELETED. Compare is fixed at EXACTLY two institutions (two search
 slots, `lib.selection.render_slots`) -- there is no N=3 case to test any
 more, and no sidebar-shortlist premise (`lib.selection.render_sidebar`/
-`slots_row`, the E3 shims, are gone by the time this stream ends -- see
+`slots_row` are gone -- see
 this file's own final section).
 
-Page order under test (D2): Key figures -> Thematic shape (Profile/Impact
+Page order under test: Key figures -> Thematic shape (Profile/Impact
 tabs) -> SDG profile (same tab shape) -> Frontier (positioning + the shared
 deep dive) -> The relationship -> one Excel download -> the share-link box.
 
@@ -44,8 +44,8 @@ from lib.engine import scenario_cache as SC
 APP_DIR = Path(__file__).resolve().parents[1]
 COMPARE_PAGE = str(APP_DIR / "pages" / "2_⚖️_Compare.py")  # scales, the file's real name
 
-IFREMER = "I154202486"      # the T0 golden anchor pair (also this stream's
-NIOZ = "I4210107283"        # own Playwright/manager render target)
+IFREMER = "I154202486"      # the golden anchor pair (also the
+NIOZ = "I4210107283"        # Playwright render target)
 PAIR = [IFREMER, NIOZ]
 
 SECTION_HEADER_KEYS = ("CARDS_HEADER", "SHAPE_HEADER", "SDG_HEADER", "FRONTIER_HEADER",
@@ -54,7 +54,7 @@ SECTION_HEADER_KEYS = ("CARDS_HEADER", "SHAPE_HEADER", "SDG_HEADER", "FRONTIER_H
 
 def _app(ids=None, **extra_state) -> AppTest:
     """Institutions are seeded through `?compare=`, the SAME hydration path
-    `lib.selection.render_slots` reads on a fresh session (D1)."""
+    `lib.selection.render_slots` reads on a fresh session."""
     at = AppTest.from_file(COMPARE_PAGE, default_timeout=300)
     if ids:
         at.query_params["compare"] = ",".join(ids)

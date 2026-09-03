@@ -8,7 +8,7 @@ from the pre-trim build): `pp` cautions on its own per-row `denom_value`
 (n_covered) against `palette.RATIO_HATCH_FLOOR` (fifty); every other metric
 this builder can still draw (`share`) cautions on `vol_full_annual_mean`
 against `LOW_VOLUME_FLOOR` (ten a year, the same threshold in different
-units) WHEN its frame carries that column. `two_tab_bars` (D3/D4's own
+units) WHEN its frame carries that column. `two_tab_bars` (the Thematic-shape/SDG-profile
 caller, `charts_compare.py`'s own docstring: "the profile tab never
 cautions") never supplies `vol_full_annual_mean` on its `tab="profile"`
 frame -- so in practice, on THIS page, only the Impact tab (`pp`) ever
@@ -117,7 +117,7 @@ def test_share_cautions_on_volume_when_the_frame_carries_it():
 
 
 def test_two_tab_bars_profile_tab_never_cautions_even_with_a_low_volume_row():
-    """D3's own rule, stated in `two_tab_bars`'s docstring ("the profile tab
+    """The Thematic-shape chart's own rule, stated in `two_tab_bars`'s docstring ("the profile tab
     never cautions"): its `tab="profile"` frame carries no
     `vol_full_annual_mean` column at all, so even a row that WOULD be
     flagged if the column were present renders with no caution ink

@@ -1,63 +1,39 @@
 """
-tests/golden_ranklists_check.py -- acceptance: exact
-rank-list identity against the reference rank-list golden
-(reference numbers, `rank_all` on the reference version's `build_substrates`).
+tests/golden_ranklists_check.py -- exact rank-list identity check against
+the reference rank-list figures.
 
 Reproduces every (seed, scenario, lens) top-50 EXACTLY -- same institution_id
 order, same scores -- via `load_context` + `load_substrates` +
-`lib.engine.lenses.rank_all` (this module's disk-backed replacement for the
-build_substrates call the golden was generated from). No tolerance: this is
-the SAME arithmetic run through a different (offline-precomputed) substrate
-path, so a mismatch of any size is a real regression, not float noise.
+`lib.engine.lenses.rank_all`, run live against the app's own code. No
+tolerance: this is the SAME arithmetic run through a different
+(offline-precomputed) substrate path, so a mismatch of any size is a real
+regression, not float noise.
 
-If the golden file is not there yet, polls
-every 60s up to 40 minutes before giving up -- brief:
-"if absent when you finish everything else, poll. then report status
-'done, golden check pending'".
+The reference figures ship with the repo at tests/golden/reference/ranklists.json
+(numbers generated once from the same data this app ships, for the app to
+reproduce exactly).
 
 Run from `app/`: python tests/golden_ranklists_check.py
 Exit 0 = every list reproduced exactly. Exit 1 = at least one mismatch (a
-diff summary is printed). Exit 2 = golden file never arrived within the poll
-window.
+diff summary is printed). Exit 2 = reference file missing.
 """
 from __future__ import annotations
 
 import json
 import sys
-import time
 from pathlib import Path
 
 APP_DIR = Path(__file__).resolve().parents[1]
-V4_ROOT = APP_DIR.parent
 DATA_DIR = APP_DIR / "data"
-GOLDEN_PATH = V4_ROOT / "evals" / "goldens" / "v3_ranklists.json"
+GOLDEN_PATH = Path(__file__).resolve().parent / "golden" / "reference" / "ranklists.json"
 
 sys.path.insert(0, str(APP_DIR))
 from lib.engine import load_context, load_substrates, rank_all  # noqa: E402
 
-POLL_INTERVAL_S = 60
-POLL_TIMEOUT_S = 40 * 60
-
-
-def _wait_for_golden() -> bool:
-    if GOLDEN_PATH.exists():
-        return True
-    print(f"[golden_check] {GOLDEN_PATH} not found yet -- polling every {POLL_INTERVAL_S}s "
-          f"up to {POLL_TIMEOUT_S // 60} min (Stream T0 may still be writing it)")
-    waited = 0
-    while waited < POLL_TIMEOUT_S:
-        time.sleep(POLL_INTERVAL_S)
-        waited += POLL_INTERVAL_S
-        if GOLDEN_PATH.exists():
-            print(f"[golden_check] found after {waited}s")
-            return True
-    return False
-
 
 def main() -> int:
-    if not _wait_for_golden():
-        print(f"[golden_check] STATUS: done, golden check pending -- "
-              f"{GOLDEN_PATH} did not arrive within {POLL_TIMEOUT_S // 60} min")
+    if not GOLDEN_PATH.exists():
+        print(f"[golden_check] STATUS: reference file missing -- {GOLDEN_PATH} not found")
         return 2
 
     gold = json.loads(GOLDEN_PATH.read_text(encoding="utf-8"))

@@ -2,15 +2,14 @@
 tests/test_scenarios.py -- identity + RAM proof.
 
 For each of the 6 (tree, basis) scenarios, `lib.engine.substrates.load_substrates`
-(reads `app/data/scenarios/`, written by the offline build step whose script
-this file loads directly -- see `PIPELINE_SCRIPT` below)
-must return the EXACT SAME dict an in-process reference build produces
-same keys, dtypes, shapes, memory order (arrays), same values (frames,
-exact incl. category dtype). The reference is that offline build step's own
-building blocks (`build_topic_share`/`build_common`/`build_scenario`),
-loaded by file path since it has no `__init__.py` and its filename
-starts with a digit (brief: "import the ORIGINAL build_substrates from the
-offline build step, or from \\app\\lib\\engine by sys.path -- read-only").
+(reads `app/data/scenarios/`, written by the offline build step that writes
+data/scenarios/, when present next to this checkout -- see `PIPELINE_SCRIPT`
+below) must return the EXACT SAME dict an in-process reference build
+produces: same keys, dtypes, shapes, memory order (arrays), same values
+(frames, exact incl. category dtype). The reference is that offline build
+step's own building blocks (`build_topic_share`/`build_common`/
+`build_scenario`), loaded by file path since it has no `__init__.py` and
+its filename starts with a digit.
 
 Run from `app/`: python -m pytest tests/test_scenarios.py -q -s
 
@@ -157,7 +156,7 @@ def test_load_substrates_matches_reference_build(ctx, topic_share_ref, common_re
 
 
 def test_topic_share_is_shared_across_trees(ctx, topic_share_ref):
-    """D11 architecture claim: l3/f1 are tree-invariant -- `load_substrates`
+    """Architecture claim: l3/f1 are tree-invariant -- `load_substrates`
     must hand back the SAME cached array object (identity, not just equal
     values) across every tree for a fixed basis."""
     arrays = [load_substrates(ctx, tree, "frac")["l3"]["share"] for tree in TREES]

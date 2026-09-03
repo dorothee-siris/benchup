@@ -300,13 +300,13 @@ def test_scope_b_matcher_is_not_vacuous():
 def test_a5_widening_actually_added_files_versus_the_pre_2b_scope():
     """Non-vacuity of the WIDENING itself, not just of the matcher: guards
     against a future edit collapsing SCOPE_B_FILES back to the earlier,
-    single-name list without anyone noticing (e.g. a bad merge). BenchUp V4
-    trim: `views_collab.py` does not exist (D1, the earlier standalone pair-view page is out of scope
+    single-name list without anyone noticing (e.g. a bad merge). `views_collab.py`
+    does not exist (the earlier standalone pair-view page is out of scope
     for this app) -- the THREE lib/views_*.py files this build ships must
     all still be present, plus the five other additions."""
     names = {f.name for f in SCOPE_B_FILES}
     assert {"views_compare.py", "views_methods.py", "views_find.py"} <= names
-    assert "views_collab.py" not in names, "Collaborate is out of scope for BenchUp V4 (D1)"
+    assert "views_collab.py" not in names, "Collaborate is out of scope for BenchUp V4"
     assert {"selection.py", "exports_xlsx.py", "charts_compare.py", "tiles.py",
             "wordcloud_png.py"} <= names
 
@@ -360,4 +360,4 @@ def test_no_digit_ban_violations():
     violations = [(loc, s) for loc, s in all_scoped_strings() if has_digit_violation(s, tokens)]
     if violations:
         detail = "\n".join(f"  {loc} -- {s!r}" for loc, s in violations)
-        pytest.fail(f"{len(violations)} digit-ban violation(s) found (see progress/2A_G.md):\n{detail}")
+        pytest.fail(f"{len(violations)} digit-ban violation(s) found:\n{detail}")

@@ -14,8 +14,8 @@ cached on `ctx` under a `leaders:.` key, bounded to the `_PAIR_CACHE_MAX`
 most recently used entries per cache namespace (`_lru_touch`) so a repeat
 call for a still-resident key never re-scans the file while a session that
 keeps hopping to new topics/institutions never accumulates an unbounded
-number of slices (D11/D12 concurrency fix, stress phase B,
-STRESS_2026-09-03_1302.md). `ctx` is the engine context dict
+number of slices (a concurrency fix, found via a stress test, phase B).
+`ctx` is the engine context dict
 (`lib.engine.substrates.load_context`'s return value, or a Streamlit page's
 cached copy of it) -- every function below reads `ctx["data_dir"]`, exactly
 like `collab_data`.

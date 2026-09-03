@@ -1,16 +1,16 @@
-"""tests/test_ratio_caption_presence.py -- BenchUp V4 trim, guards
-E5/D3's caption-presence rules on the Compare page: every ratio chart names
-its basis/floor in words and the warning-caption colour is D5's frontier
-red BY REFERENCE. REWRITTEN for the trim: the pre-trim COMPARE keys this
+"""tests/test_ratio_caption_presence.py -- guards
+the caption-presence rules on the Compare page: every ratio chart names
+its basis/floor in words and the warning-caption colour is the shared
+frontier's red BY REFERENCE. REWRITTEN: the earlier COMPARE keys this
 file used to pin (`TIP_LOW_VOLUME`, `CAPTION_BASIS_FWCI`, `CAPTION_BASIS_
 FWCI_ERC_GAP` -- the N-institution "Compare by" selector's own caption
-family) are DELETED with that selector; the equivalent trimmed
+family) are DELETED with that selector; the current
 facts are:
 
-  * D3/D4's own Impact-tab hatch floor, stated in `copy.COMPARE[
+  * The Thematic-shape/SDG-profile charts' own Impact-tab hatch floor, stated in `copy.COMPARE[
     "SHAPE_NOTE_IMPACT"]`/`["SDG_NOTE_IMPACT"]`, filled from
     `palette.RATIO_HATCH_FLOOR` (fifty).
-  * D2/D10/E5's ONE pin caption under the title, `copy.COMPARE[
+  * The ONE pin caption under the title, `copy.COMPARE[
     "PIN_CAPTION"]`, naming the best-fit + full-counting pin in words.
 
 This is an IMPORT-LEVEL check (no Streamlit runtime needed): `copy.py` is a
@@ -18,9 +18,9 @@ pure dict-of-strings module, and the substrings a caption must carry are a
 property of the STRING, independent of whether a page happens to render it
 this run.
 
-Also pins the D5/D6 colour contract: `palette.WARNING_CAPTION_COLOR ==
-palette.SHARED_FRONTIER` (the warning caption colour is D5's frontier red
-BY REFERENCE, not a second, driftable hex).
+Also pins the colour contract: `palette.WARNING_CAPTION_COLOR ==
+palette.SHARED_FRONTIER` (the warning caption colour is the shared frontier's
+red BY REFERENCE, not a second, driftable hex).
 
 VACUITY: each substring check is run once against the REAL rendered string
 (passes) and once against a deliberately mutated in-memory COPY with the
@@ -51,7 +51,7 @@ def _assert_contains_and_is_sensitive(rendered: str, needle: str, mutated_missin
 
 
 # ---------------------------------------------------------------------------
-# 1. D3/D4's Impact-tab hatch-floor sentence, ONE template, both sections
+# 1. The Thematic-shape/SDG-profile Impact-tab hatch-floor sentence, ONE template, both sections
 # ---------------------------------------------------------------------------
 
 def test_shape_and_sdg_impact_notes_name_the_ruled_floor_of_fifty_works():
@@ -70,7 +70,7 @@ def test_shape_and_sdg_impact_notes_name_the_ruled_floor_of_fifty_works():
 
 
 # ---------------------------------------------------------------------------
-# 2. the D2/D10/E5 pin caption -- best-fit + full counting, both windows
+# 2. the pin caption -- best-fit + full counting, both windows
 # ---------------------------------------------------------------------------
 
 def test_pin_caption_names_the_bestfit_full_counting_pin_and_both_windows():
@@ -96,19 +96,17 @@ def test_warning_caption_color_is_the_shared_frontier_red():
     assert P.WARNING_CAPTION_COLOR == "#821D13"
 
     # VACUITY: a DIFFERENT red must fail the same equality.
-    assert P.WARNING_CAPTION_COLOR != "#7A1600"  # the pre-D7 red this replaced
+    assert P.WARNING_CAPTION_COLOR != "#7A1600"  # the earlier red this replaced
 
 
 # ---------------------------------------------------------------------------
-# 5. VL/VF also introduced their own D4/D5 basis-disclosure keys this plan
+# 5. The COLLAB basis-disclosure keys
 # ---------------------------------------------------------------------------
-# `test_collab_core_ar_basis_chip_exists_and_names_full_counting` DELETED
-# (2026-09-03, this follow-up): its premise, `copy.COLLAB["BASIS_CAPTION_
-# CORE_AR"]`, no longer exists -- own copy.py press pass removed
-# the whole `COLLAB` dict this same session (there is no pair page in
-# BenchUp V4, D1's own "out of scope" line; M's fence, not this stream's
-# `copy.py` is explicitly M's this wave per the manager's own follow-up
-# instruction). Confirmed via `hasattr(copy, "COLLAB")` below rather than
+# `test_collab_core_ar_basis_chip_exists_and_names_full_counting` DELETED:
+# its premise, `copy.COLLAB["BASIS_CAPTION_
+# CORE_AR"]`, no longer exists -- the whole `COLLAB` dict was removed
+# (there is no pair page in BenchUp V4). Confirmed via
+# `hasattr(copy, "COLLAB")` below rather than
 # left silently broken.
 
 
@@ -132,7 +130,7 @@ def test_find_six_year_basis_disclosure_key_exists_and_names_the_whole_run():
 
 
 def test_copy_digit_ban_still_holds_after_2c_additions():
-    """A permanent guard alongside the locale ban (D9's sibling rule): none
+    """A permanent guard alongside the locale ban (a sibling rule): none
     of the 2C caption keys this module just quoted verbatim may carry a
     hand-typed digit outside an approved `{placeholder}` -- re-run copy.py's
     OWN scanner here so a future edit to any COMPARE/COLLAB/FIND caption key

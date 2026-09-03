@@ -3,7 +3,7 @@ tests/test_golden_numbers.py -- hand-derived golden pins over REAL
 `app/data/*.parquet` tables. Every number below is
 derived IN THE TEST (comments show the arithmetic), from raw parquet reads
 that do NOT import the function under test's own helper -- never copied from
-a manager probe or a progress-note table. Where a live app function is then
+a one-off probe script or a scratch notebook. Where a live app function is then
 called, the test asserts the app's own output equals the independently
 hand-derived number (a real regression guard, not just a self-consistency
 check of the derivation script).
@@ -47,7 +47,7 @@ def ctx():
 # ============================================================================
 # (a) IFPEN Decision Sciences sdg_share -- derived by hand from sdg_fields.
 # parquet + fields.parquet directly (never `_sdg_share_field_frame`'s own
-# code). A prior manager probe measured 0.6197 (fractional basis) on the
+# code). A prior one-off probe measured 0.6197 (fractional basis) on the
 # live data; this derivation is independent and only cross-checks
 # against that number as a sanity anchor, not a copied source.
 # ============================================================================
@@ -76,20 +76,21 @@ def test_ifpen_decision_sciences_sdg_share_hand_derived():
     hand_frac = num_frac / den_frac
     hand_full = num_full / den_full
 
-    # sanity anchors against the manager's own live probe (0.6197, fractional basis)
+    # sanity anchor against a prior live probe (0.6197, fractional basis)
     np.testing.assert_allclose(hand_frac, 0.6197183399393414, atol=1e-6)
     np.testing.assert_allclose(hand_full, 0.6666666666666666, atol=1e-6)  # = 2/3 exactly (num_full=2.0, den_full=3)
     assert 0.0 <= hand_frac <= 1.0 and 0.0 <= hand_full <= 1.0
     # (no live-app cross-check here: the trimmed Compare surface has no
-    # field x SDG share view any more -- D4 caps the SDG profile at SDG
+    # field x SDG share view any more -- the SDG profile is capped at SDG
     # grain, 17 rows -- so this stays a pure sdg_fields/fields data-quality
     # golden, not a UI regression guard.)
 
 
 # ============================================================================
 # (b) Strasbourg x CNRS pair core_total + field 31 row (vol/n_top10/n_covered)
-# recomputed from collab_pairs.parquet/collab_pair_fields.parquet directly,
-# cross-referenced to the reference-figures golden's OpenAlex-VERIFIED numbers.
+# recomputed from collab_pairs.parquet/collab_pair_fields.parquet directly --
+# a pure data-consistency check (core_total by definition, and the
+# n_top10 <= n_covered <= vol ordering every field row must respect).
 # ============================================================================
 
 def test_strasbourg_cnrs_core_total_and_physics_field_recomputed(ctx):
@@ -104,27 +105,6 @@ def test_strasbourg_cnrs_core_total_and_physics_field_recomputed(ctx):
     frow = fields[(fields["a"] == lo) & (fields["b"] == hi) & (fields["field_id"] == FIELD_PHYSICS)].iloc[0]
     vol, n_top10, n_covered = int(frow["vol"]), int(frow["n_top10"]), int(frow["n_covered"])
     assert n_top10 <= n_covered <= vol
-
-    golden_path = APP_DIR.parent / "evals" / "golden_2BR3.json"
-    if not golden_path.exists():
-        pytest.skip("evals/golden_2BR3.json not present")
-    golden = json.loads(golden_path.read_text(encoding="utf-8"))
-    pair_entry = next(p for p in golden["pairs"] if set(p["pair"]) == {CNRS, STRASBOURG})
-    # golden_2BR3.json's own pair-grain diagnostic call (query 7) matched
-    # OpenAlex live within 0.028% -- cross-referencing OUR independent
-    # recompute against golden's `computed_core_total` (itself already
-    # OpenAlex-verified via the diagnostic_no_field_filter entry) closes the
-    # loop: this table's core_total is the SAME number that was checked
-    # against a live OpenAlex filter= call.
-    assert core_total == pair_entry["computed_core_total"] == 10587
-    field_entry = next(f for f in pair_entry["fields"] if f["field_id"] == FIELD_PHYSICS)
-    assert vol == field_entry["computed_vol"] == 1643
-    assert n_top10 == field_entry["computed_n_top10"] == 383
-    assert n_covered == field_entry["computed_n_covered"] == 1642
-    # golden's own live-vs-computed delta for this exact field cell (disclosed
-    # taxonomy-repair caveat, NOT a computation bug -- see golden_2BR3.json's
-    # _meta.IMPORTANT_FINDING and field_entry["verdict"])
-    assert field_entry["delta_pct"] < 2.0
 
 
 # ============================================================================

@@ -70,7 +70,7 @@ still inside the A/B #3/#4 winning geometry -- neither reopens either A/B:
     no publications at all. When the column is absent, the earlier rule
     applies unchanged: a defined `si` gets a filled dot, a NaN `si` gets none.
 
-Refinement changes four more things,
+This module also changes four more things,
 all scoped to the FIND panels this module builds for (`views_find.py`'s
 collapsed fields/subfields/topics/frontier/SDG/ERC panels), none of them
 touching the Compare-page geometry `lib/charts_compare.py` borrows this
@@ -709,7 +709,7 @@ def fig_share_si(
         ), row=si_row, col=si_col)
         fig.add_vline(x=SI_NEUTRAL, row=si_row, col=si_col,
                       line=dict(color=P.INK_SECONDARY, width=HAIRLINE_PX, dash="dash"))
-        # : the per-integer unit grid is RETIRED in favour of the
+        # The per-integer unit grid is retired in favour of the
         # outer-end label above -- `showgrid=False` removes it. The dashed
         # neutral-reference line just above is NOT a "unit gridline" and
         # stays. The axis range is padded on BOTH ends (`SI_LABEL_PAD_FRAC`)
@@ -750,7 +750,7 @@ def fig_topics(
     prefixed with `EXCLUDED_GLYPH` on the axis, and says why on hover -- it is
     shown and counted, never silently dropped.
 
-    `sort` is RETIRED: the keyword stays so no existing caller
+    `sort` is retired: the keyword stays so no existing caller
     breaks, but the panel is now ALWAYS volume-ordered whatever value is
     passed, since "top N" is itself a volume-defined cut -- a taxonomy
     re-sort of it would read as an arbitrary row order, not a second view.

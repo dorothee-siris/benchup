@@ -7,7 +7,7 @@ publications card's fractional note in place of an index line, the PP card
 without its interval line, the identity line's inline type correction and the
 ten profiles that used to crash on it. RE-CUT AGAIN for BenchUp V4: the shared sidebar search and cross-tab shortlist are gone --
 section 1 now drives Find's own free-text search directly -- and section 2
-grows from six cards to EIGHT (the two P5 KPIs, D9).
+grows from six cards to EIGHT (the two star-papers/topics-led KPIs).
 
 Six claims, one section each:
 

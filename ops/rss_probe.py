@@ -9,7 +9,7 @@ target process with PROCESS_QUERY_INFORMATION | PROCESS_VM_READ (0x0400 |
 0x0010) -- no admin needed for a process owned by the same user.
 
 Returns MB (not GB, unlike the identity test's own helper) since the ram
-budget numbers this stream reports are in the 300-1500 MB range.
+budget numbers reported here are in the 300-1500 MB range.
 """
 from __future__ import annotations
 

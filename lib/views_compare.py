@@ -3,28 +3,28 @@ app/lib/views_compare.py -- the Compare page.
 
 COMPOSITION ONLY, same house rule `lib/views_find.py`'s own docstring states:
 every frame comes from `lib.compare_data`, every chart from
-`lib.charts_compare`, every string from `lib.copy` (this
-stream's own COMPARE section). Nothing here recomputes a number and nothing
+`lib.charts_compare`, every string from `lib.copy` (the
+app's own COMPARE section). Nothing here recomputes a number and nothing
 types a value into a rendered string.
 
-PAGE ORDER (D2, top to bottom): title + the pin caption -> two search slots
-(`lib.selection.render_slots`, D1) -> Key figures (nine cards per pair, D8)
--> Thematic shape (Profile/Impact tabs, D3) -> SDG profile (same tab shape,
-D4) -> Frontier (positioning figures, then the shared-frontier mirror chart
-+ full table, D5) -> The relationship (momentum, yearly-by-domain, strategic
-reciprocity, joint star papers, D7) -> one Excel download -> the share-link
+PAGE ORDER (top to bottom): title + the pin caption -> two search slots
+(`lib.selection.render_slots`) -> Key figures (nine cards per pair)
+-> Thematic shape (Profile/Impact tabs) -> SDG profile (same tab shape)
+-> Frontier (positioning figures, then the shared-frontier mirror chart
++ full table) -> The relationship (momentum, yearly-by-domain, strategic
+reciprocity, joint star papers) -> one Excel download -> the share-link
 box.
 
-PIN (D10): Compare never offers a taxonomy/basis toggle -- every figure is
+PIN: Compare never offers a taxonomy/basis toggle -- every figure is
 best-fit + full counting, named once in the caption under the title, with
 the CORE window ({y0}-{y1}) and the whole-run window ({whole_y1}, the "share
-of own output" denominator) both stated (E5).
+of own output" denominator) both stated.
 
 PERFORMANCE: the engine context and the ONE resident scenario come from
-`lib.engine.scenario_cache` (`SC.bundle` / `SC.get("bestfit", "full")`,
-D11/E1) -- never re-read here. The one export workbook is built once per
+`lib.engine.scenario_cache` (`SC.bundle` / `SC.get("bestfit", "full")`)
+-- never re-read here. The one export workbook is built once per
 (a, b) pair behind `@st.cache_data(max_entries=8, ttl=1800)`, keyed on the
-hashable id pair alone (E4) -- ctx/subs are fetched inside the cached
+hashable id pair alone -- ctx/subs are fetched inside the cached
 function, never passed as arguments.
 """
 from __future__ import annotations
@@ -50,9 +50,9 @@ CORE_Y0, CORE_Y1 = CFG["window"]
 WHOLE_Y1 = CFG["bonus_year"]
 COMPARE_SLOTS = int(CFG.get("compare_slots", 2))
 
-TOP_N_SUBFIELDS = 20        # D3: the pair's top-20 subfields by combined volume
-MIRROR_TOP_N_DEFAULT = 20   # D5: the mirror chart's own default cut, "show all N" past it
-PVAL_FLOOR = 0.001          #  wording: below this, the significance line reads "< 0.001"
+TOP_N_SUBFIELDS = 20        # the pair's top-20 subfields by combined volume
+MIRROR_TOP_N_DEFAULT = 20   # the mirror chart's own default cut, "show all N" past it
+PVAL_FLOOR = 0.001          # below this, the significance line reads "< 0.001"
 
 TAB_KEYS = {"profile": ("share_full", "eu_mean_share"), "impact": ("pp10_wd", "eu_mean_pp10_wd")}
 
@@ -92,7 +92,7 @@ def _search(query: str) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
-# 1. Key figures (D8) -- nine cards per institution, the card component
+# 1. Key figures -- nine cards per institution, the card component
 #    (`tiles.py`'s own type scale, a leader dot from `charts_compare.
 #    best_value_dot`), ported from `/app/lib/views_compare.py:_card_html`/
 #    `_card_facts`/`_leaders` (tiles.kpi_tile itself has no room for a dot).
@@ -103,15 +103,15 @@ CARD_COLUMNS = ("vol_full", "vol_change", "fwci_eu_median", "pp", "star_share",
 
 
 def _card_facts(ctx: dict, iid: str, row: pd.Series) -> list[tuple[str, str, str, str]]:
-    """`[(column, label, value, tooltip)]`, D8's own nine-figure order. The
+    """`[(column, label, value, tooltip)]`, this card's own nine-figure order. The
     ninth figure (international + company co-publication) is a two-value
     tile, rendered separately (`_copub_tile`) -- it carries no single
     "higher" reading, so it stays out of the leader-dot family."""
     Cw = copy.COMPARE
-    fwci_mean = ctx["index_by_id"].loc[iid].get("fwci_eu_mean")  # index column, P6
-    # `compare_data.cards` does not carry it (not asked for by C1's own
-    # brief); read directly off the same index row every other card figure
-    # already comes from, D8's "FWCI_EU (median; mean in hover)".
+    fwci_mean = ctx["index_by_id"].loc[iid].get("fwci_eu_mean")  # index column
+    # `compare_data.cards` does not carry it (not asked for in the original
+    # spec); read directly off the same index row every other card figure
+    # already comes from: "FWCI_EU (median; mean in hover)".
     return [
         ("vol_full", Cw["CARD_PUBLICATIONS"], _count(row["vol_full"]),
          Cw["CARD_PUBLICATIONS_TIP"].format(y0=CORE_Y0, y1=CORE_Y1, frac=_count(row["vol_frac"]),
@@ -318,13 +318,12 @@ def _change_label(change, low) -> str:
 
 def _join_keywords(raw) -> str:
     """`topics_dim.parquet`'s own `keywords` column ships '|'-joined (the
-    same convention `topic_name`/other taxonomy fields use internally)
-    manager follow-up 2026-09-03: a reader-facing column reads that
+    same convention `topic_name`/other taxonomy fields use internally),
+    but a reader-facing column reads that
     delimiter as a literal pipe character, not a list separator. Reused for
-    BOTH the on-page table and the workbook's "Shared frontier" sheet (this
-    worker's own call, per the follow-up's "your call" -- one keywords
-    convention throughout beats a table that reads differently from its own
-    downloaded twin)."""
+    BOTH the on-page table and the workbook's "Shared frontier" sheet --
+    one keywords convention throughout beats a table that reads differently
+    from its own downloaded twin."""
     if raw is None or (isinstance(raw, float) and pd.isna(raw)):
         return NA_MARK
     return ", ".join(str(raw).split("|"))
@@ -406,7 +405,7 @@ def _render_shared_frontier(ctx: dict, subs: dict, ids: list[str], names: dict, 
 
 
 # ---------------------------------------------------------------------------
-# 5. The relationship (D7) -- momentum, yearly-by-domain, reciprocity, stars.
+# 5. The relationship -- momentum, yearly-by-domain, reciprocity, stars.
 # ---------------------------------------------------------------------------
 
 def _render_momentum(ctx: dict, mom: dict) -> None:
@@ -432,9 +431,9 @@ def _render_momentum(ctx: dict, mom: dict) -> None:
 
 
 def _fallback_yearly_bar(pulse_yearly: pd.DataFrame) -> go.Figure:
-    """The D7 "plain yearly totals" fallback for a pair below the P7
-    qualifying floor: `yearly_domain_stack` is deleted with C2's own
-    `fig_pulse` (its single-series builder), so this reuses the SAME house
+    """The relationship section's "plain yearly totals" fallback for a pair
+    below the P7 qualifying floor: the earlier single-series `fig_pulse`
+    builder is gone, so this reuses the SAME house
     chrome (`charts._base_layout`, the shared axis titles/grid/border
     tokens) rather than a second bar-drawing primitive for one rare case."""
     years = [str(y) for y in pulse_yearly["year"]]
@@ -488,11 +487,11 @@ def _render_relationship(ctx: dict, subs: dict, ids: list[str], names: dict, slo
 
 
 # ---------------------------------------------------------------------------
-# 6. One Excel at the end (D2/E7), then the share-link box.
+# 6. One Excel at the end, then the share-link box.
 # ---------------------------------------------------------------------------
 
 def _workbook_sheets(ctx: dict, subs: dict, ids: list[str]) -> list[tuple[str, pd.DataFrame]]:
-    """The SEVEN sheets D2 names, in that order -- pure function (no
+    """The SEVEN sheets `copy.COMPARE` names, in that order -- pure function (no
     Streamlit), so it is directly unit-testable and directly what
     `_workbook_bytes` (the cached wrapper) calls."""
     Cw = copy.COMPARE
@@ -522,7 +521,7 @@ def _workbook_sheets(ctx: dict, subs: dict, ids: list[str]) -> list[tuple[str, p
 
 @st.cache_data(show_spinner=False, max_entries=8, ttl=1800)
 def _workbook_bytes(ids: tuple[str, str]) -> bytes:
-    """Keyed on the hashable id pair ALONE (E4) -- ctx/subs are fetched
+    """Keyed on the hashable id pair ALONE -- ctx/subs are fetched
     inside, from the process-wide scenario cache, never passed in as
     arguments."""
     ctx = SC.bundle()["ctx"]

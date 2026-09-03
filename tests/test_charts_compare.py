@@ -96,7 +96,7 @@ def yearly_frame() -> pd.DataFrame:
 
 
 def reciprocity_frame(n_fields: int = 4, with_ranks: bool = True) -> pd.DataFrame:
-    """C2 follow-up (2026-09-03): the WIDE, one-row-per-field contract
+    """The WIDE, one-row-per-field contract
     field_id, field_name, domain_id, vol_joint, share_a, share_b, and the
     OPTIONAL rank_in_a/rank_in_b."""
     rows = []
@@ -125,7 +125,7 @@ def _real_bars(fig: go.Figure) -> list[go.Bar]:
 
 
 # ---------------------------------------------------------------------------
-# two_tab_bars -- D3 (Thematic shape) / D4 (SDG profile)
+# two_tab_bars -- Thematic shape / SDG profile
 # ---------------------------------------------------------------------------
 def test_two_tab_bars_rejects_an_unknown_tab(slots):
     with pytest.raises(ValueError):
@@ -217,7 +217,7 @@ def test_two_tab_bars_missing_institution_row_is_absent_not_zero(slots):
     assert 2 not in list(ia_bar.y), "a missing cell draws no bar, never a zero-length one"
 
 def test_two_tab_bars_grouped_by_field_draws_a_domain_accent_glyph(slots):
-    """C2 follow-up 2: the same small colour-coded square `reciprocity_
+    """The same small colour-coded square `reciprocity_
     bars` already uses, driven by the frame's own `domain_id`."""
     df = two_tab_frame(IDS, grouped_by_field=True)
     fig = X.two_tab_bars(df, "profile", NAMES, slots, grouped_by_field=True)
@@ -257,7 +257,7 @@ def test_two_tab_bars_sdg_hover_has_no_field_line(slots):
     assert not any(X.HOVER_FIELD_PREFIX in h for h in hovers)
 
 # ---------------------------------------------------------------------------
-# mirror_frontier -- D5 shared-frontier mirror
+# mirror_frontier -- shared-frontier mirror
 # ---------------------------------------------------------------------------
 def test_mirror_frontier_trace_count_is_fixed_at_three():
     fig = X.mirror_frontier(mirror_frame(), ["A", "B"], [0, 1])
@@ -340,9 +340,8 @@ def test_mirror_frontier_rejects_a_missing_column():
 
 
 # ---------------------------------------------------------------------------
-# mirror_frontier -- C2 follow-up (2026-09-03): wrap + ellipsis + margin cap,
-# fixing the 390 px "zero visible bars" defect the manager read in
-# C2_mirror_frontier_390.png.
+# mirror_frontier -- wrap + ellipsis + margin cap,
+# fixing the 390 px "zero visible bars" defect found in a screenshot at that width.
 # ---------------------------------------------------------------------------
 LONG_TOPIC_NAME = ("A realistically long OpenAlex topic name that runs well "
                    "past the wrap width on purpose, to prove the ellipsis path")
@@ -374,7 +373,7 @@ def test_wrap_topic_label_a_name_that_fits_never_truncates():
 
 
 def test_wrap_topic_label_ellipsis_only_past_the_character_budget():
-    """C2 follow-up 2: the ellipsis decision is keyed on the ORIGINAL
+    """The ellipsis decision is keyed on the ORIGINAL
     name's own character count (60), never on how many lines greedy wrap
     happens to want."""
     short = X._wrap_topic_label("Short topic")
@@ -454,7 +453,7 @@ def test_mirror_frontier_left_margin_is_capped():
 
 
 # ---------------------------------------------------------------------------
-# yearly_domain_stack -- D7 relationship yearly stack
+# yearly_domain_stack -- relationship yearly stack
 # ---------------------------------------------------------------------------
 def test_yearly_domain_stack_sums_equal_the_input_totals():
     df = yearly_frame()
@@ -486,8 +485,8 @@ def test_yearly_domain_stack_rejects_a_missing_column():
 
 
 # ---------------------------------------------------------------------------
-# reciprocity_bars -- D7, adapted from views_collab._reciprocity_chart.
-# C2 follow-up (2026-09-03): the WIDE one-row-per-field contract, a gutter
+# reciprocity_bars -- adapted from views_collab._reciprocity_chart.
+# The WIDE one-row-per-field contract, a gutter
 # value drawn ONCE per row (not once per institution), and a custom
 # narrative hover sentence.
 # ---------------------------------------------------------------------------
@@ -580,7 +579,7 @@ FIGURES = {
     "yearly_domain_stack": lambda slots: X.yearly_domain_stack(yearly_frame()),
     "reciprocity_bars": lambda slots: X.reciprocity_bars(reciprocity_frame(), RECIP_NAMES, RECIP_SLOTS),
 }
-# C2 follow-up (2026-09-03): `yearly_domain_stack` is the ONE builder in this
+# `yearly_domain_stack` is the ONE builder in this
 # module with its OWN native Plotly legend (four unlabelled domain colours
 # were unreadable without one) -- every other chart still defers to the
 # app-wide HTML chip strip and keeps `showlegend=False`.

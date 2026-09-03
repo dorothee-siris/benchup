@@ -52,14 +52,14 @@ WORKS_LINK_FALLBACK_LABEL = "See works ↗"
 # fallback was dropped once lib/links.py landed.
 from lib.links import works_url as _works_link
 
-# D9: the shared 0-100 progress-column idiom.
+# The shared 0-100 progress-column idiom.
 # Streamlit's OWN `format="percent"` keyword scales a 0-1 value to a percentage
 # internally but renders it through the HOST BROWSER LOCALE -- confirmed live,
-# comma-decimal ("76,04 %") -- which is exactly the D9-banned behaviour. A
+# comma-decimal ("76,04 %") -- which is exactly the banned behaviour. A
 # printf spec applied directly to the raw 0-1 value does not fix this: it has
 # no scaling of its own, so "%.0f%%" on 0.76 prints "1%" (the value rounded to
-# the nearest whole FRACTION, not a percentage) -- the trap the retired
-# an earlier comment on the old `score` config named correctly
+# the nearest whole FRACTION, not a percentage) -- the trap an earlier
+# comment on the old `score` config named correctly
 # but then still shipped the banned keyword as its workaround. The fix needs
 # BOTH halves in the right place: the caller's own dataframe column carries the
 # value already multiplied by 100 (`_pct100` below feeds `format_rows`'s own
@@ -72,7 +72,7 @@ PCT_PROGRESS_FORMAT = "%.1f%%"
 
 def pct_progress_column(label: str) -> "st.column_config.Column":
     """A `ProgressColumn` for a percentage already scaled 0-100 -- printf-style,
-    period-decimal regardless of host locale (D9). The caller's OWN dataframe
+    period-decimal regardless of host locale. The caller's OWN dataframe
     column must carry the *100 value; this function only builds the column
     config, since Streamlit's column_config has no value-transform hook of its
     own (`_pct100` is the transform half, applied where the column is built)."""
@@ -81,7 +81,7 @@ def pct_progress_column(label: str) -> "st.column_config.Column":
 
 
 def _pct100(v):
-    """D9: pre-scale a 0-1 score to 0-100 for `pct_progress_column`. Stays a
+    """Pre-scale a 0-1 score to 0-100 for `pct_progress_column`. Stays a
     plain float/None (never a formatted string) -- `ProgressColumn` draws the
     bar's fill fraction from the numeric value itself; only the DISPLAY text
     goes through `PCT_PROGRESS_FORMAT`."""
@@ -130,12 +130,12 @@ def format_rows(rows: list[dict], *, lens: str, depth: int) -> pd.DataFrame:
     """Pure transform: engine `build_rows(.)` output -> the one DataFrame
     shape every `tbl-lens-ranked` render shares (VIZ_SPEC.md S2.4).
 
-    R1/L22: no `badges` kwarg any more; two size columns (`size_full`,
+    No `badges` kwarg any more; two size columns (`size_full`,
     `size_frac`); `evidence` is whatever lens-specific text the caller set on
-    `row["evidence_text"]` (R-B's `evidence.rows_evidence`, wired in by E2),
+    `row["evidence_text"]` (`evidence.rows_evidence`, wired in),
     NA_MARK when absent or empty -- never a generic "top field" line.
 
-     (A10): `institution` now carries the URL (`works_link_named`),
+    `institution` now carries the URL (`works_link_named`),
     rendered as the OpenAlex-works LinkColumn -- the institution NAME is the
     clickable text, and the old separate "OpenAlex works" column is gone
     (`render_ranked_table`). `institution_name` is kept alongside, plain text,
@@ -154,7 +154,7 @@ def format_rows(rows: list[dict], *, lens: str, depth: int) -> pd.DataFrame:
             "type": str(row["type"]),
             "size_full": _fmt_size(row.get("total_full_2020_2024")),
             "size_frac": _fmt_size(row.get("total_frac_2020_2024")),
-            "score": _pct100(row.get("lens_score")),  # D9: pre-scaled 0-100, see pct_progress_column
+            "score": _pct100(row.get("lens_score")),  # pre-scaled 0-100, see pct_progress_column
             "evidence": row.get("evidence_text") or NA_MARK,
             "rank_under": _rank_under_text(row),
             "institution_id": iid,
@@ -167,7 +167,7 @@ def format_rows(rows: list[dict], *, lens: str, depth: int) -> pd.DataFrame:
 
 def render_ranked_table(df: pd.DataFrame, *, key: str, score_form: str = "progress"):
     """`st.dataframe` per the A/B #1 winner: ProgressColumn score, LinkColumn
-    institution, hidden id/country_code, NO badge column (R1/L22). Returns
+    institution, hidden id/country_code, NO badge column. Returns
     the selected `institution_id`s (multi-row select) so the caller can offer
     its own "add to comparison" affordance -- composition stays with
     the caller.
@@ -180,7 +180,7 @@ def render_ranked_table(df: pd.DataFrame, *, key: str, score_form: str = "progre
     `display_text=r"#(.*)$"`, which Streamlit applies PER CELL against each
     row's OWN url value (the same mechanism the column_config docs' own
     `streamlit.app` subdomain example demonstrates). `NAME_LINK_MODE` is the
-    kill switch this stream's own Playwright render check gates: "fragment"
+    kill switch a Playwright render check gates: "fragment"
     (the normal path) makes `institution` itself the LinkColumn; "fallback"
     keeps the institution name a plain TextColumn and re-adds a SEPARATE,
     harmonised-label works-link column, pushed last."""
@@ -216,7 +216,7 @@ def render_ranked_table(df: pd.DataFrame, *, key: str, score_form: str = "progre
             "type": st.column_config.TextColumn("Type"),
             "size_full": st.column_config.TextColumn(copy.FIND["COL_SIZE_FULL"]),
             "size_frac": st.column_config.TextColumn(copy.FIND["COL_SIZE_FRAC"]),
-            "score": pct_progress_column("Score"),  # D9 fix: was format="percent" (comma-decimal live)
+            "score": pct_progress_column("Score"),  # was format="percent" (comma-decimal live)
             "evidence": st.column_config.TextColumn(copy.FIND["COL_EVIDENCE"]),
             "rank_under": st.column_config.TextColumn("Rank under"),
         },
@@ -227,7 +227,7 @@ def render_ranked_table(df: pd.DataFrame, *, key: str, score_form: str = "progre
 
 def format_concordance(rows: list[dict], *, lenses: list[str], N: int) -> pd.DataFrame:
     """Pure transform: engine `concordance(.)` rows -> the A/B #2 winner's
-    k-of-n + hit-lens-chip table (VIZ_SPEC.md S2.3, S4). R1/L22: two size
+    k-of-n + hit-lens-chip table (VIZ_SPEC.md S2.3, S4). Two size
     columns, country by name (code hidden).
 
     : `institution` carries the name-link URL like `format_rows`

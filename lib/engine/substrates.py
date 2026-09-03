@@ -239,7 +239,7 @@ def _restore_order(arr: np.ndarray, order: str) -> np.ndarray:
     correctly by construction (the.npy format stores it in the header), so
     this is a belt-and-braces check, not the primary mechanism -- if a future
     numpy/format change ever broke that, this repairs it rather than
-    silently shipping a wrong-order array (E2)."""
+    silently shipping a wrong-order array."""
     if order == "F" and not arr.flags["F_CONTIGUOUS"]:
         return np.asfortranarray(arr)
     if order == "C" and not arr.flags["C_CONTIGUOUS"]:

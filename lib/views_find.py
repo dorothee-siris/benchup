@@ -11,12 +11,12 @@ PAGE ORDER (top to bottom, the order the code below follows): title + one-line
 promise (`_header`) -> the "Filtered by." strip slot right under it -> a
 free-text institution search -> PROFILE section: row 1 in two halves (eight
 KPI cards in a 2 x 4 grid, name first and all methodology in a `?` -- the six
-original plus the two P5 KPIs (star papers, topics led)
+original plus the two star-papers/topics-led KPIs
 adds | the identity block with the subfield wordcloud under it), row 2 full
 width (a titled section, one segmented control and one chip legend above a
 height-matched global + yearly breakdown pair whose bonus year is starred on
 the axis), then six collapsed chart panels -> BENCHMARK section, headed by the
-controls row (C1, L7, a post-filters expander -- D17 retires the depth radio:
+controls row (C1, L7, a post-filters expander -- the depth radio is retired:
 the cut is the fixed `BENCHMARK_DEPTH` everywhere the page cuts) and the "How
 to read the lenses" guide -> the lens tabs, labelled by the bare
 `copy.LENS_DISPLAY_CODE` (L0.L9, renumbered in tab order; the full
@@ -32,7 +32,7 @@ owns its own search now, Find's own is `_seed_pick` below.
 
 PERFORMANCE SHAPE: the engine context and ONE resident (tree, basis) scenario
 are process-wide caches behind `lib.engine.scenario_cache` (`SC.bundle` /
-`SC.get(tree, basis)`, ) -- switching scenario evicts the
+`SC.get(tree, basis)`) -- switching scenario evicts the
 previous one rather than accumulating a second, which is what keeps this app
 under its RAM ceiling. `rank_all` is cheap and recomputed every rerun;
 `build_rows` over a full ranking is not, so rows are built only for what is
@@ -41,15 +41,15 @@ actually shown -- the post-filtered depth cut, the tail-search matches, and
 `st.expander` bodies EXECUTE on every rerun even when collapsed -- only the
 display folds -- so the six chart-panel frames are their own `@st.cache_data`,
 keyed on the hashable (iid, tree, basis), fetching ctx/subs from the
-scenario_cache internally (never passed as cache_data arguments, per E4).
+scenario_cache internally (never passed as cache_data arguments).
 
 STRINGS: every user-facing string lives in `lib/copy.py` under its own
 digit-ban rule -- no digit outside a lens code / "top10"; every number is a
 `{placeholder}` filled here from CFG or the live data
 (`tests/test_narrative.py` enforces this over this file's `st.*` calls). The
-two exceptions this stream adds are `KPI_STARS_LABEL` /
+two exceptions are `KPI_STARS_LABEL` /
 `KPI_LED_LABEL` below -- module constants rather than `copy.py` entries
-because that file is another stream's this wave; moves them in.
+because `copy.py` is owned by other work in progress; moved in here instead.
 """
 from __future__ import annotations
 
@@ -89,14 +89,14 @@ CORE_TOP_N = 20
 
 # The displayed cut of the "top N" profile panels and of the frontier panel's
 # default top-N. Module constants, never a digit inside a caption: the
-# captions take them as `{n}` placeholders. SUBFIELDS_TOP_N is 30 under
-# R2/L34 (the panel also lost its sort toggle: "top 30" is itself a
+# captions take them as `{n}` placeholders. SUBFIELDS_TOP_N is 30
+# (the panel also lost its sort toggle: "top 30" is itself a
 # volume-ordered concept, and a taxonomy re-sort of a volume-defined cut reads
-# as an arbitrary 30 rows in ID order). TOPICS_TOP_N is 30 under (FB
-# handoff, was 20; the topics panel lost its sort toggle for the same reason
+# as an arbitrary 30 rows in ID order). TOPICS_TOP_N is 30
+# (was 20; the topics panel lost its sort toggle for the same reason
 # as subfields -- `charts.fig_topics`'s `sort` kwarg is accepted but ignored).
-# FRONTIER_TOP_N is the frontier panel's own top-N slider default (:
-# was a fixed two-hundred-topic volume-mode cut; now ONE slider drives BOTH
+# FRONTIER_TOP_N is the frontier panel's own top-N slider default
+# (was a fixed two-hundred-topic volume-mode cut; now ONE slider drives BOTH
 # modes, `_panel_frontier` below).
 SUBFIELDS_TOP_N = 30
 TOPICS_TOP_N = 30
@@ -110,14 +110,14 @@ DASH = "–"  # en dash -- interval rendering
 
 WINDOW_START, WINDOW_END = CFG["window"]
 
-# D17: the 30/50 depth radio is retired -- the benchmark cut is always this
+# The 30/50 depth radio is retired -- the benchmark cut is always this
 # constant (config.yaml pins depth.default == depth.max == 50, so this reads
 # the same 50 `lib.engine.DEPTH` does). Every caption still names the cut.
 BENCHMARK_DEPTH = CFG["depth"]["max"]
 
-# D5: the two window labels the SDG/ERC panel basis
+# The two window labels the SDG/ERC panel basis
 # captions name, built from CFG so no digit is ever typed into a string
-#  -- CORPUS_WINDOW_LABEL is the five-year window this
+# -- CORPUS_WINDOW_LABEL is the five-year window this
 # page states everywhere else; SDG_ERC_WINDOW_LABEL is the whole-run,
 # six-year window `sdg.parquet`/`erc.parquet` are actually denominated on
 # (window_conventions.sdg_mass_window, docs/data_contract.yaml) -- the bonus
@@ -130,12 +130,12 @@ SDG_ERC_WINDOW_LABEL = f"{WINDOW_START}{DASH}{CFG['bonus_year']}"
 # what makes the cards wrap one-per-row at 390 px with no media query.
 #
 # The cards fill the LEFT half (columns 1-2) and the identity block with the
-# wordcloud under it fills the right (columns 3-4). adds two
-# more cards -- star papers, topics led (P5) -- to the original six, so the
+# wordcloud under it fills the right (columns 3-4). This adds two
+# more cards -- star papers, topics led -- to the original six, so the
 # grid grows from 3 rows to 4; card width is unchanged (still half of half the
 # content box).
 N_CARDS = 8
-CARD_GRID_COLS = 2                     # 4 rows x 2 cards (D9: +star papers, +topics led)
+CARD_GRID_COLS = 2                     # 4 rows x 2 cards (+star papers, +topics led)
 PROFILE_ROW1_WIDTHS = [1, 1]           # the eight cards | identity + wordcloud
 PROFILE_ROW2_WIDTHS = [1, 1]           # global breakdown | yearly breakdown
 CONTROLS_ROW_WIDTHS = [1, 1, 2]        # C1 | L7 | post-filters expander
@@ -159,9 +159,9 @@ COMPANY_COLUMN = "company_share"
 # counting positions in a list.
 KPI_PUBS_KEY = "total_full_2020_2024"
 
-# : the two P5 KPI tiles. Labels moved to `copy.FIND`
-# ; both render MISSING_KPI_MARK, never NA_MARK (used everywhere
-# else on this page), so "the P5 columns are not on this deployed index
+# The two star-papers/topics-led KPI tiles. Labels moved to `copy.FIND`;
+# both render MISSING_KPI_MARK, never NA_MARK (used everywhere
+# else on this page), so "these columns are not on this deployed index
 # yet" reads distinctly from "this institution has no value here".
 MISSING_KPI_MARK = "—"
 KPI_STARS_LABEL = copy.FIND["KPI_STARS_LABEL"]
@@ -181,7 +181,7 @@ SORT_VOLUME, SORT_TAXONOMY = "volume", "taxonomy"
 # One @st.cache_data per S9.4 profile table, keyed on the HASHABLE scenario
 # identity (iid, tree, basis) and fetching ctx/subs from
 # `lib.engine.scenario_cache` internally -- ctx and subs are unhashable, so
-# they are never cache_data arguments (E4). `st.expander` bodies execute on
+# they are never cache_data arguments. `st.expander` bodies execute on
 # every rerun, so without these every collapsed panel would recompute its
 # frame each time the user touched any control.
 
@@ -255,7 +255,7 @@ def _sidebar_scenario() -> dict:
     sb = st.sidebar
     sb.header(copy.FIND["SCENARIO_HEADER"])
     trees = CFG["scenario"]["toggles"]["tree"]
-    # R2/L29: the OPTION stays the internal value (every frame, every cache key
+    # The OPTION stays the internal value (every frame, every cache key
     # and every export reads it); only its rendering changes, through
     # `format_func`. A reader never meets "bestfit" or "frac" on the page again.
     tree = sb.selectbox(copy.FIND["TREE_LABEL"], trees,
@@ -278,10 +278,10 @@ def _strip_tree(tree: str) -> str:
     strip's own DISPLAY text (`copy.STRIP_TREE`). Handing it the display label
     unconditionally would make the test never match and pin the strip open at
     the defaults; handing it the internal value keeps "bestfit" on screen, which
-    L29 removed everywhere else. So the internal value goes in when it IS the
+    the rest of the page removed. So the internal value goes in when it IS the
     default (the only case the test reads it) and the display label otherwise
     (the only case the text is rendered). Splitting that argument in two belongs
-    in `lib/filters.py`, another stream's file this wave."""
+    in `lib/filters.py`, a file outside this module's fence."""
     default = CFG["scenario"]["tree_default"]
     return default if tree == default else copy.TREE_LABELS[tree]
 
@@ -315,11 +315,11 @@ def _header() -> None:
 
 
 def _footer_meta(bundle: dict, workbook_kwargs: dict | None = None) -> None:
-    """The meta text SEL demotes to the FOOT of the page: the standing
+    """The meta text this page demotes to the FOOT of the page: the standing
     verdict line and the data stamp. Called once, at the very end
     of `render`, after every section.
 
-    E7: `workbook_kwargs`, when given (a profile is on
+    `workbook_kwargs`, when given (a profile is on
     screen), renders the ONE end-of-page download button right after the data
     caption -- the same "index size, then the one download" order Compare's
     own footer uses. `None` on the seed-less early return: there is nothing
@@ -409,7 +409,7 @@ def _esc(value) -> str:
 
 
 def _basis_caption(text: str, *, warning: bool = False) -> None:
-    """D5: a one-line basis or
+    """A one-line basis or
     coverage disclosure -- a fact about the DATA, read where the ratio it
     qualifies is, never folded into a chart's own `?` (which states how to
     READ the chart, a different job). Normal state matches every other
@@ -418,7 +418,7 @@ def _basis_caption(text: str, *, warning: bool = False) -> None:
     setting silently does not apply here). Same recipe as
     `views_collab._basis_caption`, so the same kind of fact reads identically
     on every page; kept local rather than imported because this file owns no
-    cross-page helper module this wave."""
+    cross-page helper module."""
     color = P.WARNING_CAPTION_COLOR if warning else P.INK_SECONDARY
     st.markdown(
         f'<div style="font-size:{charts.FONT_PX}px;color:{color};'
@@ -521,7 +521,7 @@ def _profile_identity(card: dict, row, bundle: dict) -> None:
 
 
 def _baseline_sub(bundle: dict, kpi: str, value, fmt) -> str:
-    """R2/L31: the tile's SECOND subline, positioning the value in the index
+    """The tile's SECOND subline, positioning the value in the index
     "index median {m}. higher than {pct} of institutions". The median is
     formatted by the tile's OWN formatter, so a share reads as a share and a
     count as a count; a null value keeps the median visible and marks its own
@@ -549,7 +549,7 @@ def _card_specs(card: dict, row) -> list[tuple]:
     once and never inferred from a position in this list.
 
     What is GONE and why:
-      * concentration (HHI) and breadth -- R2 had already stripped the
+      * concentration (HHI) and breadth -- an earlier pass had already stripped the
         concentration tile's class word because `hhi_class` called 86 % of the
         index "generalist"; the gate found the bare index equally unreadable,
         and breadth is the same statistic seen from the other side. Both are
@@ -577,7 +577,7 @@ def _card_specs(card: dict, row) -> list[tuple]:
     `frontier_top25_share_index` (not `frontier_top25_share`) is the card's
     value: `seed_card` names the index-basis column that way, while the
     baseline key stays the `index.parquet` column name `baselines.KPI_COLUMNS`
-    knows -- the same pairing R2's tile spec used."""
+    knows -- the same pairing the original tile spec used."""
     window = {"y0": WINDOW_START, "y1": WINDOW_END}
     return [
         (KPI_PUBS_KEY, copy.FIND["KPI_PUBS_LABEL"],
@@ -602,7 +602,7 @@ def _card_specs(card: dict, row) -> list[tuple]:
 def _stars_kpi(row) -> tuple[str, str, str]:
     """(value, subline, help) for the Star-papers tile:
     'N · x.x% of output' from index.n_stars / index.star_share. MISSING_KPI_MARK for either
-    half when P5 has not landed the columns on this deployed index yet, or
+    half when these columns have not landed on this deployed index yet, or
     the cell is null."""
     n = row.get("n_stars")
     if n is None or pd.isna(n):
@@ -614,8 +614,8 @@ def _stars_kpi(row) -> tuple[str, str, str]:
 
 def _led_kpi(row) -> tuple[str, str, str]:
     """(value, subline, help) for the Topics-led tile: index.n_topics_led_fair
-    (P5's own fair-pool pick -- universities for `type == education`, all
-    institutions otherwise, D6), MISSING_KPI_MARK when the column is absent
+    (the fair-pool pick -- universities for `type == education`, all
+    institutions otherwise), MISSING_KPI_MARK when the column is absent
     or null. The pool NAME (never the raw `type` value) is stated in both the
     subline and the help text."""
     pool = "universities" if str(row.get("type")) == "education" else "all institutions"
@@ -628,7 +628,7 @@ def _profile_cards(card: dict, row, bundle: dict) -> None:
     """Eight cards in a 2 x 4 grid filling the LEFT half of the profile row
     (cards left, identity and its wordcloud right), each `name + value + one
     small line`, with all methodology behind the card's own `?`. `n/a` (or,
-    for the two P5 KPIs, MISSING_KPI_MARK) for anything the data cannot
+    for the two star-papers/topics-led KPIs, MISSING_KPI_MARK) for anything the data cannot
     support -- never 0, never a hidden card.
 
     Streamlit stacks every row one-card-per-line below its own small
@@ -646,8 +646,8 @@ def _profile_cards(card: dict, row, bundle: dict) -> None:
         else:
             tiles.kpi_tile(col, label, fmt(value),
                            _baseline_sub(bundle, kpi, value, fmt), help=tip)
-    # : the two P5 KPIs read the index ROW directly (P5's own
-    # columns, not the engine's seed_card) and extend the same grid by one
+    # The two star-papers/topics-led KPIs read the index ROW directly (their
+    # own columns, not the engine's seed_card) and extend the same grid by one
     # more row -- `specs` has 6 entries, so `cols[6]`/`cols[7]` are the two
     # slots `zip` above never consumed.
     stars_value, stars_sub, stars_help = _stars_kpi(row)
@@ -718,7 +718,7 @@ def _domain_series(iid: str, ctl: dict, bundle: dict, years: list[int]):
 
 
 def _doctype_series(iid: str, ctl: dict, years: list[int]):
-    """Same shape for the DOCUMENT-TYPE view, from the R1 artefact. Returns
+    """Same shape for the DOCUMENT-TYPE view, from the shipped table. Returns
     `None` when the institution has no doc-type rows at all, so the caller can
     disclose the fallback to the domain view instead of showing an empty pair
     (VIZ_SPEC S2.14 empty state)."""
@@ -756,7 +756,7 @@ def _profile_breakdown(iid: str, ctl: dict, bundle: dict) -> None:
     BOTH figures, ONE shared chip legend, grouped bars (never stacked), years
     as strings. The two figures can never disagree because one control drives
     them both."""
-    # : the section gets a TITLE carrying the bonus-year footnote in its
+    # The section gets a TITLE carrying the bonus-year footnote in its
     # `?`, and the control loses its "Break down by" label -- two options
     # reading "Domain" and "Document type" state their own question, so the
     # label was a line of chrome above every render. The label ARGUMENT stays
@@ -787,8 +787,8 @@ def _profile_breakdown(iid: str, ctl: dict, bundle: dict) -> None:
 
     legend = [(labels[k], colors[k]) for k in keys]
     st.markdown(charts.chip_legend_html(legend), unsafe_allow_html=True)
-    # R2/L30 reverses R1's stacking. R1 put the two figures one above the other
-    # because this pair shared its row with the wordcloud, which left each
+    # This reverses the two figures' earlier stacking, which put them one above
+    # the other because this pair shared its row with the wordcloud, which left each
     # sub-column ~260 px of plot at 1280 px -- a width at which category labels
     # clip and value ticks rotate to vertical. The wordcloud has moved up into
     # row 1, so the pair now owns the FULL section width and each panel gets
@@ -806,8 +806,8 @@ def _profile_breakdown(iid: str, ctl: dict, bundle: dict) -> None:
     # The yearly figure is COMPRESSED onto the global one's height here, in the
     # composing view, rather than in `lib/charts.py`: the constraint is a fact
     # about this LAYOUT (these two figures, this row), not about either builder,
-    # and charts.py is another stream's file this wave. Reading the height off
-    # the built figure keeps the two in step if that stream retunes either rule.
+    # and charts.py is a file outside this module's fence. Reading the height off
+    # the built figure keeps the two in step if that file retunes either rule.
     global_fig = charts.fig_breakdown_global([labels[k] for k in keys],
                                              [sum(totals[k]) for k in keys],
                                              [colors[k] for k in keys])
@@ -854,7 +854,7 @@ def _panel_fields(iid: str, ctl: dict, card: dict) -> None:
 
 
 def _panel_subfields(iid: str, ctl: dict, card: dict) -> None:
-    """VIZ_SPEC S2.16 / R2 L34: the top SUBFIELDS_TOP_N subfields by volume on
+    """VIZ_SPEC S2.16: the top SUBFIELDS_TOP_N subfields by volume on
     the current basis, and NO sort toggle -- "top 30" is itself a volume-ordered
     concept, so a taxonomy re-sort of it would read as an arbitrary 30 rows in
     ID order. The SI mark is solid at or above the solid floor, hollow between
@@ -884,9 +884,9 @@ def _panel_topics(iid: str, ctl: dict, card: dict) -> None:
     topic is FLAGGED and COUNTED, never dropped -- its presence is exactly what
     a reader needs in order to discount every other number in the section.
 
-     (FB handoff): no sort control -- `charts.fig_topics` is always
+    No sort control -- `charts.fig_topics` is always
     volume-ordered now (the toggle would be dead UI, same reasoning as the
-    subfields panel losing its own toggle under R2/L34)."""
+    subfields panel losing its own toggle)."""
     df = _topics_frame(iid, ctl["tree"], ctl["basis"])
     if df.empty:
         st.caption(copy.FIND["PANEL_EMPTY"])
@@ -894,7 +894,7 @@ def _panel_topics(iid: str, ctl: dict, card: dict) -> None:
     top = df.nlargest(TOPICS_TOP_N, "share")
     st.plotly_chart(charts.fig_topics(top, volume_col=_vol_col(ctl["basis"])),
                     width="stretch", key="fig_topics")
-    # R2/L30: the seed's catch-all SHARE moved off the retired coverage line
+    # The seed's catch-all SHARE moved off the retired coverage line
     # into this caption, which already counted the flagged rows from the data
     # a caveat is read where the rows it qualifies are on screen. -8 keeps
     # THAT as the panel's one visible line (it qualifies every number in the
@@ -982,7 +982,7 @@ def _panel_sdg(iid: str, ctl: dict, card: dict) -> None:
     st.plotly_chart(charts.fig_sdg(df), width="stretch", key="fig_sdg")
     st.caption(copy.FIND["CAPTION_SDG"].format(
         n_missing=", ".join(str(n) for n in P.SDG_UNCOVERED)))
-    # D5: this ratio surface states its OWN
+    # This ratio surface states its OWN
     # basis -- `sdg.parquet` is denominated on the whole-run, six-year window,
     # not the five-year corpus window this page states everywhere else
     # (window_conventions.sdg_mass_window, docs/data_contract.yaml). Disclosure
@@ -1026,7 +1026,7 @@ def _panel_erc(iid: str, ctl: dict, card: dict) -> None:
 # BOTH the expander's session-state key and the widget key suffix.
 #
 # A panel whose TITLE states its own cut takes its arguments from here rather
-# than typing the number into copy.py (L10): R2/L34's "Top {n} subfields" is the
+# than typing the number into copy.py: "Top {n} subfields" is the
 # only such title today.
 PANEL_LABEL_ARGS = {"subfields": {"n": SUBFIELDS_TOP_N}}
 
@@ -1108,7 +1108,7 @@ def _post_filters(bundle: dict, rankings: dict, seed_row, depth: int) -> dict:
     types = st.multiselect(copy.FIND["TYPE_LABEL"], sorted(idx["type"].astype(str).unique()),
                            default=[], key="f_types", **state.PERSIST)
     # Options stay the CODES (the value `apply_filters` matches on), displayed
-    # and ordered by their English name -- R1/L22.
+    # and ordered by their English name.
     codes = sorted(idx["country_code"].astype(str).unique(), key=countries.name)
     picked = st.multiselect(copy.FIND["COUNTRY_LABEL"], codes, default=[],
                             format_func=countries.name, key="f_countries", **state.PERSIST)
@@ -1138,7 +1138,7 @@ def _controls_row(bundle: dict, rankings: dict, seed_row) -> tuple[dict, dict]:
     open; the six post-filters are the advanced ones and live one click down,
     in a collapsed expander whose body still EXECUTES every rerun (its
     widgets must register). Each control carries a `help=` that explains what
-    the option DOES. D17: depth is no longer a control here at all -- the
+    the option DOES. Depth is no longer a control here at all -- the
     benchmark always cuts at `BENCHMARK_DEPTH`."""
     st.header(copy.FIND["BENCHMARK_HEADER"])
     st.caption(copy.FIND["BENCHMARK_INTRO"])
@@ -1164,7 +1164,7 @@ def _rows_for_ids(ranking: dict, ctx: dict, ids: list, scores, rankings: dict | 
     competition rank restored from the unfiltered ranking's `rmap` (post-filters
     remove rows, they never renumber -- /VIZ_SPEC S1.7).
     `subs` is forwarded so every row's `shape_top3_fields` follows the active
-    tree x basis (R1 bug #5)."""
+    tree x basis."""
     if not ids:
         return []
     sub = dict(ranking)
@@ -1232,17 +1232,17 @@ def _gloss_values(bundle: dict) -> dict:
 def _lens_intro(lens: str, ranking: dict, subs: dict, basis: str, bundle: dict,
                 card: dict) -> None:
     """Gloss (visible) + caveat (its `?`) + this seed's evidence line(s) + the
-    basis disclosure, above the table. R2/L30 adds the L2f-eligible cell count
+    basis disclosure, above the table. Adds the L2f-eligible cell count
     here, on the L2f tab and nowhere else: it is a precondition for THAT
     lens's ranking, so a reader meets it on the tab whose list it explains
     rather than in the profile's retired coverage line.
 
-    A11: the tab itself now carries only the bare display code, so
+    The tab itself now carries only the bare display code, so
     the FULL lens name is the first line rendered INSIDE the tab -- this
     function's own opening line, `copy.LENS_DISPLAY_NAMES[lens]` (the renumbered
     code + the same name `copy.LENS_NAMES` always carried).
 
-    D10 fix: the gloss used to stay bold-visible with the CAVEAT stacked
+    The gloss used to stay bold-visible with the CAVEAT stacked
     under it as a second, always-visible `st.caption` line and no `?` at
     all -- the one place on this page with no fold, right after six profile
     panels two scrolls up that all DO fold their own methodology behind a
@@ -1255,11 +1255,11 @@ def _lens_intro(lens: str, ranking: dict, subs: dict, basis: str, bundle: dict,
     rather than a new cross-file dependency on `charts_compare.chart_note`.
     The seed-specific evidence lines below (L2f eligibility, ERC/SDG/frontier/
     catch-all share, the generic evidence line) stay visible exactly as
-    before -- they are what this lens SAYS about the seed, -8's other
-    half, which the fold pattern keeps on screen everywhere else too.
+    before -- they are what this lens SAYS about the seed, which the fold
+    pattern keeps on screen everywhere else too.
 
-    PRESS-A F12/F14 fix: the gloss+caveat pair above was ALREADY hidden behind Streamlit's
-    native `help=` (the D10 fix), but that is a different visual component
+    A later fix: the gloss+caveat pair above was ALREADY hidden behind Streamlit's
+    native `help=`, but that is a different visual component
     from the `?`-glyph reading-line convention every OTHER chart/section on
     this page and on Compare uses (CHROME_CONTRACT.md S6) -- a bold,
     always-visible headline is not the same affordance as a small ink
@@ -1281,7 +1281,7 @@ def _lens_intro(lens: str, ranking: dict, subs: dict, basis: str, bundle: dict,
     # spec asks for -- ERC-classified share on the ERC lenses, SDG-tagged
     # share on the SDG lenses, frontier share on F1, catch-all share on L3 -- were
     # authored in copy.py (EV_ERC/EV_SDG/EV_FRONTIER/EV_CATCHALL) but never wired
-    # once R2 retired the profile coverage line. Each is a statement about the
+    # once the profile coverage line was retired. Each is a statement about the
     # SEED's data, never a gate.
     shown_specific = False
     if lens in ("L4", "L5"):
@@ -1308,7 +1308,7 @@ def _lens_intro(lens: str, ranking: dict, subs: dict, basis: str, bundle: dict,
     elif not shown_specific and lens != "L2f":
         st.caption(copy.FIND["EV_NONE"])
     if basis == "full" and not subs["basis_applies"][lens]:
-        # D5: a page-level setting the reader just touched silently
+        # A page-level setting the reader just touched silently
         # not applying to THIS tab is exactly the kind of fact a warning
         # colour exists for -- kept VISIBLE (never folded into a `?` nobody
         # hovers) but recoloured, never bold, no icon box.
@@ -1319,11 +1319,11 @@ def _tail_search(lens: str, ranking: dict, bundle: dict, subs: dict, kept,
                  ctx_bits: dict) -> None:
     """VIZ_SPEC S2.7: search scoped to the FULL filtered ranking.
 
-    E7: this used to also carry the
+    This used to also carry the
     per-lens CSV download (`_csv` + `st.download_button`) right below the
     tail search; that button is GONE -- every lens now downloads together in
-    the ONE end-of-page workbook (`_find_exports`), per WT_2D claim 6's
-    own measured, cheap "compute every lens at export time" approach. The
+    the ONE end-of-page workbook (`_find_exports`), a measured, cheap
+    "compute every lens at export time" approach. The
     function keeps its old name minus "_export" (nothing here builds an
     export any more)."""
     kept_ids, kept_scores = kept
@@ -1349,7 +1349,7 @@ def _render_lens_tab(lens: str, ranking: dict, bundle: dict, subs: dict, filters
     """VIZ_SPEC S2.4 / S2.22, the one shared form every lens renders through."""
     _lens_intro(lens, ranking, subs, ctx_bits["basis"], bundle, ctx_bits["card"])
     if ranking["undefined"]:
-        # R2/L29: the engine's own `reason` is a debugging string (it names
+        # The engine's own `reason` is a debugging string (it names
         # internal structures and types digits this app bans in copy), so the
         # reader gets the lens's plain-language precondition instead. The
         # engine's version stays in its own log, unchanged.
@@ -1365,14 +1365,14 @@ def _render_lens_tab(lens: str, ranking: dict, bundle: dict, subs: dict, filters
     rows = _rows_for_ids(ranking, ctx, vis_ids, vis_scores, ctx_bits["cross"], subs)
     _with_evidence(rows, ctx, subs, lens, ranking["seed_id"])
     render_ranked_table(format_rows(rows, lens=lens, depth=depth), key=f"tbl_{lens}")
-    # U4 / PRESS-A: the old `ranked.depth_caption`
-    # pointed at the per-lens CSV button E7 just removed (".or download the
+    # The old `ranked.depth_caption`
+    # pointed at the per-lens CSV button just removed (".or download the
     # full ranking"); this page now renders its OWN depth line, built from
-    # `copy.DEPTH_CAPTION_TEMPLATE` (E10's exact rewritten string), which
+    # `copy.DEPTH_CAPTION_TEMPLATE` (the exact rewritten string), which
     # points at the one end-of-page workbook instead. `ranked.depth_caption`
     # is unchanged and still exercised by its own tests -- it is simply no
     # longer this page's caller (flagged for a future dead-code sweep, out
-    # of this stream's fence).
+    # of this module's fence).
     st.caption(copy.DEPTH_CAPTION_TEMPLATE.format(n=f"{len(rows):,}", m=f"{len(kept_ids):,}"))
     st.caption(copy.FIND["POP_CAPTION"].format(n_pop=f"{len(ranking['sorted_ids']):,}"))
     _tail_search(lens, ranking, bundle, subs, (kept_ids, kept_scores), ctx_bits)
@@ -1396,7 +1396,7 @@ def _render_overview(bundle: dict, rankings: dict, lenses: list, filters: dict, 
     render_concordance_table(
         format_concordance(kept, lenses=lenses, N=CONCORDANCE_N), key="tbl_concordance")
     st.caption(concordance_caption(n_defined, CONCORDANCE_N, len(kept)))
-    # R2/L29: the chips are lens CODES, which are stable identifiers rather than
+    # The chips are lens CODES, which are stable identifiers rather than
     # self-explaining names -- so the table says what a chip means and points at
     # the guide that names every lens in full.
     st.caption(copy.FIND["LENS_LEGEND_CAPTION"].format(N=CONCORDANCE_N))
@@ -1406,7 +1406,7 @@ def _render_overview(bundle: dict, rankings: dict, lenses: list, filters: dict, 
 
 def _aspirational_frame(rows: list[dict], *, score_key: str = "lens_score_L1_overlap",
                         score_label_key: str = "COL_L1") -> pd.DataFrame:
-    """VIZ_SPEC S2.5 + R1/L22, revised by: the interval column is GONE
+    """VIZ_SPEC S2.5, revised: the interval column is GONE
     (the point estimate is what a reader compares row to row here; the full
     interval already sits in the profile's own PP card, VIZ_SPEC S9.6's rule
     lives there now), both size bases, country by NAME, no badge column, and
@@ -1524,7 +1524,7 @@ def _render_aspirational(bundle: dict, rankings: dict, filters: dict, seed_row,
         frame = _aspirational_frame(kept)
     _render_aspirational_table(frame)
     st.caption(copy.FIND["ASP_CAPTION"].format(n_rows=f"{len(kept):,}", n_pool=f"{pool:,}"))
-    # E7: the per-tab CSV this used to end on
+    # The per-tab CSV this used to end on
     # (`_aspirational_export`) is GONE -- the aspirational list is one more
     # sheet in the end-of-page workbook now (`_aspirational_sheet_frame`),
     # built at click time regardless of which tab is open.
@@ -1544,7 +1544,7 @@ def _lenses_shown(ctl: dict) -> list:
 
 
 def _lens_guide(lenses: list) -> None:
-    """R2/L29: "How to read the lenses", a collapsed expander at the head of the
+    """"How to read the lenses", a collapsed expander at the head of the
     Benchmark section. One plain sentence per SHOWN lens (the guide never
     describes a tab that is not on screen), each headed by the same DISPLAY
     label its tab now carries, so the code in the Overview chips, the evidence
@@ -1584,10 +1584,10 @@ def _ctx_bits(ctl: dict, filters: dict, seed_id: str, rankings: dict, strip: str
 
 
 # --------------------------------------------------------------- workbook ---
-# E7: ONE workbook at the very end of
+# ONE workbook at the very end of
 # the page replaces every per-lens/per-tab CSV this page used to offer. Built
 # from ALL_LENSES (every lens the engine defines), never only the tabs this
-# scenario happens to show -- WT_2D.md claim 6's own inventory measured this
+# scenario happens to show -- a measured inventory found this
 # at ~0.95s/lens, ~8-12s total, which is exactly the shape the OLD per-lens
 # CSV button already accepted: a lazy `data=` callable that only runs when
 # someone actually clicks (nothing here runs on a bare rerun).
@@ -1601,12 +1601,13 @@ _ASPIRATIONAL_SHEET_COLUMNS = ["rank", "institution_name", "institution_id", "co
 
 
 def _profile_numbers_frame(card: dict, row, bundle: dict) -> pd.DataFrame:
-    """The eight KPI cards' own numbers (E7 + D9): metric name, formatted
+    """The eight KPI cards' own numbers: metric name, formatted
     value, and the same small line the card itself carries -- an index
     position for the original five, the fractional-count note for the
-    publications card, the pool/citation-window sentence for the two P5 KPIs.
+    publications card, the pool/citation-window sentence for the two
+    star-papers/topics-led KPIs.
     Nowhere else on the page offers these eight figures together as a table
-    (WT_2D claim 6's own "profile numbers" sheet)."""
+    (the workbook's own "profile numbers" sheet)."""
     out = []
     for kpi, label, value, fmt, _tip in _card_specs(card, row):
         if kpi == KPI_PUBS_KEY:
@@ -1624,8 +1625,8 @@ def _profile_numbers_frame(card: dict, row, bundle: dict) -> pd.DataFrame:
 def _lens_sheet_frame(lens: str, ranking: dict, bundle: dict, subs: dict, filters: dict,
                       seed_row, bits: dict) -> pd.DataFrame:
     """One lens's full (filtered) ranking as a plain sheet -- the SAME rows
-    the retired per-lens CSV carried, built here (at workbook-click time,
-    E7) rather than at every tab's own click, so an unopened tab still costs
+    the retired per-lens CSV carried, built here (at workbook-click time)
+    rather than at every tab's own click, so an unopened tab still costs
     nothing until the workbook itself is downloaded."""
     if ranking["undefined"]:
         return pd.DataFrame([{"note": copy.LENS_UNDEFINED_REASON[lens]}])
@@ -1642,7 +1643,7 @@ def _lens_sheet_frame(lens: str, ranking: dict, bundle: dict, subs: dict, filter
 def _overview_sheet_frame(bundle: dict, rankings: dict, filters: dict, seed_row) -> pd.DataFrame:
     """The concordance ("k of n lenses") table over EVERY lens (`ALL_LENSES`),
     not only the tabs this scenario happens to show -- the workbook's own
-    Overview sheet (E7)."""
+    Overview sheet."""
     rows = concordance(bundle["ctx"], rankings, ALL_LENSES, CONCORDANCE_N)
     if not rows:
         return pd.DataFrame(columns=_CONCORDANCE_SHEET_COLUMNS)
@@ -1655,9 +1656,9 @@ def _overview_sheet_frame(bundle: dict, rankings: dict, filters: dict, seed_row)
 
 def _aspirational_sheet_frame(bundle: dict, rankings: dict, filters: dict, seed_row) -> pd.DataFrame:
     """The same V0 / frontier-fallback logic `_render_aspirational` renders,
-    built into a plain sheet for the workbook (E7) -- kept in the DEFAULT
+    built into a plain sheet for the workbook -- kept in the DEFAULT
     L1-overlap order regardless of the on-screen sort checkbox, since this
-    button is computed 'regardless of open tab' (WT_2D claim 6), not a copy
+    button is computed 'regardless of open tab', not a copy
     of whatever one session happened to toggle."""
     l1 = rankings.get("L1")
     if l1 is None or l1["undefined"] or pd.isna(seed_row["pp_top10_frac"]) \
@@ -1692,9 +1693,9 @@ def _leaders_sheet_frame(seed_id: str) -> pd.DataFrame:
     parquet` via `leaders_data.led_topics`, which already carries
     `topic_name`) merged with its star-paper count in that topic
     (`inst_stars.parquet` via `leaders_data.stars_by_topic`), sorted by rank
-    then stars descending. `lib.leaders_data` is file, which may
-    not exist yet when this stream runs -- guarded (import AND shape) so the
-    workbook still builds either way: one explanatory row before P5 lands,
+    then stars descending. `lib.leaders_data` is a newer module, which may
+    not exist yet in every checkout -- guarded (import AND shape) so the
+    workbook still builds either way: one explanatory row before it lands,
     the real merge once it has."""
     try:
         from lib import leaders_data
@@ -1713,7 +1714,7 @@ def _leaders_sheet_frame(seed_id: str) -> pd.DataFrame:
         merged = merged.sort_values(["world_rank", "n_stars"], ascending=[True, False])
         return merged.reindex(columns=_LEADERS_SHEET_COLUMNS).reset_index(drop=True)
     except Exception:
-        # ImportError (P5 has not landed) or any shape mismatch against the
+        # ImportError (the module has not landed) or any shape mismatch against the
         # contract this was written against
         # either way the workbook still ships its 14th sheet, honestly labelled.
         return _LEADERS_SHEET_NOT_AVAILABLE
@@ -1722,8 +1723,8 @@ def _leaders_sheet_frame(seed_id: str) -> pd.DataFrame:
 def _find_workbook(bundle: dict, subs: dict, ctl: dict, filters: dict, seed_row, card: dict,
                    rankings: dict, bits: dict, seed_id: str) -> bytes:
     """Every lens (`ALL_LENSES`) + the concordance overview + the aspirational
-    list + the profile's own KPI numbers + the topics-led/star-papers sheet
-    (D9), one sheet each, fourteen total, in that order (E7).
+    list + the profile's own KPI numbers + the topics-led/star-papers sheet,
+    one sheet each, fourteen total, in that order.
     `exports_xlsx.workbook_bytes` legalises and de-duplicates every sheet
     name on the way in, so a lens whose display name runs past Excel's
     31-character cap (e.g. L9's) is truncated there, not here."""
@@ -1741,14 +1742,14 @@ def _find_workbook(bundle: dict, subs: dict, ctl: dict, filters: dict, seed_row,
 
 
 def _find_workbook_filename(seed_id: str, tree: str, basis: str) -> str:
-    """"BenchUp_find_<institution>_<tree>_<basis>.xlsx" -- D15's plain
+    """"BenchUp_find_<institution>_<tree>_<basis>.xlsx" -- plain
     "BenchUp" capitalisation, built locally."""
     return f"BenchUp_find_{seed_id}_{tree}_{basis}.xlsx"
 
 
 def _find_exports(bundle: dict, subs: dict, seed_id: str, ctl: dict, filters: dict, seed_row,
                   card: dict, rankings: dict, bits: dict) -> None:
-    """ONE download button (E7), replacing every per-lens/per-tab CSV this
+    """ONE download button, replacing every per-lens/per-tab CSV this
     page used to offer. `data` is a zero-arg callable, so the whole all-lenses
     workbook is only ever built when someone actually clicks."""
     def _book() -> bytes:

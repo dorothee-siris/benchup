@@ -21,8 +21,7 @@ import sys
 from pathlib import Path
 
 APP_DIR = Path(__file__).resolve().parents[1]
-V4_ROOT = APP_DIR.parent
-GOLDEN_PATH = V4_ROOT / "evals" / "goldens" / "v3_find_profile.json"
+GOLDEN_PATH = Path(__file__).resolve().parent / "golden" / "reference" / "find_profile.json"
 
 sys.path.insert(0, str(APP_DIR))
 

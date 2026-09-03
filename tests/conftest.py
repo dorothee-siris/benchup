@@ -1,6 +1,4 @@
-"""Test bootstrap: put `app/` on sys.path and point BENCHUP_V3_ROOT at the
-folder that contains it (only used to reach the optional multi-tree golden
-parquet under `data/artefacts_eu/eval_golden/`). Nothing else belongs here.
+"""Test bootstrap: put `app/` on sys.path. Nothing else belongs here.
 
 NAMESPACE GUARD: `tests/` has
 no `__init__.py`, and this file just put APP_ROOT (which contains the `lib`
@@ -8,21 +6,19 @@ package AND every top-level `tests/*.py` file) on sys.path -- so a test file
 that was ever named the SAME as a lib module's own basename (e.g. a
 `tests/selection.py` instead of `tests/test_selection.py`) would be import-
 ambiguous with `lib/selection.py` under pytest's default "prepend" import
-mode. alone added eleven new lib modules (compare_data, collab_data,
+mode. This app added eleven new lib modules (compare_data, collab_data,
 selection, views_compare, views_collab, views_methods, charts_compare,
 exports_xlsx, tiles, wordcloud_png, state) that a mis-named test file could
 now collide with; this check runs at collection time, for every test run, so
-a future stream cannot introduce the collision unnoticed. Real test files
+a future change cannot introduce the collision unnoticed. Real test files
 (the "test_*.py" convention every file in this suite already follows) never
 collide by construction -- this guards the convention itself, once."""
-import os
 import sys
 from pathlib import Path
 
 APP_ROOT = Path(__file__).resolve().parents[1]
 if str(APP_ROOT) not in sys.path:
     sys.path.insert(0, str(APP_ROOT))
-os.environ.setdefault("BENCHUP_V3_ROOT", str(APP_ROOT.parent))
 
 
 def _lib_module_stems() -> set[str]:

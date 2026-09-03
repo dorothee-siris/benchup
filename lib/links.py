@@ -103,14 +103,14 @@ def copubs_taxon_url(institution_a: str, institution_b: str, level: str, taxon_i
 def topic_url(institution_id: str, topic_id, *, years: tuple[int, int] | None = None,
               types: list[str] | None = None, has_doi: bool | None = None,
               sort: str | None = None) -> str:
-    """, institution-in-topic: `https://openalex.org/works?
+    """Institution-in-topic: `https://openalex.org/works?
     filter=authorships.institutions.id:{I},primary_topic.id:{T},
     publication_year:2020-2024,type:article|review[,has_doi:true]` -- the
     shared-frontier table's `url_a`/`url_b`. Defaults CORE-AR (article,
-    review) and the 2020-2024 window (`CFG['window']`, D10/E5), matching
+    review) and the 2020-2024 window (`CFG['window']`), matching
     every other Compare-grain link in this module; `has_doi` still defaults
-    from `CFG` (unchanged convention) even though E6's own plan text does
-    not spell it out. `sort` (e.g. `'cited_by_count:desc'`) is appended
+    from `CFG` (unchanged convention) even though the spec for this link
+    does not spell it out. `sort` (e.g. `'cited_by_count:desc'`) is appended
     verbatim when given, unencoded (a plain `field:direction` token, safe as
     a query value)."""
     y0, y1 = years if years is not None else CFG["window"]
@@ -145,8 +145,8 @@ def joint_stars_url(institution_a: str, institution_b: str, *,
     types']`'s 5-type harvest list, since every star-paper figure this link
     backs is CORE-AR only) plus `sort=cited_by_count:desc`. The star-paper
     definition itself is a within-topic-year top-1% cut OpenAlex cannot
-    filter on directly, so this is the honest "most cited first" proxy E6
-    names, never a literal re-application of the percentile rule."""
+    filter on directly, so this is the honest "most cited first" proxy this
+    link names, never a literal re-application of the percentile rule."""
     url = copubs_url(institution_a, institution_b, years=years,
                      types=(types if types is not None else CORE_AR_TYPES), has_doi=has_doi)
     return f"{url}&sort=cited_by_count:desc"

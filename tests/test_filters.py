@@ -69,7 +69,7 @@ def test_strip_is_none_at_all_defaults():
     # R2/L29: `views_find._strip_tree` hands this function the DISPLAY label
     # for an off-default taxonomy, so the strip never prints "original".
     ({"tree": copy.TREE_LABELS["original"]}, copy.TREE_LABELS["original"]),
-    # D17: depth is fixed at CFG["depth"]["max"] == CFG["depth"]["default"]
+    # Depth is fixed at CFG["depth"]["max"] == CFG["depth"]["default"]
     # (50 == 50) -- there is no off-default depth left to name in the strip,
     # so that case is retired along with the radio that used to drive it.
     ({"c1_on": True}, "core-shape"),

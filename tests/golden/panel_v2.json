@@ -1,6 +1,6 @@
 {
  "created": "2026-08-28",
- "rule": "education, in index, total_full>=1000, not in panel v1 (14) + 2 small-band HEIs (759/938 works) added to reach 16 (manager decision E2)",
+ "rule": "education, in index, total_full>=1000, not in panel v1 (14) + 2 small-band HEIs (759/938 works) added to reach 16",
  "seeds": [
   {
    "institution_id": "I46176106",

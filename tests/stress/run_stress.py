@@ -30,7 +30,7 @@ PID you spawned"). `stop_server` below terminates BOTH `proc.pid` and the
 resolved server PID (if different) so no orphan is ever left behind.
 
 Environment passthrough (`os.environ.copy()`, not a fresh env) is what lets the
-broken-control run (BUILD_PLAN.md D12/T1 acceptance item 3) work with NO code
+broken-control run work with NO code
 change here: `BENCHUP_SCENARIO_ENTRIES=3 python tests/stress/run_stress.py
 --phases A,B --minutes 4` raises the resident scenario cache from 1 to 3 in the
 spawned server and the harness should show a visibly higher peak -- proving this
@@ -43,8 +43,8 @@ sibling script `cycle_scenarios.py` -- run it standalone, or include "C" in
 same report.
 
 Usage:
-    python tests/stress/run_stress.py --minutes 10 --sessions 3 --phases A,B,C \
-        --out ../evals/stress/
+    python tests/stress/run_stress.py --minutes 10 --sessions 3 --phases A,B,C
+    (writes reports to tests/stress/reports/ by default; --out overrides)
 """
 from __future__ import annotations
 
@@ -368,9 +368,9 @@ def try_download(page, label: str, timeout_ms: int = 45_000):
 # --------------------------------------------------------------- phase A ----
 
 def run_phase_a(page, base: str, sampler: RssSampler) -> list[dict]:
-    """Deterministic replay of the measured crash path (BUILD_PLAN.md
-    Trigger paragraph): open an institution, cycle basis and taxonomy
-    (each swap evicts/rebuilds a whole scenario substrate dict under D11),
+    """Deterministic replay of the measured crash path: open an institution,
+    cycle basis and taxonomy
+    (each swap evicts/rebuilds a whole scenario substrate dict),
     visit Compare, come back, download. One continuous browser context --
     the "one browser context" the spec calls for. Every step is wrapped so
     one failure does not abort the rest (the report needs to know ALL step
@@ -604,7 +604,7 @@ def write_report(path: Path, csv_path: Path, cfg: dict, sampler: RssSampler,
     lines.append(f"| **overall** | {len(overall_vals)} | "
                  f"{overall_peak:.1f} |  |  |" if overall_peak is not None else "| **overall** | 0 | - | | |")
     lines.append("")
-    lines.append(f"Ceiling: peak < {PEAK_CEILING_MB:.0f} MB (D11/D12, half the 2.7 GB Community Cloud cap).")
+    lines.append(f"Ceiling: peak < {PEAK_CEILING_MB:.0f} MB (half the 2.7 GB Community Cloud cap).")
     lines.append("")
 
     if phase_a_steps is not None:
@@ -674,13 +674,13 @@ def write_report(path: Path, csv_path: Path, cfg: dict, sampler: RssSampler,
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="BenchUp V4 memory stress harness (BUILD_PLAN.md D12).")
+    ap = argparse.ArgumentParser(description="BenchUp V4 memory stress harness.")
     ap.add_argument("--minutes", type=float, default=10.0, help="phase B duration per session, minutes")
     ap.add_argument("--sessions", type=int, default=3, help="concurrent chaos sessions (phase B)")
     ap.add_argument("--port", type=int, default=8651)
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--phases", type=str, default="A,B", help="comma list from A,B,C")
-    ap.add_argument("--out", type=str, default=str(APP_DIR.parents[0] / "evals" / "stress"))
+    ap.add_argument("--out", type=str, default=str(STRESS_DIR / "reports"))
     args = ap.parse_args()
 
     phases = [p.strip().upper() for p in args.phases.split(",") if p.strip()]

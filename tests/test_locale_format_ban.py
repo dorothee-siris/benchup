@@ -1,14 +1,14 @@
-"""tests/test_locale_format_ban.py --, guards D9.
+"""tests/test_locale_format_ban.py -- guards the locale-format ban.
 
- decisions log (grill Q11a): "Locale: kill comma-decimal
+The rule: "Locale: kill comma-decimal
 printf-style locale-independent formats on every column (incl.
 `ProgressColumn`), one decimal convention app-wide." Streamlit's OWN
 `format="percent"` keyword (and any same-shaped constant assignment, e.g. the
 kind of `PROGRESS_FORMAT = "percent"` module-level constant a column-builder
 might read from) renders under the ACTIVE LOCALE -- on a comma-decimal
 locale this silently prints "12,3%" instead of "12.3%", which is exactly the
-class of bug CHROME-F's own fix (`lib/ranked.py`'s `pct_progress_column`,
-`lib/views_collab.py`'s D9 comment) replaced with an explicit `%.1f%%`-style
+class of bug the fix (`lib/ranked.py`'s `pct_progress_column`,
+`lib/views_collab.py`'s own comment) replaced with an explicit `%.1f%%`-style
 printf format.
 
 This is a PERMANENT TRIPWIRE, not a one-time regression test: it walks every
@@ -134,7 +134,7 @@ def test_detector_flags_a_progress_format_style_constant():
 
 
 def test_detector_ignores_the_same_words_inside_a_comment():
-    src = '# D9: format="percent" is BANNED, never use it again\nx = 1\n'
+    src = '# format="percent" is BANNED, never use it again\nx = 1\n'
     hits = _scan_source_for_locale_violations(src)
     assert not hits, f"a comment must never be flagged: {hits}"
 
@@ -192,4 +192,4 @@ def test_no_locale_dependent_percent_format_in_lib(path: Path):
     hits = _scan_source_for_locale_violations(source)
     assert not hits, (
         f"{path.relative_to(APP_DIR)} uses a locale-dependent percent format "
-        f"(D9 ban): {hits}")
+        f"(locale-format ban): {hits}")

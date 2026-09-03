@@ -35,7 +35,7 @@ APP_DIR = Path(__file__).resolve().parents[1]
 MENU_PAGE = str(APP_DIR / "Menu.py")
 FIND_PAGE = str(APP_DIR / "pages" / "1_\U0001F50E_Find.py")  # magnifying-glass-tilted-left, the file's real name
 
-GDANSK = "I40413290"           # University of Gdansk -- panel_v2 D19 seed, all default lenses defined
+GDANSK = "I40413290"           # University of Gdansk -- seed with all default lenses defined
 EMPTY_SIZE_RANGE = (100_000, 100_001)  # verified empty for Gdansk/L1 (see test below), inside the
                                         # slider's real bounds [200, 238_978] on this deployed index
 
@@ -82,7 +82,7 @@ def test_menu_has_at_least_three_nav_cards():
     # ("container") returns 0 even though 3 bordered st.containers render).
     assert len(at.columns) >= 3
     all_markdown = " ".join(m.value for m in at.markdown)
-    #  (BenchUp V4 trim, D1) retired the earlier standalone pair-view page and its
+    # This retired the earlier standalone pair-view page and its
     # own nav card -- Menu now reads "Find peers", "Compare", "How it is
     # built" (three cards, no version word). "Find"/"Compare" are still
     # substrings of the current wording, so only the third card's own check
@@ -235,7 +235,7 @@ STRASBOURG = "I68947357"   # the drive seed; the R1 reference seed
 
 # Widget keys L16 froze: the controls MOVED but were NOT renamed, which is the
 # whole reason the move was cheap (the smoke suite's selectors survive it).
-# D17 drops "depth" -- the radio it named is retired, the cut is fixed.
+# "Depth" is dropped -- the radio it named is retired, the cut is fixed.
 CONTROLS_ROW_KEYS = ("c1_on", "l7_on")
 POST_FILTER_KEYS = ("f_types", "f_countries", "f_excl_own", "f_size", "f_guard", "f_family")
 
@@ -335,7 +335,7 @@ def test_kpi_builders_render_missing_mark_when_the_p5_columns_are_absent():
 
 
 def test_find_profile_has_no_coverage_line():
-    """L30 / VIZ_SPEC S2.12 RETIRED: the coverage caption is REMOVED from the
+    """VIZ_SPEC S2.12, retired: the coverage caption is REMOVED from the
     page, not shortened -- its four items now live in the panel, tile or tab
     that each one qualifies."""
     at = _find_app(seed_id=STRASBOURG).run()

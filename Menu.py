@@ -3,11 +3,11 @@ Landing page. Nav cards are enumerated from pages/ at runtime (a pattern
 shared with an earlier SIRIS Streamlit tool): a dimension is a live st.page_link once a file matching its word exists under
 pages/.
 
- (BenchUp trim, D1): three cards in narrative order (Find -> Compare -> Methods)
+Three cards in narrative order (Find -> Compare -> Methods).
 Collaborate is retired, and with it the fourth card and the shared sidebar search this
 page used to render on every page load. Editorial labels/blurbs still come from copy.NAV
 rather than the bare dimension word. The MATCH word (used only to find the live page file
-under pages/, exactly the 2A mechanism) stays the plain word -- it must be a substring of
+under pages/, the same mechanism as elsewhere) stays the plain word -- it must be a substring of
 the file's own name ("1_(magnifying-glass)_Find.py", "3_(open-book)_Methods.py",.),
 which an editorial label like "How it is built" is not.
 

@@ -5,12 +5,11 @@ REWRITTEN for BenchUp V4 (2026-09-03) against the
 trimmed app: Menu (3 cards, no sidebar search) -> Find (free-text
 search -> one profile, sidebar taxonomy/basis selectboxes, 8 KPI tiles, one
 end-of-page workbook) -> Compare (two independent search slots, PINNED to
-best-fit/full, six sections in D2 order, one end-of-page workbook, a share
+best-fit/full, six sections in order, one end-of-page workbook, a share
 box) -> Methods ("How it is built", 11 expanders + a note download). Every
 pair page / shortlist / pooled-scatter / depth-radio /
-per-section-download check from the pre-trim harness is DELETED, not
-ported: those surfaces do not exist in this app any more (the build plan
-D1/D5/D17, out-of-scope list). The ERC profile panel on Find is IN scope
+per-section-download check from the earlier harness is DELETED, not
+ported: those surfaces do not exist in this app any more. The ERC profile panel on Find is IN scope
 and checked below (`check_find`'s ERC block).
 
 WHAT SURVIVES FROM THE PRE-TRIM HARNESS (mechanics only, re-verified live
@@ -132,9 +131,9 @@ def check(ok: bool, message: str) -> bool:
 
 
 def finding(message: str) -> None:
-    """A real, reproduced app behaviour outside this stream's fence (T2 owns
-    the harness, never the app under it) -- printed distinctly and collected
-    for the manager's JSON report, on top of a normal `check()` line."""
+    """A real, reproduced app behaviour outside this harness's fence --
+    printed distinctly and collected
+    for the run's own summary, on top of a normal `check()` line."""
     FINDINGS.append(message)
     print("FINDING: " + message)
 
@@ -420,7 +419,7 @@ def check_compare_deeplink(page) -> None:
     # --- every section header present ---------------------------------------
     headings = page.locator('[data-testid="stHeading"]').all_text_contents()
     missing = [h for h in COMPARE_SECTION_HEADERS if h not in headings]
-    check(not missing, f"Compare: every D2 section header renders ({missing or 'all present'}; got {headings})")
+    check(not missing, f"Compare: every section header renders ({missing or 'all present'}; got {headings})")
 
     # --- Profile/Impact tabs present and switchable (Thematic shape) -------
     # DOM FACT: Compare renders TWO separate st.tabs() widgets with the SAME
@@ -513,7 +512,7 @@ def check_compare_deeplink(page) -> None:
     raw = Path(info.value.path()).read_bytes()
     book = openpyxl.load_workbook(io.BytesIO(raw))
     check(book.sheetnames == COMPARE_XLSX_SHEETS,
-          f"Compare workbook (after Show all / interaction): 7 sheets in D2 order ({book.sheetnames})")
+          f"Compare workbook (after Show all / interaction): 7 sheets in order ({book.sheetnames})")
 
     # --- share box -----------------------------------------------------------
     code_texts = page.evaluate("Array.from(document.querySelectorAll('code')).map(c => c.textContent)")
@@ -537,7 +536,7 @@ def check_compare_deeplink_pre_show_all_workbook(page) -> None:
     raw = Path(info.value.path()).read_bytes()
     book = openpyxl.load_workbook(io.BytesIO(raw))
     check(book.sheetnames == COMPARE_XLSX_SHEETS,
-          f"Compare workbook (BEFORE any Show-all interaction): 7 sheets in D2 order ({book.sheetnames})")
+          f"Compare workbook (BEFORE any Show-all interaction): 7 sheets in order ({book.sheetnames})")
 
 
 def check_compare_clear(page) -> None:

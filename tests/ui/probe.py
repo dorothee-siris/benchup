@@ -2,14 +2,13 @@
 tests/ui/probe.py -- ONE parameterised acceptance probe: a LIGHTER
 correctness sweep than tests/ui/smoke.py, recomputing a real value through
 `lib/*` (never Streamlit-rendered) and matching it against the page's own
-rendering of it, rather than only proving a surface exists (the build plan,
-Stream T2, 2026-09-03).
+rendering of it, rather than only proving a surface exists.
 
 REWRITTEN for BenchUp V4: `collab` is DELETED (no pair page
-exist in this app -- D1); the shared sidebar search recompute helpers
+exist in this app); the shared sidebar search recompute helpers
 (`_sidebar_add`, the old `slots_row` probes) are gone with the architecture
-that produced them (Stream E3/C3: Find's own free-text search, Compare's
-two independent search slots). WHAT SURVIVES from the pre-trim file: the
+that produced them (Find's own free-text search, Compare's
+two independent search slots). WHAT SURVIVES from the earlier file: the
 per-page-process launch (`streamlit run <page file>` as the process root, so
 each probe opens at `/`, no sidebar nav needed), the settle-wait mechanics,
 and the "recompute through `lib.engine`/`lib.compare_data` -- both
@@ -253,7 +252,7 @@ def _probe_compare(page) -> None:
     # --- shared-frontier row count, recomputed off `compare_data.
     #     shared_frontier` (the SAME frame the mirror chart / table / xlsx
     #     sheet all read), matched against the page's own "Show all N". ---
-    subs = load_substrates(ctx, "bestfit", "full")   # Compare is PINNED (D10)
+    subs = load_substrates(ctx, "bestfit", "full")   # Compare is PINNED
     shared = CD.shared_frontier(ctx, subs, ids)
     n_shared = int(len(shared))
     btn = page.locator("button").filter(has_text=re.compile(r"^Show all \d+$"))

@@ -18,24 +18,23 @@ sum, just computed from a pre-aggregated intermediate table instead of every
 work row.
 
 Nesting is identical to trees_agg: subfield -> field is fixed (never
-re-derived per tree, R4's own rule), shares sum to 1 per institution PER
+re-derived per tree, by design), shares sum to 1 per institution PER
 SCENARIO (the denominator is the scenario's own total, i.e. excluded-topic
 mass is dropped from BOTH numerator and denominator when exclude_811=True
-R2.20's "excluded removes topics from shapes/SI/L3 ONLY"), and SI is
+-- "excluded removes topics from shapes/SI/L3 ONLY"), and SI is
 NaN below the G6 floor.
 
 BASIS GENERALIZATION (a documented judgment call, not lifted from trees_agg
 trees_agg has no `basis` toggle at all, it only ever computes ONE `si` column
 from share_frac): when basis='full', `si` is computed from share_full ÷
 mean(share_full) instead. The G6 FLOOR TEST STAYS ON vol_frac REGARDLESS of
-`basis` -- REFINEMENT_PLAN.md's own registry entry (2026-08-27 07:40,
-"Method B -> continuous fallback") states the ratified floor is a floor on
+`basis` -- the ratified floor is a floor on
 FRACTIONAL MASS ("vol_frac >= 30 ~ 100 full works"), not on whichever basis
 happens to be displayed; trees_agg's own code hard-codes the vol_frac test
 unconditionally, which is consistent with reading the floor as basis-
 independent. This basis='full' path is NOT covered by the Tier-A identity
 check against the shipped tables (trees_agg never ships a full-basis si to
-compare against) -- flagged here and in the S2 report, not silently assumed.
+compare against) -- flagged here, not silently assumed.
 
 MEAN-SHARE POPULATION (the second documented nuance, found reading trees_agg
 line by line, not assumed from the plan's prose): "mean share across index
@@ -53,7 +52,7 @@ BY-YEAR FORMAT DEVIATION (documented, not silently different): the shipped
 `subfields.parquet` packs by-year volumes as pipe-strings
 ('YEAR:value|YEAR:value|.', `trees_agg._pack_year_columns`). `derive_shapes`
 instead emits WIDE columns (`vol_full_<year>`/`vol_frac_<year>`, matching
-`topics_all`'s own new per-year schema, R2 S2 item 1) whenever the source
+`topics_all`'s own new per-year schema) whenever the source
 `topics_all` parquet HAS those columns (detected live from its schema, not
 assumed) -- a duckdb SUM per year is the natural, SQL-native shape for this
 data layer and is what the app will actually plot (a trajectory needs
@@ -90,7 +89,7 @@ def _posix(path: str | Path) -> str:
 
 def _detect_year_cols(columns: list[str]) -> list[int]:
     """Years present in BOTH vol_full_<year> and vol_frac_<year> (topics_all's
-    R2 S2 schema) -- sorted ascending. Empty on the pre-S2 schema (no by-year
+    S2 schema) -- sorted ascending. Empty on the pre-S2 schema (no by-year
     columns at all), never guessed from a hardcoded year list."""
     full_years = {int(m.group(1)) for c in columns if (m := re.fullmatch(r"vol_full_(\d{4})", c))}
     frac_years = {int(m.group(1)) for c in columns if (m := re.fullmatch(r"vol_frac_(\d{4})", c))}
@@ -123,7 +122,7 @@ def derive_shapes(
     """Returns (subfields_df, fields_df) for the given tree x basis x
     exclude_811 scenario, computed from `topics_all` + `topics_dim` alone
     (no raw corpus, no attribution_long -- the whole point of the one-master
-    design, R2.19). See module docstring for the exact rules reproduced."""
+    design). See module docstring for the exact rules reproduced."""
     if tree not in VALID_TREES:
         raise ValueError(f"tree must be one of {VALID_TREES}, got {tree!r}")
     if basis not in VALID_BASES:

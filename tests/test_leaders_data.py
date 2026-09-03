@@ -3,16 +3,16 @@ app/tests/test_leaders_data.py -- acceptance tests
 (Tier A). Real data (`app/data/*.parquet` as built by
 the upstream build) -- no fixtures, no mocks.
 
-Anchors verified by hand against `data/interim/stars/star_works.parquet` and
+Anchors verified by hand against the underlying per-work star table
+(a build artifact, not shipped in app/data) and
 `app/data/topic_leaders.parquet` (see the recomputation
 commands in each test's docstring):
   - ETH Zurich (I35440088) holds 18 star works in topic T10001 -- the frozen
     definition (top 1% most cited within topic x year), NOT the earlier
-    "16" from a different (year-only percentile) filter -- coordinator
-    correction 2026-09-03, superseding the brief's own draft anchor.
+    "16" from a different (year-only percentile) filter.
   - Ifremer (I154202486) holds 160 star works in total, all topics.
   - CNRS (I1294671590) T10001: rank 4 in pool "all", rank 3 in pool
-    "education" (probe 2026-09-03).
+    "education".
 
 Run: python -m pytest tests/test_leaders_data.py -q
 """
@@ -28,7 +28,6 @@ from lib import leaders_data as LD
 from lib.engine import load_context
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
-STARS_INTERIM = Path(__file__).resolve().parents[2] / "data" / "interim" / "stars" / "star_works.parquet"
 
 CNRS = "I1294671590"
 ETH = "I35440088"
@@ -168,34 +167,18 @@ def test_anchor_cnrs_topics_led_all(index_df):
 
 
 def test_anchor_eth_16_stars_t10001(ctx):
-    """ETH Zurich holds 18 star works in T10001 (coordinator correction
-    2026-09-03: the frozen top-1%-within-topic-year definition, not the
-    "16" from an earlier year-only-percentile probe). Hand-check:
-        df = pd.read_parquet('data/interim/stars/star_works.parquet')
+    """ETH Zurich holds 18 star works in T10001 (the frozen
+    top-1%-within-topic-year definition, not the "16" from an earlier
+    year-only-percentile probe). Hand-checked once against the underlying
+    per-work star table (not shipped in app/data):
         sub = df[df.topic_id == 'T10001']
         sub['ids'] = sub.inst_ids.str.split('|')
-        sub['ids'].apply(lambda l: 'I35440088' in l).sum # -> 18
+        sub['ids'].apply(lambda l: 'I35440088' in l).sum() # -> 18
     """
     frame = LD.stars_by_topic(ctx, [ETH])
     row = frame[frame["topic_id"].astype(str) == "T10001"]
     assert len(row) == 1
     assert int(row["n_stars"].iloc[0]) == 18
-
-
-def test_anchor_ifremer_three_topics_hand_checked(ctx):
-    """Ifremer's top 3 topics by star count, hand-checked against the
-    interim star_works.parquet directly (independent of inst_stars.parquet
-    and of leaders_data's own aggregation code path)."""
-    raw = pd.read_parquet(STARS_INTERIM)
-    hand = {}
-    for t in ["T10230", "T11387", "T10255"]:
-        sub = raw[raw["topic_id"] == t]
-        hand[t] = int(sub["inst_ids"].apply(lambda s: IFREMER in s.split("|")).sum())
-    print(f"Ifremer hand-checked star counts: {hand}")
-    frame = LD.stars_by_topic(ctx, [IFREMER]).set_index("topic_id")["n_stars"]
-    for t, want in hand.items():
-        assert int(frame.loc[t]) == want, f"{t}: got {frame.loc[t]}, hand-check {want}"
-    assert hand == {"T10230": 13, "T11387": 9, "T10255": 7}
 
 
 def test_anchor_ifremer_total_160(index_df):

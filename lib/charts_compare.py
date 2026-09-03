@@ -9,20 +9,21 @@ exempt (prose for the reader of the source, never text the app renders).
 `lib/views_compare.py` is the only place a figure built
 here reaches a page; nothing in this module imports it.
 
-WHAT V4 KEEPS FROM THE OLD COMPARE DESIGN, AND WHY
+WHAT THIS FILE KEEPS FROM THE OLD COMPARE DESIGN, AND WHY
 -------------------------------------------------------------------
-'s D2-D7 replace the old six-institution dot-mirror / metric-
+This redesign replaces the old six-institution dot-mirror / metric-
 selector / pooled-scatter Compare page with a fixed TWO-institution page
-(D1: exactly two search slots) built from four sections: Thematic
-shape (D3), SDG profile (D4), Shared frontier (D5), The relationship (D7).
+(exactly two search slots) built from four sections: Thematic
+shape, SDG profile, Shared frontier, The relationship.
 Every one of those sections is now drawn with the SAME bar-family chrome
 (`design-system/CHROME_CONTRACT.md` SS10 -- gutter column, solid institution-
 coloured bars, red-dagger caution, diamond reference) already measured and
 ratified as the one direction to converge the whole app on. `fig_metric_bars` -- that ratified primitive -- is KEPT, trimmed to the
-two metrics D3/D4 actually need (`share`, `pp`; the old Dynamics/SDG-tagged/
-Specialisation/Volume/FWCI metric-selector tabs are retired along with the
-selector UI they served). `two_tab_bars` and `reciprocity_bars` below are
-thin adapters onto it -- no new bar-drawing code, per the ponytail brief.
+two metrics the Thematic-shape and SDG-profile charts actually need (`share`,
+`pp`; the old Dynamics/SDG-tagged/Specialisation/Volume/FWCI metric-selector
+tabs are retired along with the selector UI they served). `two_tab_bars` and
+`reciprocity_bars` below are thin adapters onto it -- no new bar-drawing
+code, reusing the existing primitive instead.
 
 `legend_strip` / `map_legend_strip` / `chart_note` / `basis_caption` /
 `best_value_dot` are also kept: page-level presentation primitives, not
@@ -32,43 +33,45 @@ CHROME_CONTRACT.md SS0/SS6 name as the app's one convention to converge on.
 WHAT IS DELETED, AND WHY
 -----------------------------------------------------------------
 The pooled frontier scatter and its "who holds the shared frontier" diverging
-bar (`fig_frontier_map`, `fig_diverging_shared`) are gone -- D5 replaces both
-with the mirror chart below. The dot-mirror family (`fig_mirror_dots`,
-`fig_quadrant_mix`, the whole lane-dodge mechanism) is gone -- D3/D4 draw
-bars, not dots, for shape/SDG. The frontier overlay/small-multiples scatters
-(`fig_frontier_overlay`, `fig_frontier_small_multiples`) are gone -- ERC
-panels and the pooled/per-institution frontier scatter are both out of scope
-("Out of scope: ERC panels anywhere; pooled frontier scatter"). The impact
-dot-interval builders (`fig_impact_intervals`, `fig_impact_subfields`) are
-gone -- "Out of scope: Impact-by-subfield interval section"; D3's Impact tab
-covers this ground as a `two_tab_bars` call instead. `fig_pulse` (joint
-publications per year, one undifferentiated series) is gone -- D7 replaces it
-with `yearly_domain_stack`, the same figure stacked by OpenAlex domain.
+bar (`fig_frontier_map`, `fig_diverging_shared`) are gone -- the shared
+frontier's mirror chart below replaces both. The dot-mirror family
+(`fig_mirror_dots`, `fig_quadrant_mix`, the whole lane-dodge mechanism) is
+gone -- the Thematic-shape and SDG-profile charts draw bars, not dots. The
+frontier overlay/small-multiples scatters (`fig_frontier_overlay`,
+`fig_frontier_small_multiples`) are gone -- ERC panels and the
+pooled/per-institution frontier scatter are both excluded from this page.
+The impact dot-interval builders (`fig_impact_intervals`,
+`fig_impact_subfields`) are gone -- the impact-by-subfield interval section
+is excluded from this page; the Thematic-shape chart's Impact tab covers
+this ground as a `two_tab_bars` call instead. `fig_pulse` (joint
+publications per year, one undifferentiated series) is gone -- the
+relationship section replaces it with `yearly_domain_stack`, the same
+figure stacked by OpenAlex domain.
 `RATIO_HATCH_METRICS`'s bar-pattern-fill remnants (`LOW_VOLUME_PATTERN_SHAPE`/
 `LOW_VOLUME_PATTERN_SOLIDITY`) lost their one remaining caller (`fig_pulse`)
 and are deleted with it -- the hatch-fill mechanism was already retired from
 every OTHER bar in this module, so no hatch remnant survives anywhere in the
 file now.
 
-THE FOUR BUILDERS THIS STREAM ADDS
+THE FOUR NEW BUILDERS IN THIS MODULE
 -----------------------------------
-  1. `two_tab_bars` -- the Thematic-shape (D3) and SDG-profile (D4) charts.
+  1. `two_tab_bars` -- the Thematic-shape and SDG-profile charts.
                          A thin `fig_metric_bars` adapter: tab="profile" is
                          metric="share", tab="impact" is metric="pp".
-  2. `mirror_frontier` -- the shared-frontier mirror (D5): A-only left of a
+  2. `mirror_frontier` -- the shared-frontier mirror: A-only left of a
                          common centre, JOINT centred in `palette.
                          SHARED_FRONTIER` with the white halo, B-only right.
                          Genuinely new geometry (floating three-segment
                          `go.Bar`s via `base=`), not offered by any kept
                          primitive.
-  3. `yearly_domain_stack` -- the relationship's yearly stack (D7): joint
+  3. `yearly_domain_stack` -- the relationship section's yearly stack: joint
                          publications 2020-2024 by OpenAlex domain.
-  4. `reciprocity_bars` -- "strategic reciprocity by field" (D7), ADAPTED
-                         from 's `views_collab._reciprocity_chart` +
+  4. `reciprocity_bars` -- "strategic reciprocity by field", ADAPTED
+                         from the app's earlier `views_collab._reciprocity_chart` +
                          `collab_data.reciprocity_frame` (credited in its own
                          docstring): the original was a bubble SCATTER (x =
                          field's share of B's own corpus, y = the same for A,
-                         area = joint volume, colour = OA domain). V4 redraws
+                         area = joint volume, colour = OA domain). This build redraws
                          the same two numbers per field as INSTITUTION-
                          coloured `fig_metric_bars` bars (consistent with the
                          rest of this file's convergence onto the bar
@@ -211,7 +214,7 @@ AXIS_PAD_FRAC = 0.20          # x-range headroom so an outer-end label never
 NOTE_MAX_CHARS = 160          # `chart_note`'s hard cap
 DOT_HTML_PX = 10              # the KPI card's best-value dot
 DOT_GAP_PX = 6
-CAPTION_FONT_WEIGHT = 400      # D5 (CHROME_CONTRACT.md SS7): the basis caption
+CAPTION_FONT_WEIGHT = 400      # (CHROME_CONTRACT.md SS7): the basis caption
                               # is NEVER bold, in either colour state
 
 ACCENT_GLYPH = "\N{BLACK VERTICAL RECTANGLE}"
@@ -225,7 +228,7 @@ LABEL_SHARED = "shared"
 NOTE_HELP_GLYPH = "?"
 
 # --- the bar-family contract (SS10): gutter column + diamond reference -----
-COMPARE_MAX_SERIES = 3        # headroom above D1's fixed pair (two search
+COMPARE_MAX_SERIES = 3        # headroom above Compare's fixed pair (two search
                               # slots) -- `_series_ids` refuses a
                               # figure rather than truncate past this
 BAR_PX = 13                   # target thickness of one institution's bar
@@ -261,7 +264,7 @@ REF_METRICS = ("share", "pp")
 SORT_MODES = ("taxonomy", "value")
 # `taxonomy` (the default) keeps the frame's OWN row order, grouped under a
 # domain separator when `domain_col` is present -- this is what "rows ordered
-# as given, grouped under field headers" (the C2 brief) means concretely.
+# as given, grouped under field headers" means concretely.
 # `value` re-ranks by the value summed over the compared institutions.
 
 AX_TOP_DECILE_SHARE = "Share of publications in the world top decile"
@@ -276,12 +279,11 @@ HOVER_REFERENCE = "index reference"
 HOVER_DENOMINATOR = "denominator"
 HOVER_FWCI_MEDIAN = "FWCI (median)"
 HOVER_FIELD_PREFIX = "Field: "
-# C2 follow-up 2 (manager, 2026-09-03): the literal string the manager
-# asked for, verbatim -- deliberately NOT this module's usual
+# This exact string is a deliberate exception to this module's usual
 # lowercase-label + THIN_SPACE hover convention (every other line here
 # reads "label + a thin space + value"), because this one names what the row's
-# OWN label does not already say (which FIELD a subfield belongs to), and
-# the manager's own wording is the more legible one for that one line.
+# OWN label does not already say (which FIELD a subfield belongs to) -- this
+# wording is the more legible one for that one line.
 
 
 def _fmt_metric(v, metric: str) -> str:
@@ -411,8 +413,8 @@ def _metric_hover(r, iid, names, label_col, value_col, metric, ref_col,
     when the row's OWN cell is present and not null, so a caller whose frame
     lacks them (e.g. `reciprocity_bars`, which overwrites this hover outright
     afterwards) gets the unchanged skeleton:
-      * `si`, `fwci_median`, `vol_frac` (C2 brief: "hover extras");
-      * `group_label` (C2 follow-up 2, `two_tab_bars`'s own `grouped_by_
+      * `si`, `fwci_median`, `vol_frac` (hover extras);
+      * `group_label` (`two_tab_bars`'s own `grouped_by_
         field=True` frame) -- "Field: {name}" as the literal FIRST hover
         line (ahead of even the institution name, exactly as asked), naming
         the FIELD a subfield row belongs to, alongside the same domain-
@@ -485,7 +487,8 @@ def _add_reference(fig: go.Figure, rows: pd.DataFrame, ref_col: str,
 
 # ---------------------------------------------------------------------------
 # 1. The bar-family primitive (CHROME_CONTRACT.md SS10) -- kept unchanged,
-#    trimmed to the two metrics D3/D4 need. `two_tab_bars` and
+#    trimmed to the two metrics the Thematic-shape and SDG-profile charts
+#    need. `two_tab_bars` and
 #    `reciprocity_bars` below are its only callers in this module.
 # ---------------------------------------------------------------------------
 def fig_metric_bars(
@@ -524,7 +527,7 @@ def fig_metric_bars(
     where a `domain_col` value changes. `sort="value"` re-ranks by the value
     summed over the compared institutions.
 
-    THE GUTTER COLUMN (E6, CHROME_CONTRACT.md SS10.1). `gutter=True` (the
+    THE GUTTER COLUMN (CHROME_CONTRACT.md SS10.1). `gutter=True` (the
     default) draws a dedicated LEFT column: one phantom, zero-visible-fill
     `go.Bar` trace per institution, in the SAME lane as its real bar, at a
     small negative x (`GUTTER_NEG_AXIS_FRAC` of the data span) with its own
@@ -535,7 +538,7 @@ def fig_metric_bars(
     most of a 390 px figure); pass `gutter=False` and the raw value stays in
     hover alone -- never a horizontal scroll either way.
 
-    THE CAUTION CHANNEL (E5, CHROME_CONTRACT.md SS10.2). Every bar is SOLID,
+    THE CAUTION CHANNEL (CHROME_CONTRACT.md SS10.2). Every bar is SOLID,
     in the institution's own colour. A cell `_is_low_volume` flags switches
     its value text AND its gutter text to `palette.WARNING_CAPTION_COLOR`
     (never bold) and keeps `LOW_VOLUME_GLYPH` (a dagger) -- disclosure, never
@@ -547,7 +550,7 @@ def fig_metric_bars(
     field/subfield) it carries a glyph in the taxonomy's official colour -- taxonomy colour on labels,
     institution colour on marks, never the reverse.
 
-    REFERENCE (E8, CHROME_CONTRACT.md SS10.3). Only `REF_METRICS` (`share`,
+    REFERENCE (CHROME_CONTRACT.md SS10.3). Only `REF_METRICS` (`share`,
     `pp`) draw one, from the frame's OWN `ref_value` column. A reference that
     VARIES by row is a dark `REF_MARKER_SYMBOL` diamond MARKER per row; one
     that is the SAME for every row stays ONE rule across the panel.
@@ -681,7 +684,7 @@ def fig_metric_bars(
 
 
 # ---------------------------------------------------------------------------
-# 2. two_tab_bars -- the Thematic-shape (D3) and SDG-profile (D4) charts
+# 2. two_tab_bars -- the Thematic-shape and SDG-profile charts
 # ---------------------------------------------------------------------------
 TWO_TAB_TABS = ("profile", "impact")
 GUTTER_HEADER_FULL = "Publications, full count"
@@ -696,9 +699,9 @@ def two_tab_bars(
     grouped_by_field: bool,
     gutter: bool = True,
 ) -> go.Figure:
-    """The pair's Thematic-shape chart (D3, `grouped_by_field=True`, top-20
-    subfields by combined volume) and SDG-profile chart (D4,
-    `grouped_by_field=False`, all seventeen goals) -- one call site, one tab
+    """The pair's Thematic-shape chart (`grouped_by_field=True`, top-20
+    subfields by combined volume) and SDG-profile chart
+    (`grouped_by_field=False`, all seventeen goals) -- one call site, one tab
     switch, both a thin `fig_metric_bars` adapter (no new bar-drawing code).
 
     INPUT FRAME CONTRACT (long: one row per institution x taxon):
@@ -719,17 +722,16 @@ def two_tab_bars(
                        omit the column, or leave a row's cell null, for no
                        diamond on that row
       vol_full -- full-counted publication count, int -- drawn in the
-                       LEFT gutter column (header names the pinned basis,
-                       D10: bestfit + full counting)
+                       LEFT gutter column (header names the pinned basis:
+                       bestfit + full counting)
       n_covered -- covered-works denominator for the impact tab; a
                        row with `n_covered` under `palette.RATIO_HATCH_FLOOR`
                        (fifty) gets the red dagger caution -- ignored on the
-                       profile tab (D3 never cautions Share)
+                       profile tab (the Thematic-shape chart never cautions Share)
       si, fwci_median, vol_frac -- optional hover-only extras (`_metric_hover`)
-      domain_id -- OPTIONAL, OpenAlex domain id of the taxon's FIELD
-                       C2 follow-up 2 (manager, 2026-09-03): when present,
-                       drives TWO things at once, both existing mechanisms
-                       this builder does not invent: a small domain-coloured
+      domain_id -- OPTIONAL, OpenAlex domain id of the taxon's FIELD.
+                       When present, drives TWO things at once, both existing
+                       mechanisms this builder does not invent: a small domain-coloured
                        square accent in front of the row's own label and, when `group_label` is ALSO
                        present and not null, "Field: {group_label}" as the
                        literal FIRST hover line (`_metric_hover`). Meaningful
@@ -759,7 +761,7 @@ def two_tab_bars(
 
 
 # ---------------------------------------------------------------------------
-# 3. mirror_frontier -- the shared-frontier mirror (D5)
+# 3. mirror_frontier -- the shared-frontier mirror
 # ---------------------------------------------------------------------------
 JOINT_FLOOR = 5
 # The qualifying floor (`core_total >= 5`): below it `collab_topic_vols`
@@ -891,10 +893,9 @@ def _mirror_row_height(n_rows: int, max_lines_used: int, minimum: int = C.MIN_HE
     UNCHANGED, and never the problem (measured live at 31.6 px of text
     against a ~30.6 px pitch, comfortably positive row-to-row gaps
     throughout the real page). The three-line case does NOT linearly
-    extrapolate from the two-line increment any more (manager follow-up
-    2026-09-03: that extrapolation undershot a REAL measurement by 5 px,
-    see `MIRROR_THREE_LINE_FACTOR`'s own comment) -- it uses that directly
-    calibrated constant instead."""
+    extrapolate from the two-line increment any more (that extrapolation
+    undershot a REAL measurement by 5 px, see `MIRROR_THREE_LINE_FACTOR`'s
+    own comment) -- it uses that directly calibrated constant instead."""
     n_rows = max(int(n_rows), 1)
     max_lines_used = min(max(int(max_lines_used), 1), MIRROR_LABEL_MAX_LINES)
     if max_lines_used <= 1:
@@ -913,7 +914,7 @@ def mirror_frontier(
     colors: Sequence,
     top_n: int | None = None,
 ) -> go.Figure:
-    """The shared-frontier mirror (D5): one row per topic, A-only publications
+    """The shared-frontier mirror: one row per topic, A-only publications
     drawn LEFT of a common centre in A's colour, JOINT publications centred
     (`-joint/2` to `+joint/2`) in `palette.SHARED_FRONTIER` red with the
     `palette.FRONTIER_SHARED_HALO` white ring, B-only RIGHT in B's colour.
@@ -923,7 +924,7 @@ def mirror_frontier(
     INPUT FRAME CONTRACT (one row per topic):
       topic_id, topic_name -- identity + display name
       url_joint -- the OpenAlex link for the pair's joint publications on
-                       this topic (E6's `authorships.institutions.id:{A},
+                       this topic (the `authorships.institutions.id:{A},
                        authorships.institutions.id:{B}` filter) -- becomes the
                        y tick's `<a href>`
       vol_a, vol_b -- each institution's OWN publication count on the topic
@@ -939,7 +940,7 @@ def mirror_frontier(
     key a Mapping by. `colors` holds SLOT ints (the institution-slot map
     order), resolved via `palette.institution_color`, matching every other
     builder in this module. `top_n` keeps the `top_n` rows with the largest
-    `vol_a + vol_b` ("combined volume", D5); `None` draws every row given.
+    `vol_a + vol_b` ("combined volume"); `None` draws every row given.
 
     y-axis ticks carry `<a href="{url_joint}" target="_blank">{topic_name}
     {glyph}</a>` via plotly's own pseudo-html tick text (already exploited
@@ -1065,12 +1066,12 @@ def mirror_frontier(
     # reasoning every other builder's `n_wrapped` term already carries
     # (`charts.row_height`'s own rule) -- omitting it here left every
     # wrapped row's later lines overlapping the row below it, still visibly
-    # broken even after the margin/wrap-width fix alone. C2 follow-up 2:
+    # broken even after the margin/wrap-width fix alone. A further fix:
     # `_mirror_row_height` (this module) replaces the plain `metric_row_
-    # height(n, 1, n_wrapped=.)` call from follow-up 1 -- that binary
+    # height(n, 1, n_wrapped=.)` call used previously -- that binary
     # term could not tell a two-line row from THREE, and under-allocated
     # height once three-line wrapping existed (found on this fix's own
-    # first render, same discovery pattern as follow-up 1's own two bugs).
+    # first render, the same discovery pattern as the earlier fix's two bugs).
     max_lines_used = max((s.count("\n") + 1 for s in plain), default=1)
     return C._base_layout(fig, _mirror_row_height(n, max_lines_used),
                           margin=dict(t=C.BASE_PX // 2, l=margin_l,
@@ -1078,11 +1079,11 @@ def mirror_frontier(
 
 
 # ---------------------------------------------------------------------------
-# 4. yearly_domain_stack -- the relationship's yearly stack (D7)
+# 4. yearly_domain_stack -- the relationship section's yearly stack
 # ---------------------------------------------------------------------------
 YEARLY_STACK_HEIGHT_PX = 320
 YEARLY_STACK_TOP_MARGIN_PX = C.BASE_PX * 2
-# C2 follow-up: room for the native horizontal legend ABOVE the plot area, on
+# Room for the native horizontal legend ABOVE the plot area, on
 # top of the year-total annotations that already sit just above each bar
 # (unchanged, still inside the plot itself -- the legend sits in the MARGIN,
 # a separate band).
@@ -1090,11 +1091,11 @@ YEARLY_STACK_TOP_MARGIN_PX = C.BASE_PX * 2
 
 def yearly_domain_stack(frame: pd.DataFrame) -> go.Figure:
     """Joint publications per year, stacked by the four OpenAlex domains
-    (D7's replacement for 's single-series `fig_pulse`, credited in this
-    module's own docstring). Domain colours are `palette.OA_DOMAIN_COLORS`
+    (this module's replacement for the single-series `fig_pulse`, credited
+    in this module's own docstring). Domain colours are `palette.OA_DOMAIN_COLORS`
     (`palette.domain_color`), in `palette.OA_DOMAIN_ORDER` -- no institution
-    identity here, matching D7's own "pooled" reading of a pair's joint
-    corpus rather than either side's.
+    identity here, matching the relationship section's own "pooled" reading
+    of a pair's joint corpus rather than either side's.
 
     INPUT FRAME CONTRACT (one row per year x domain):
       year -- the calendar year
@@ -1104,7 +1105,7 @@ def yearly_domain_stack(frame: pd.DataFrame) -> go.Figure:
 
     A year's TOTAL (summed across domains) is written as text ABOVE its bar.
 
-    C2 follow-up (manager, 2026-09-03): this is the ONE chart in this module
+    This is the ONE chart in this module
     with its OWN native Plotly legend (`showlegend=True`, `legend.orientation
     ="h"`, anchored just above the plot) rather than the app-wide HTML chip
     strip every other builder here defers to (CHROME_CONTRACT.md SS4)
@@ -1199,8 +1200,7 @@ def reciprocity_bars(frame: pd.DataFrame, names: Sequence, colors: Sequence) -> 
     DESCENDING joint-volume order (matching the original's own ranking),
     computed here rather than assumed of the caller.
 
-    INPUT FRAME CONTRACT for C1 (wide: ONE ROW PER FIELD, not per
-    institution -- revised in the C2 follow-up, 2026-09-03):
+    INPUT FRAME CONTRACT (wide: ONE ROW PER FIELD, not per institution):
       field_id -- the field's id
       field_name -- the field's display name
       domain_id -- the field's OpenAlex domain (label accent only, never
@@ -1262,8 +1262,8 @@ def reciprocity_bars(frame: pd.DataFrame, names: Sequence, colors: Sequence) -> 
 def _add_centred_gutter(fig: go.Figure, rows: pd.DataFrame, gutter_header: str) -> None:
     """ONE phantom gutter column, centred on each row (not one per
     institution lane): `reciprocity_bars`'s own `vol_joint` is a FIELD fact,
-    the SAME number on both of a row's bars, so C2's follow-up asks for it
-    drawn once rather than `fig_metric_bars`'s per-series repeat -- built
+    the SAME number on both of a row's bars, so this draws it
+    once rather than `fig_metric_bars`'s per-series repeat -- built
     here, on `fig_metric_bars(gutter=False,.)`'s own output, rather than
     inside that shared primitive (`two_tab_bars` still needs the per-series
     form unchanged)."""

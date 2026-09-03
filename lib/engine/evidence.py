@@ -2,7 +2,7 @@
 app/lib/engine/evidence.py -- lens-specific evidence: "the top shared cell" for a
 seed/candidate pair under one lens, i.e. the single field/subfield/topic/ERC
 panel/SDG that contributes most to that lens's overlap score, replacing the
-lens-blind "Top field" evidence line every table showed before R1.
+lens-blind "Top field" evidence line every table showed before.
 
 Formula (per lens, mirroring `lenses.rank_all`'s own branch exactly):
   cell = argmax_j min(seed_j, cand_j) over the lens's substrate row pair

@@ -155,6 +155,9 @@ python tests/stress/run_stress.py       # permanent RAM gate: deterministic cras
                                          # the server must stay alive throughout
 ```
 
+The reference figures the suite reproduces exactly live in `tests/golden/`; `tests/golden_ranklists_check.py`
+and `tests/find_profile_identity.py` are the exact-reproduction checks against them.
+
 Exact pytest, smoke and probe counts move as work lands; run the commands above for the live
 number rather than trusting a count typed into this file.
 

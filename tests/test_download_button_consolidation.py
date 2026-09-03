@@ -82,11 +82,11 @@ def test_no_download_button_call_site_outside_the_three_view_modules():
 # ============================================================================
 
 def test_compare_workbook_builder_returns_exactly_seven_sheets():
-    """D2 brief item 6: cards, subfields (all 252), SDG, positioning, shared
+    """Cards, subfields (all 252), SDG, positioning, shared
     frontier (with links), relationship yearly, reciprocity -- SEVEN, in
     that order, no Methods sheet this time. Called through the SAME
     `_workbook_sheets` the real page's cached `_workbook_bytes` calls, on
-    real data (the T0 golden anchor pair)."""
+    real data (the golden anchor pair)."""
     from lib import views_compare as VC
     from lib.engine import scenario_cache as SC
 
@@ -125,7 +125,7 @@ def test_find_workbook_sheet_count_matches_the_all_lenses_plus_leaders_contract(
     fixed_sheets = src.count('copy.FIND["XLSX_SHEET_')
     assert fixed_sheets == 3, ("PROFILE + OVERVIEW + ASPIRATIONAL", fixed_sheets)
     assert "for lens in ALL_LENSES:" in src
-    assert "_leaders_sheet_frame" in src, "the 14th sheet (D9) must still be wired in"
+    assert "_leaders_sheet_frame" in src, "the 14th sheet must still be wired in"
     assert len(ALL_LENSES) + fixed_sheets + 1 == 14
 
     # VACUITY: the SAME arithmetic on an ALL_LENSES one lens short does NOT

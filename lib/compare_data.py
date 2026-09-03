@@ -27,7 +27,7 @@ owned-elsewhere test files).
 ONE function survives with its name and signature unchanged:
 `fields_long(ctx, subs, ids)` -- `lib/collab_data.py:reciprocity_frame` imports and calls it directly,
 so it cannot be renamed or dropped without touching a file outside this
-stream's fence.
+module's fence.
 """
 from __future__ import annotations
 
@@ -45,7 +45,7 @@ from . import profile_data as P
 from .app_config import CFG
 from .engine.substrates import load_substrates
 
-# D11/D12 concurrency fix (stress phase B, STRESS_2026-09-03_1302.md): same
+# A concurrency fix, found via a stress test (phase B): same
 # shared-connection + bounded-LRU idiom as `lib/collab_data.py`/
 # `lib/leaders_data.py` (module-duplicated) -- `_topic_yearly_own`'s
 # per-pair `ctx[key] = df` cache used to accumulate forever.
@@ -83,19 +83,19 @@ def _lru_touch(ctx: dict, key: str, prefix: str) -> None:
             ctx.pop(oldest, None)
 
 # ---------------------------------------------------------------------------
-# Windows & pin (E5/D10): every figure in this module is CORE-AR 2020-2024
+# Windows & pin: every figure in this module is CORE-AR 2020-2024
 # unless its own docstring says otherwise. `DYNAMICS_W1`/`DYNAMICS_W2` are
 # the two sub-windows the one "change" figure this module computes (cards'
-# `vol_change`) splits the core window into -- ported verbatim from 's
-# `compare_data.py` (same numbers, same helper functions, ANCHOR-tested).
+# `vol_change`) splits the core window into -- ported verbatim from the
+# reference `compare_data.py` (same numbers, same helper functions, ANCHOR-tested).
 # ---------------------------------------------------------------------------
 CORE_WINDOW = tuple(CFG["window"])                  # (2020, 2024)
 DYNAMICS_W1 = (2020, 2022)  # mean annual volume, window 1 (3 years)
 DYNAMICS_W2 = (2023, 2024)  # mean annual volume, window 2 (2 years)
 
-#  decisions log 2026-09-03: `collab_topic_vols.parquet` (and
+# `collab_topic_vols.parquet` (and
 # `collab_pair_domain_year.parquet`) only carry rows for pairs with
-# `core_total >= 5` ( own qualifying floor, `collab_data.
+# `core_total >= 5` (collab_data's own qualifying floor, `collab_data.
 # PAIR_TOPICS_FLOOR`) -- kept here as a plain int (not imported from
 # `collab_data`, which itself imports THIS module -- see the module
 # docstring on the one-way `fields_long` dependency; importing back would
@@ -103,7 +103,7 @@ DYNAMICS_W2 = (2023, 2024)  # mean annual volume, window 2 (2 years)
 # guess the number.
 PAIR_QUALIFYING_FLOOR = 5
 
-ELITE_FRONTIER_PERCENTILE = 0.90  # global top-decile cut on frontier_score_latest (D5 "world top-decile" glyph)
+ELITE_FRONTIER_PERCENTILE = 0.90  # global top-decile cut on frontier_score_latest (the "world top-decile" glyph)
 
 
 def _num(v) -> float:
@@ -119,9 +119,10 @@ def _window_mean(vol_by_year: dict, window: tuple[int, int]) -> float:
 
 
 def _dynamics_value(vol_by_year: dict) -> float:
-    """(mean annual volume, window 2) minus (window 1), over window 1 -- 's
-    own dynamics formula, ported verbatim (D8's card 'change in mean annual
-    volume 2020-22 -> 2023-24' reuses this exact helper, not a rewrite)."""
+    """(mean annual volume, window 2) minus (window 1), over window 1 -- the
+    reference implementation's own dynamics formula, ported verbatim (the
+    Key-figure cards' 'change in mean annual volume 2020-22 -> 2023-24'
+    reuses this exact helper, not a rewrite)."""
     w1 = _window_mean(vol_by_year, DYNAMICS_W1)
     w2 = _window_mean(vol_by_year, DYNAMICS_W2)
     if w1 <= 0:
@@ -151,7 +152,7 @@ def fields_long(ctx: dict, subs: dict, ids: list[str]) -> pd.DataFrame:
     """`profile_data.fields_table` per id, stacked, `institution_id` first.
     KEPT for `lib/collab_data.py:reciprocity_frame`, which imports this
     function by name (`from. import compare_data as CD; CD.fields_long(.)`)
-    fence, frozen for this stream, so this signature and
+    from outside this module's fence, so this signature and
     behaviour cannot change."""
     frames = []
     for iid in ids:
@@ -333,9 +334,9 @@ def _taxon_metrics(ctx: dict, subs: dict, ids: list[str], level: str) -> pd.Data
     n_covered_pp, eu_mean_pp10_wd, fwci_median, fwci_mean, n_covered_fwci,
     eu_median_fwci -- ONE merged pass over the three independent sources
     (share/si are subs-aware and basis/tree-toggled with the page's pin;
-    pp/fwci are basis- and bestfit-tree-PINNED regardless, decisions log
-    2026-09-01/02) restricted to `level in {"subfield", "sdg"}` -- ERC and
-    field grain deleted with this stream (E12)."""
+    pp/fwci are basis- and bestfit-tree-PINNED regardless) restricted to
+    `level in {"subfield", "sdg"}` -- ERC and field grain are deleted from
+    this module."""
     assert level in ("subfield", "sdg"), f"unsupported level {level!r} (only subfield/sdg survive this trim)"
     out = _share_and_si(ctx, subs, ids, level)
     out = out.merge(_pp_taxon(ctx, ids, level), on=["institution_id", "taxon_id"], how="left")
@@ -344,13 +345,13 @@ def _taxon_metrics(ctx: dict, subs: dict, ids: list[str], level: str) -> pd.Data
 
 
 # ---------------------------------------------------------------------------
-# cards -- D8's Key-figure cards (no `subs`: every figure here is either an
+# cards -- Key-figure cards (no `subs`: every figure here is either an
 # index.parquet column or derived from one, never subfield/topic-grain
 # scenario data).
 # ---------------------------------------------------------------------------
 
 # The 7 legacy figures the reference version's `overview` shipped, kept
-#   EQUAL (golden `overview`, brief item 1) -- window: `total_full_2020_2024` /
+#   EQUAL to the golden `overview` figures -- window: `total_full_2020_2024` /
 # `total_frac_2020_2024` are the 2020-2024 analytical window (config.yaml
 # `window`), ALL FIVE harvested corpus types (article/review/book/
 # book-chapter/letter, not narrowed to article+review) -- the SAME window
@@ -362,7 +363,7 @@ _CARD_INDEX_COLS = {
     "vol_full": "total_full_2020_2024", "vol_frac": "total_frac_2020_2024",
     "sdg_share": "sdg_tagged_share", "frontier_top25_share": "frontier_top25_share",
     "pp": "pp_top10_frac", "intl_share": "intl_share", "company_share": "company_share",
-    "fwci_eu_median": "fwci_eu_median",  # , parallel wave -- absent until it lands (NaN meanwhile)
+    "fwci_eu_median": "fwci_eu_median",  # added separately -- absent until it lands (NaN meanwhile)
     "star_share": "star_share", "n_stars": "n_stars", "n_topics_led_fair": "n_topics_led_fair",
 }
 CARDS_COLS = (["institution_id"] + list(_CARD_INDEX_COLS) + ["vol_change", "led_pool"]
@@ -379,7 +380,7 @@ def _eu_median_index(index_df: pd.DataFrame, col: str) -> float:
 
 
 def _all_vol_changes(ctx: dict) -> pd.Series:
-    """`vol_change` (D8) for EVERY institution in the index, cached on ctx
+    """`vol_change` for EVERY institution in the index, cached on ctx
     the one card figure with no ready-made index column, so its own
     population median needs one full pass parsing `vol_full_by_year_this_
     run` (cheap, ~7,557 short packed strings)."""
@@ -460,7 +461,7 @@ _OA_DOMAIN_ORDER_MAP = {d: i for i, d in enumerate(_OA_DOMAIN_ORDER)}
 
 def _subfields_frame(ctx: dict, subs: dict, ids: list[str], n: int | None) -> pd.DataFrame:
     """Shared builder for `top_subfields`/`all_subfields`: a DENSE grid over
-    every one of the 252 bestfit subfields x every id in `ids` (D3 "All 252
+    every one of the 252 bestfit subfields x every id in `ids` ("All 252
     subfields in Excel" -- a subfield neither institution publishes in still
     gets a row, `share_full`/`vol_full`/`vol_frac` = 0.0, `si`/`pp10_wd`/
     `fwci_median` = NaN, absence not a fabricated number, same convention
@@ -469,7 +470,7 @@ def _subfields_frame(ctx: dict, subs: dict, ids: list[str], n: int | None) -> pd
     touches). `n=None` returns all 252; `n=20` (top_subfields' own default)
     keeps only the `n` subfields with the largest `combined_vol_full`.
 
-    Row order (D3 "fields grouped, subfields by combined volume within
+    Row order ("fields grouped, subfields by combined volume within
     field"): fields ordered by (OpenAlex domain display order, then field_id
     ascending -- `field_rank`), subfields within a field ordered by
     `combined_vol_full` descending; the two institution-rows of one subfield
@@ -509,7 +510,7 @@ def _subfields_frame(ctx: dict, subs: dict, ids: list[str], n: int | None) -> pd
 
 
 def top_subfields(ctx: dict, subs: dict, ids: list[str], n: int = 20) -> pd.DataFrame:
-    """D3's Thematic-shape chart data: the `n` (default 20) subfields (bestfit
+    """The Thematic-shape chart data: the `n` (default 20) subfields (bestfit
     taxonomy) with the largest COMBINED `vol_full` across the two `ids`, long
     by (subfield, institution). See `_subfields_frame` for the exact column
     contract, the density rule and the row-order rule."""
@@ -518,12 +519,12 @@ def top_subfields(ctx: dict, subs: dict, ids: list[str], n: int = 20) -> pd.Data
 
 def all_subfields(ctx: dict, subs: dict, ids: list[str]) -> pd.DataFrame:
     """The SAME contract as `top_subfields`, uncapped -- all 252 bestfit
-    subfields (D3: "All 252 subfields in Excel")."""
+    subfields ("All 252 subfields in Excel")."""
     return _subfields_frame(ctx, subs, ids, None)
 
 
 # ---------------------------------------------------------------------------
-# sdg_frame -- D4's SDG-profile frame, same contract at SDG grain (16 goals
+# sdg_frame -- the SDG-profile frame, same contract at SDG grain (16 goals
 # `profile_data.sdg_table`'s own dense convention; see the docstring
 # below for the "17" vs "16" note).
 # ---------------------------------------------------------------------------
@@ -557,7 +558,7 @@ def _sdg_year_window_mass(ctx: dict, ids: list[str]) -> pd.DataFrame:
 
 
 def sdg_frame(ctx: dict, subs: dict, ids: list[str]) -> pd.DataFrame:
-    """D4's SDG-profile chart data, same contract as `top_subfields`/
+    """The SDG-profile chart data, same contract as `top_subfields`/
     `all_subfields`, at SDG grain. 16 rows per institution (DENSE
     `profile_data.sdg_table`'s own convention: `sdg.parquet` ships all 16
     goals per institution, so "17" in some planning prose counts the
@@ -568,7 +569,7 @@ def sdg_frame(ctx: dict, subs: dict, ids: list[str]) -> pd.DataFrame:
     documented (`_sdg_year_window_mass`'s own docstring).
 
     `df.attrs["untagged_share"]` carries `{institution_id: 1
-    index.sdg_tagged_share}` (D4 "untagged share per institution. for the
+    index.sdg_tagged_share}` ("untagged share per institution, for the
     caption") -- NaN when the index cell itself is null, never a fabricated
     0."""
     out = _taxon_metrics(ctx, subs, ids, "sdg").rename(columns={"taxon_id": "sdg_idx"})
@@ -593,7 +594,7 @@ def sdg_frame(ctx: dict, subs: dict, ids: list[str]) -> pd.DataFrame:
 
 
 # ---------------------------------------------------------------------------
-# frontier_positioning -- D2's Frontier "positioning" figures, one row per
+# frontier_positioning -- the Frontier "positioning" figures, one row per
 # institution.
 # ---------------------------------------------------------------------------
 
@@ -606,7 +607,7 @@ FRONTIER_POSITIONING_COLS = [
 def _elite_frontier_topic_ids(ctx: dict) -> frozenset:
     """Global top-decile topic set: topic ids in the top-10% by
     `frontier_score_latest`, cut over every SCORED topic (never the compared
-    institutions' own footprint) -- D5's "world top-decile" glyph. Cached on
+    institutions' own footprint) -- the "world top-decile" glyph. Cached on
     ctx (one `topics_dim.parquet` read + one quantile)."""
     if "_elite_frontier_topic_ids" not in ctx:
         extra = P._topics_dim_extra(ctx)
@@ -619,7 +620,7 @@ def _elite_frontier_topic_ids(ctx: dict) -> frozenset:
 
 def _top25_frontier_topic_ids(ctx: dict) -> frozenset:
     """Global top-quartile-frontier topic set (`topics_dim.top25pct_
-    frontier == True`) -- D5's FIXED pool, tree-independent (the narrow
+    frontier == True`) -- the shared frontier's FIXED pool, tree-independent (the narrow
     `ctx['topics_dim_df']` already carries this column, no extra read)."""
     if "_top25_frontier_topic_ids" not in ctx:
         td = ctx["topics_dim_df"]
@@ -628,13 +629,13 @@ def _top25_frontier_topic_ids(ctx: dict) -> frozenset:
 
 
 def frontier_positioning(ctx: dict, subs: dict, ids: list[str]) -> pd.DataFrame:
-    """D2's Frontier "positioning" row per institution: `share_top25`
+    """The Frontier "positioning" row per institution: `share_top25`
     (`index.frontier_top25_share`, verbatim), `n_top25_topics_published`
-    (the count of D5's FIXED top-quartile-frontier topic pool where this
-    institution's OWN volume, current basis, is >= 1), `n_of_those_top_
-    decile` (the subset also in the GLOBAL top-decile-by-`frontier_score_
-    latest` set, `_elite_frontier_topic_ids`), `n_topics_led_fair` (index
-    column, D6's fair pool), `n_stars_in_frontier_topics` (this
+    (the count of the shared frontier's FIXED top-quartile-frontier topic
+    pool where this institution's OWN volume, current basis, is >= 1),
+    `n_of_those_top_decile` (the subset also in the GLOBAL top-decile-by-
+    `frontier_score_latest` set, `_elite_frontier_topic_ids`),
+    `n_topics_led_fair` (index column, the fair pool), `n_stars_in_frontier_topics` (this
     institution's own star-work count, summed over exactly the topics it
     was just counted as publishing in above).
 
@@ -689,15 +690,16 @@ SHARED_FRONTIER_COLS = [
     "url_a", "url_b", "url_joint",
 ]
 
-LOW_VOLUME_FLOOR = 10  # D5 "own change A/B w1->w2 with dagger under 10 works"
+LOW_VOLUME_FLOOR = 10  # "own change A/B w1->w2 with dagger under 10 works"
 
 
 def _shared_frontier_topics(ctx: dict, subs: dict, ids: list[str]) -> pd.DataFrame:
     """topic_id, topic_name, x (`expansion_latest`), y (`acceleration_
     latest`), combined_vol, vol_a, vol_b -- the topics BOTH `ids` (exactly
-    two) hold nonzero volume in, restricted to D5's FIXED top-quartile-
-    frontier pool (`topics_dim.top25pct_frontier == True`, scored topics
-    only). Ported from 's `frontier_points(mode="emerging")` +
+    two) hold nonzero volume in, restricted to the shared frontier's FIXED
+    top-quartile-frontier pool (`topics_dim.top25pct_frontier == True`,
+    scored topics only). Ported from the reference implementation's
+    `frontier_points(mode="emerging")` +
     `_frontier_pool_frame(pool="volume")` + `shared_frontier`'s own
     `owner == "shared"` filter, COLLAPSED to this module's fixed 2-
     institution case (the OLD N-institution "owner" tri-state and the
@@ -771,7 +773,7 @@ def _topic_yearly_own(ctx: dict, a: str, b: str) -> pd.DataFrame:
 
 
 def shared_frontier(ctx: dict, subs: dict, ids: list[str]) -> pd.DataFrame:
-    """D5's shared-frontier mirror chart + table data (`mirror_frontier`'s
+    """The shared-frontier mirror chart + table data (`mirror_frontier`'s
     own INPUT FRAME CONTRACT, `lib/charts_compare.py`: `topic_id`,
     `topic_name`, `url_joint`, `vol_a`, `vol_b`, `vol_joint`, `expansion`,
     `acceleration`, `is_top_decile` are all present under these exact
@@ -785,8 +787,8 @@ def shared_frontier(ctx: dict, subs: dict, ids: list[str]) -> pd.DataFrame:
       vol_joint, joint_known -- `collab_topic_vols.parquet`'s
                                                    per-topic joint volume, `joint_known=False`
                                                    (`vol_joint=NaN`) when the pair is below
-                                                   P7's qualifying floor (`core_total >= 5`,
-                                                   decisions log 2026-09-03) -- the floor is
+                                                   P7's qualifying floor (`core_total >= 5`)
+                                                   -- the floor is
                                                    checked on the PAIR, not the topic: a
                                                    qualifying pair's genuinely-zero topic
                                                    still ships `vol_joint=0.0`, `joint_known=True`
@@ -796,10 +798,10 @@ def shared_frontier(ctx: dict, subs: dict, ids: list[str]) -> pd.DataFrame:
                                                    `low_volume_*` when the institution's own
                                                    2020-2024 volume on the topic is < 10 works
       rank_a, pool_a, rank_b, pool_b -- `leaders_data.topic_ranks`, fair pool per
-                                                   institution `type` (D6), NaN when the
+                                                   institution `type`, NaN when the
                                                    institution is not in the topic's top 200
       stars_a, stars_b -- `leaders_data.stars_by_topic`, 0 when absent
-      url_a, url_b, url_joint -- `links.topic_url`/`links.joint_topic_url` (E6)
+      url_a, url_b, url_joint -- `links.topic_url`/`links.joint_topic_url`
     """
     from . import collab_data as COL  # local import -- collab_data imports THIS module (fields_long)
 
@@ -874,9 +876,9 @@ def shared_frontier(ctx: dict, subs: dict, ids: list[str]) -> pd.DataFrame:
 
 
 # ---------------------------------------------------------------------------
-# relationship -- D7's Relationship block: momentum + yearly-by-domain +
+# relationship -- the Relationship block: momentum + yearly-by-domain +
 # reciprocity + joint stars, all read from `collab_data`/`leaders_data`
-# (both frozen fences this stream), reshaped to what `charts_compare.
+# (both frozen fences), reshaped to what `charts_compare.
 # yearly_domain_stack`/`reciprocity_bars` need.
 # ---------------------------------------------------------------------------
 
@@ -885,7 +887,7 @@ YEARLY_DOMAIN_COLS = ["year", "domain_id", "domain_name", "vol"]
 
 
 def relationship(ctx: dict, ids: list[str], subs: dict | None = None) -> dict:
-    """D7's Relationship block for the pair `ids` (exactly two). `subs`
+    """The Relationship block for the pair `ids` (exactly two). `subs`
     defaults to the Compare pin (`load_substrates(ctx, "bestfit", "full")`)
     when not given -- only `reciprocity` needs a scenario at all (via
     `collab_data.reciprocity_frame` -> `fields_long`), so a caller that
@@ -898,8 +900,9 @@ def relationship(ctx: dict, ids: list[str], subs: dict | None = None) -> dict:
                            co-published).
       pulse -- `collab_data.pulse(ctx, a, b)` verbatim (EQUAL
                            golden `pulse`) -- its own `yearly` (2020-2025,
-                           ALL doc types) is the D7 "plain yearly totals"
-                           fallback for a pair below the P7 floor, or `None`.
+                           ALL doc types) is the relationship section's
+                           "plain yearly totals" fallback for a pair below
+                           the P7 floor, or `None`.
       yearly -- DataFrame(year, domain_id, domain_name, vol):
                            `collab_data.pair_domain_year` (CORE-AR 2020-2024,
                            qualifying pairs only) joined to domain names;
@@ -912,7 +915,7 @@ def relationship(ctx: dict, ids: list[str], subs: dict | None = None) -> dict:
       topicless_note -- True when Sigma(`yearly`.vol) < `core_total`: a
                            handful of the pair's joint CORE-AR works carry no
                            primary topic and are therefore absent from the
-                           domain breakdown (decisions log 2026-09-03 -- C3's
+                           domain breakdown (this chart's own
                            caption states this in words, never silently).
       reciprocity -- WIDE (`charts_compare.reciprocity_bars`'s own
                            contract): field_id, field_name, domain_id,
@@ -929,7 +932,7 @@ def relationship(ctx: dict, ids: list[str], subs: dict | None = None) -> dict:
                            that hover clause).
       joint_stars -- `leaders_data.pair_stars(ctx, a, b)`, int, 0
                            when absent.
-      joint_stars_url -- `links.joint_stars_url(a, b)` (E6: joint filter
+      joint_stars_url -- `links.joint_stars_url(a, b)` (joint filter
                            + `sort=cited_by_count:desc`)."""
     from . import collab_data as COL  # local import -- collab_data imports THIS module (fields_long)
 

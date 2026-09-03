@@ -1,8 +1,8 @@
-"""tests/test_compare_basis_pin.py -- BenchUp V4 trim, guards
-D10: Compare is PINNED to the best-fit taxonomy and full counting, with NO
+"""tests/test_compare_basis_pin.py -- guards the pin:
+Compare is PINNED to the best-fit taxonomy and full counting, with NO
 toggle anywhere on the page.
 
-REWRITTEN for the trim: the pre-trim guard ("no chart
+REWRITTEN: the earlier guard ("no chart
 mixes bases between value and gutter") probed `compare_data.metric_frame`
 across a full/frac TOGGLE that no longer exists -- Compare had a basis
 control before this trim; it does not now. The equivalent guard for a

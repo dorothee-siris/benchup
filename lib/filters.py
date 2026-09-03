@@ -66,7 +66,7 @@ def _active_filter_labels(filters: dict) -> list[str]:
         labels.append(copy.STRIP_TYPE.format(types=", ".join(sorted(types))))
     country_codes = filters.get("countries")
     if country_codes:
-        # R1/L22: the strip shows country NAMES, sorted by name (not by code).
+        # The strip shows country NAMES, sorted by name (not by code).
         names = sorted(countries_lib.name(c) for c in country_codes)
         labels.append(copy.STRIP_COUNTRY.format(countries=", ".join(names)))
     if filters.get("exclude_own_country"):

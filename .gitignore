@@ -23,3 +23,7 @@ Thumbs.db
 tests/**/renders/
 tests/**/*.xlsx
 tests/**/downloads/
+
+# Stress-harness reports: regenerable by re-running tests/stress/run_stress.py locally,
+# never committed on purpose.
+tests/stress/reports/

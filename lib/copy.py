@@ -19,8 +19,8 @@ from __future__ import annotations
 import re
 
 # ------------------------------------------------- scenario display labels
-# R2 / L29: the sidebar shows a label, the app keeps the internal value. E3
-# passes these dicts to `format_func`; the KEYS are the contract and never
+# The sidebar shows a label, the app keeps the internal value; this dict
+# is passed to `format_func`, and the KEYS are the contract and never
 # change.
 
 TREE_LABELS = {
@@ -35,7 +35,7 @@ BASIS_LABELS = {
 }
 
 # ---------------------------------------------------------- lens naming -----
-# R2 / L29: the code stays the identifier (Overview chips, evidence column,
+# The code stays the identifier (Overview chips, evidence column,
 # CSV export), the name says what the lens looks at. Tabs carry these labels.
 
 
@@ -71,7 +71,7 @@ LENS_INTRO = {
           "finds.",
 }
 
-# R2 / L29: the reader-facing reason a lens has nothing to show
+# The reader-facing reason a lens has nothing to show
 # for this seed. `lib/engine/lenses.py` produces its own diagnostic string
 # ("seed's excess-SI vector is empty under candidate (f), papers>=30
 # (n_eligible_cells=0)") which is a debugging artefact, not copy: it names
@@ -176,25 +176,24 @@ UNDEFINED_LENS_TEMPLATE = "{lens} cannot be computed for this seed: {reason}."
 
 # ----------------------------------------------------------- depth/export ---
 
-# U4 / PRESS-A: E7 retires
-# the per-lens CSV this line used to point at (".or download the full
-# ranking"), in favour of the ONE all-lens workbook at the end of the page
+# This retires the per-lens CSV this line used to point at (".or download the full
+# ranking"), in favour of the ONE all-lens workbook at the end of the page,
 # rewritten so the sentence still points at something real. `EXPORT_BUTTON_
 # LABEL` (the retired per-lens/per-tab CSV button's own label) is DELETED
-# outright rather than left for a future sweep: this stream is the one that
-# orphaned it, and grep confirms zero remaining callers anywhere in the app.
+# outright rather than left dangling: grep confirms zero remaining callers
+# anywhere in the app.
 DEPTH_CAPTION_TEMPLATE = ("showing the top {n} of {m} ranked candidates; search the tail below, or "
                           "download every lens as one workbook at the end of the page")
 TAIL_SEARCH_EMPTY_TEMPLATE = "'{query}' does not appear anywhere in this lens's ranking for this seed."
-# ADD_COMPARATOR_HELP DELETED (TEV-U wave 3 deletion ledger, SEL's own
-# flag): the old per-page "add a comparator by name" flow this help text
-# belonged to is gone (superseded by `selection.render_sidebar`'s shared
-# search); confirmed zero usage by grep across lib/ and tests/.
+# ADD_COMPARATOR_HELP DELETED: the old per-page "add a comparator by name"
+# flow this help text belonged to is gone (superseded by
+# `selection.render_sidebar`'s shared search); confirmed zero usage by grep
+# across lib/ and tests/.
 
 # ---- Find page ----
 
 FIND = {
-    # ---- sidebar: counting and taxonomy (R2 / L29) -----------------------
+    # ---- sidebar: counting and taxonomy -----------------------------------
     "SCENARIO_HEADER": "Counting & taxonomy",
     "TREE_LABEL": "Subject taxonomy",
     "TREE_HELP": ("OpenAlex files every publication under a topic, and every topic under a subfield "
@@ -225,7 +224,7 @@ FIND = {
     "SLOT_LABEL": "Slot {n}",
     "PAGE_TITLE": "Find",
     "PAGE_INTRO": "Add institutions in the sidebar, then read who resembles the one you profile, across independent lenses.",
-    #  / A14: the verbose "Snapshot: <label> (generated <timestamp>)"
+    # The verbose "Snapshot: <label> (generated <timestamp>)"
     # stamp is GONE from every page. The key and its four call-site keywords
     # (`snapshot`, `generated_at`, `n_institutions`, `sep`) are kept exactly as
     # they were -- `str.format` ignores the keywords a template stops using
@@ -304,7 +303,7 @@ FIND = {
                 "with an occasional peer no other lens finds."),
     "POSTFILTERS_EXPANDER": "Post-filters (applied after ranking)",
 
-    # ---- the lens guide (R2 / L29) ---------------------------------------
+    # ---- the lens guide -----------------------------------------------
     "LENS_INTRO_HEADER": "How to read the lenses",
     "LENS_INTRO_LEAD": ("Each lens compares two institutions in a different way, so a candidate can "
                         "rank high on one and be absent from another; the codes are stable "
@@ -314,11 +313,11 @@ FIND = {
     "LENS_LEGEND_CAPTION": ("Codes name the lenses that place a candidate in their top-{N}; see the "
                             "lens guide above."),
 
-    # L17/L18: the profile section that replaces the old seed card.
+    # The profile section that replaces the old seed card.
     "PROFILE_HEADER": "Profile",
     "TILES_HEADER": "Key figures",
 
-    # ---- R2 / L31: every tile positioned against the index ---------------
+    # ---- every tile positioned against the index --------------------------
     "TILE_BASELINE_SUB": "index median {median} {sep} higher than {pct} of institutions",
     "BASELINE_HELP": ("The reference is the whole index, which is made up mostly of universities, so "
                       "the median describes what that population does rather than a level to reach. "
@@ -328,7 +327,7 @@ FIND = {
     "WORDCLOUD_CAPTION": ("Subfields {sep} size = publications on the current counting basis, "
                           "colour = domain"),
 
-    # Yearly breakdown pair (L17 block 4): one segmented control swaps the
+    # Yearly breakdown pair: one segmented control swaps the
     # global + per-year charts between a domain view and a document-type view.
     "BREAKDOWN_CONTROL_LABEL": "Break down by",
     "BREAKDOWN_DOMAIN": "Domain",
@@ -336,7 +335,7 @@ FIND = {
     "BREAKDOWN_GLOBAL_TITLE": "Overall breakdown",
     "BREAKDOWN_YEARLY_TITLE": "Yearly breakdown",
 
-    # L17 block 5: the six collapsed chart panels.
+    # The six collapsed chart panels.
     "PANEL_FIELDS": "Fields",
     "PANEL_SUBFIELDS": "Top {n} subfields",
     "PANEL_TOPICS": "Top topics",
@@ -344,12 +343,12 @@ FIND = {
     "PANEL_SDG": "SDG profile",
     "PANEL_ERC": "ERC profile",
 
-    # L20: the shared sort toggle every bar-chart panel carries.
+    # The shared sort toggle every bar-chart panel carries.
     "SORT_LABEL": "Sort by",
     "SORT_VOLUME": "Volume / share",
     "SORT_TAXONOMY": "Taxonomy order",
 
-    # ---- R2 / L33: the frontier panel's two modes ------------------------
+    # ---- the frontier panel's two modes --------------------------------
     "FRONTIER_MODE_LABEL": "Topics shown",
     "FRONTIER_MODE_TOP": "Top {n} topics by volume",
     "FRONTIER_MODE_EMERGING": "All topics in the global top quartile of emergence",
@@ -436,15 +435,15 @@ FIND = {
         "a share of everything published."),
     "KPI_PP_LABEL": "PP10_WD",
 
-    # : the two P5 profile tiles (moved here from
-    # views_find.py module constants, ).
+    # The two star-papers/topics-led profile tiles (moved here from
+    # views_find.py module constants).
     "KPI_STARS_LABEL": "Star papers",
     "KPI_LED_LABEL": "Topics led",
 
-    # : two identity-column facts. The columns land on index.parquet
-    # later this phase; until they do, both read n/a -- never 0.
+    # Two identity-column facts. The columns will land on index.parquet
+    # later; until they do, both read n/a -- never 0.
 
-    #  / A15: what the cloud encodes, and the one thing a reader has to
+    # What the cloud encodes, and the one thing a reader has to
     # know before comparing two renders of it.
     "WORDCLOUD_HELP": (
         "Word size is the subfield's publications on the current counting basis and word colour "
@@ -452,7 +451,7 @@ FIND = {
         "sciences and humanities in particular, so the two bases render at different scales: "
         "compare positions within one basis, never sizes across the two."),
 
-    # : the breakdown pair gets a section title carrying the bonus-year
+    # The breakdown pair gets a section title carrying the bonus-year
     # footnote in its tooltip; the standalone banner under the pair is gone and
     # the control's own "Break down by" label is collapsed.
     "BREAKDOWN_SECTION_TITLE": "Publication breakdown",
@@ -462,19 +461,18 @@ FIND = {
         "year, marked with a star on the year axis: it is reported for volumes only and left out "
         "of every impact indicator."),
 
-    # : what replaces the snapshot stamp on Find and on the menu.
+    # What replaces the snapshot stamp on Find and on the menu.
     "DATA_CAPTION": "{n_institutions} institutions {sep} data from {date}",
 
     # ======================================================================
-    # Phase,.
     # ADDITIVE ONLY, save the three narrow in-place edits the deliverable
-    # itself requires and that no other stream reads (noted at each one):
+    # itself requires (noted at each one):
     # TAB_ASPIRATIONAL gains its star, FRONTIER_MODE_TOP drops the {n} the
     # slider below replaces, CAPTION_FRONTIER's wording follows suit (catch-
     # all topics are no longer pre-excluded from the cut it describes).
     # ======================================================================
 
-    #  mode B: the aspirational tab's own framing line, ahead of
+    # The aspirational tab's own framing line, ahead of
     # ASP_INTRO, and the one-line notice a V0-empty seed's fallback carries.
     "ASP_FRAME_INTRO": ("A different exercise from the lenses above: identifying institutions worth "
                         "aspiring to, not institutions that merely resemble this one."),
@@ -483,7 +481,7 @@ FIND = {
                               "shared presence in the topics the world is currently expanding into."),
     "COL_F1": "Frontier alignment",
 
-    #  handoff (FB): the frontier panel's new top-N slider and the
+    # The frontier panel's new top-N slider and the
     # coverage caption templated from `charts.frontier_coverage`'s numbers.
     "FRONTIER_TOPN_LABEL": "Maximum topics plotted",
     "CAPTION_FRONTIER_COVERAGE": (
@@ -491,7 +489,7 @@ FIND = {
         "shown are catch-all, flagged {glyph}. This cut leaves out {pct_not_shown} of the placeable "
         "mass; the smallest topic shown holds {min_mass} publications on the current counting basis."),
 
-    # : DISPLAY lens codes, renumbered L0.L7 in TAB ORDER (the eight
+    # DISPLAY lens codes, renumbered L0.L7 in TAB ORDER (the eight
     # defaults) plus L8 (C1) and L9 (L7, the experimental/noise lens) for the
     # two optional tabs -- the codes a reader actually sees on a tab, in the
     # guide, in the concordance chips and in the cross-lens "rank under"
@@ -499,15 +497,15 @@ FIND = {
     # keyed on them: CSV exports, `evidence_text`, `rank_under_other_lenses`,
     # ctx dict keys) are UNCHANGED -- LENS_DISPLAY_CODE is the ONE table that
     # translates one into the other, keyed by the internal id it is looked up
-    # with. `docs/METHODS_NOTE.md`'s own concordance table (next
-    # wave) reads this same dict rather than a second copy of the mapping.
+    # with. `docs/METHODS_NOTE.md`'s own concordance table (later)
+    # reads this same dict rather than a second copy of the mapping.
     #
     # LENS_DISPLAY_NAMES is LENS_NAMES' sentence, with the NEW code substituted
     # for the old one -- the full name + one-line intro a tab body now opens
-    # on (A11: the tab itself carries only the bare code). The OLD LENS_NAMES/
+    # on (the tab itself carries only the bare code). The OLD LENS_NAMES/
     # LENS_INTRO/LENS_CAVEAT dicts above are untouched: the Methods page still
-    # reads them as they stand until own wave retires the old
-    # numbering there too ( FC row).
+    # reads them as they stand until a future pass retires the old
+    # numbering there too.
     "LENS_DISPLAY_CODE": {
         "L0": "L0", "L1": "L1", "L3": "L2", "F1": "L3", "L2f": "L4",
         "L4": "L5", "L5": "L6", "L6": "L7", "C1": "L8", "L7": "L9",
@@ -590,7 +588,7 @@ FIND = {
     # verbatim, same keys -- into that line's own `?` tooltip. A relocation is
     # not a rewrite; rewriting these sentences is pass.
 
-    # , (D5/D4, CHROME_CONTRACT.md S7): the SDG and ERC
+    # (CHROME_CONTRACT.md S7): the SDG and ERC
     # profile panels read `sdg.parquet`/`erc.parquet`, both denominated on the
     # WHOLE-RUN window (window_conventions.sdg_mass_window, data_contract.yaml
     # six years, the bonus year included), never the five-year corpus
@@ -601,7 +599,7 @@ FIND = {
                               "run, including the bonus year), not the {corpus} window used "
                               "elsewhere on this page."),
 
-    # E7: the ONE end-of-page workbook replacing every
+    # The ONE end-of-page workbook replacing every
     # per-lens CSV -- see `lib/exports_xlsx.py`/`lib/views_find.py:
     # _find_workbook`. Sheet labels are plain nouns; the per-lens sheets
     # themselves are named from `LENS_DISPLAY_NAMES`, not typed here.
@@ -621,7 +619,7 @@ FIND = {
 LENS_DISPLAY_CODE = FIND["LENS_DISPLAY_CODE"]
 LENS_DISPLAY_NAMES = FIND["LENS_DISPLAY_NAMES"]
 
-# In-place edits the //A11 wiring requires (narrow, noted above):
+# In-place edits the deliverable requires (narrow, noted above):
 FIND["TAB_ASPIRATIONAL"] = "★ " + FIND["TAB_ASPIRATIONAL"]           # "★ Aspirational"
 FIND["FRONTIER_MODE_TOP"] = "Top topics by volume"                        # the slider now states n
 FIND["CAPTION_FRONTIER"] = (
@@ -686,7 +684,7 @@ COMPARE = {
                     "record, through {whole_y1}."),
     "DEEPLINK_LABEL": "Share this comparison, exactly as it stands, with this link.",
 
-    # ---- 1. key-figure cards (D8) -----------------------------------------
+    # ---- 1. key-figure cards ----------------------------------------------
     "CARDS_HEADER": "Key figures",
     "CARDS_NOTE": "One card per institution; the dot marks the higher figure.",
     "CARDS_NOTE_TIP": ("Every figure names the European median across the whole index in its "
@@ -724,7 +722,7 @@ COMPARE = {
                        "Company co-publication: {company}, European median {company_eu}. "
                        "{y0} to {y1}."),
 
-    # ---- 2. thematic shape (D3) --------------------------------------------
+    # ---- 2. thematic shape -------------------------------------------------
     "SHAPE_HEADER": "Thematic shape",
     "TAB_PROFILE": "Profile",
     "TAB_IMPACT": "Impact",
@@ -735,7 +733,7 @@ COMPARE = {
     "SHAPE_NOTE_IMPACT": ("Each bar is PP10_WD against the world reference; a row resting on "
                           "fewer than {floor} covered works carries a dagger."),
 
-    # ---- 3. SDG profile (D4) ------------------------------------------------
+    # ---- 3. SDG profile ------------------------------------------------------
     "SDG_HEADER": "SDG profile",
     "SDG_BASIS_CAPTION": ("Every Sustainable Development Goal this taxonomy tags, best-fit "
                           "taxonomy, full counting."),
@@ -745,7 +743,7 @@ COMPARE = {
                         "fewer than {floor} covered works carries a dagger."),
     "SDG_UNTAGGED": "{name}: {share} of output carries no Sustainable Development Goal tag.",
 
-    # ---- 4. frontier: positioning + the shared deep dive (D5) ---------------
+    # ---- 4. frontier: positioning + the shared deep dive -------------------
     "FRONTIER_HEADER": "Frontier",
     "FRONTIER_POSITIONING_SHARE": "Share of output in frontier topics",
     "FRONTIER_POSITIONING_PUBLISHED": "Topics published in",
@@ -790,7 +788,7 @@ COMPARE = {
     "RANK_POOL_UNIVERSITIES": "universities",
     "RANK_POOL_ALL": "all institutions",
 
-    # ---- 5. the relationship (D7) --------------------------------------------
+    # ---- 5. the relationship --------------------------------------------------
     "RELATIONSHIP_HEADER": "The relationship",
     "RELATIONSHIP_NEVER": "These two institutions have no recorded joint publications.",
     "MOMENTUM_TIP": ("Compares mean annual joint articles and reviews over {w2} against {w1} "
@@ -816,7 +814,7 @@ COMPARE = {
     "JOINT_STARS_CAPTION": "Sorted by citations, most cited first.",
     "JOINT_STARS_LINK_LABEL": "View on OpenAlex",
 
-    # ---- 6. the workbook (D2/E7) ---------------------------------------------
+    # ---- 6. the workbook -------------------------------------------------------
     "EXPORT_BUTTON": "Download this view (Excel)",
     "EXPORT_HELP": ("One workbook: the key figures, every subfield, the SDG profile, frontier "
                     "positioning, the shared frontier with its links, and the relationship's "
@@ -865,15 +863,14 @@ def _lens_concordance_table() -> str:
 # typed in here; `tests/test_pages_methods.py` pins the coverage number
 # against the function it is actually read off.
 
-# FWCI_NOT_AVAILABLE_LINE (-11(c) / MU3) DELETED (TEV-U wave 3, MT
-# sweep casualty #4): FWCI is a real, always-attempted column now (ruling 4,
-# `fwci_ref.parquet` + `collab_pairs`/`collab_pair_topics`/`collab_pair_
+# FWCI_NOT_AVAILABLE_LINE DELETED: FWCI is a real, always-attempted column
+# now (`fwci_ref.parquet` + `collab_pairs`/`collab_pair_topics`/`collab_pair_
 # fields`'s own `fwci_median`), never a "not available" descope line -- the
-# ONE caller (`ops/_probe_collab.py`, itself deleted this wave, superseded by
+# ONE caller (`ops/_probe_collab.py`, itself deleted, superseded by
 # `tests/ui/probe.py`) is gone with it. Zero other usage confirmed
 # (`grep -rn "FWCI_NOT_AVAILABLE_LINE"` across lib/tests/ops).
 
-# -2 /: the colour-system rule stated once, in plain terms, so
+# The colour-system rule stated once, in plain terms, so
 # a future chart caption on any page can quote it rather than re-explaining
 # the same convention. The rule itself: institution colour fills a mark, a
 # taxonomy's own colour never does (COMPARE's CAPTION_ACCENT_ERC/_SDG already
@@ -1084,7 +1081,7 @@ METHODS_SOURCES = {
     "n_forced_or_nofit": "count of topics_dim rows with fit_quality in (forced, no_fit)",
     "top_decile_pct": "the complement of lib.compare_data.ELITE_FRONTIER_PERCENTILE, formatted as a percent",
     "leader_depth": "measured live: the maximum rank value in topic_leaders.parquet",
-    "star_pct": "views_methods.STAR_TOP_PCT, the star-paper cut from the star-papers pipeline step's own k formula (not shipped to any table), formatted as a percent",
+    "star_pct": "views_methods.STAR_TOP_PCT, the star-paper cut's own k formula (not shipped to any table), formatted as a percent",
     "top_star_name": "measured live: the display_name of the index row with the highest star_share",
     "top_star_share": "measured live: that same row's star_share, formatted as a percent",
     "pair_qualifying_floor": "lib.compare_data.PAIR_QUALIFYING_FLOOR",
@@ -1110,13 +1107,13 @@ _ALLOWLIST_RE = re.compile(
     r"\bL0\b|\bL1\b|\bL2f\b|\bL2\b|\bL3\b|\bL4\b|\bL5\b|\bL6\b|\bL7\b|\bL8\b|\bL9\b|\bF1\b|\bC1\b|"
     r"top10|PP\(top10%\)|PP10_WD|EU27"
 )
-# "EU27" added alongside "PP10_WD" -- the E1 ruled
+# "EU27" added alongside "PP10_WD" -- the ruled
 # perimeter phrase, "the European baseline (EU27 plus the United Kingdom,
 # Switzerland, Norway and Iceland)", is typed verbatim wherever a page
 # defines the term for the first time (Find's own PP10_WD tooltip among
 # them), and "27" is a stable identifier (the EU's own member-state count),
 # not a data value a rebuild could change.
-#  adds L2/L8/L9 -- L2 is the renumbered topic lens's own DISPLAY
+# This adds L2/L8/L9 -- L2 is the renumbered topic lens's own DISPLAY
 # code (L2f, a DIFFERENT lens, must stay in the alternation and BEFORE L2 so
 # the longer token matches first), L8/L9 are the two optional lenses' codes
 # to the allowlist above; `tests/test_narrative.py:has_digit_violation`
@@ -1127,8 +1124,8 @@ _ALLOWLIST_RE = re.compile(
 # project-wide (FWCI_EU carries no digit and needs no entry here); PP10_WD
 # is a stable metric identifier, the same category of exemption as the lens
 # codes above, never a typed number. `tests/digit_allowlist.txt` gets the
-# same token, and drops "" (its last live use retired this round by
-# this same stream's Menu.py fix), so the shared allowlist's own cap holds.
+# same token, and drops "" (its last live use retired by
+# a Menu.py fix elsewhere in this build), so the shared allowlist's own cap holds.
 # A `{named}` format placeholder is never rendered literally -- the RULE at
 # the top of this file exempts it explicitly -- so a digit inside the
 # placeholder's own name (e.g. the FIND section's "{y0}"/"{y1}") is not a

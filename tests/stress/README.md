@@ -52,7 +52,7 @@ Args (`run_stress.py`):
 | `--port` | 8651 | server port (pick a free one if running alongside another instance) |
 | `--seed` | 1 | phase-B RNG seed, per-session offset `seed*1000 + session_id` — reproducible chaos |
 | `--phases` | `A,B` | comma list from `A,B,C` — C is a separate bare process shelled out to `cycle_scenarios.py` |
-| `--out` | `V4/evals/stress/` | report + CSV destination |
+| `--out` | `tests/stress/reports/` | report + CSV destination |
 
 A single command times out at 10 minutes in some harnesses — keep `--minutes ≤ 8`
 per invocation, or run it as a background process and poll. A full gate run uses
@@ -66,7 +66,7 @@ Phase C alone, standalone (no server, seconds not minutes):
 
 ## Reading the report
 
-`V4/evals/stress/STRESS_<YYYY-MM-DD_HHMM>.md` + a sibling `..._samples.csv` (every
+`tests/stress/reports/STRESS_<YYYY-MM-DD_HHMM>.md` + a sibling `..._samples.csv` (every
 0.5 s sample: `elapsed_s, phase, rss_mb`). The report has:
 - **Config** — exact args, and `BENCHUP_SCENARIO_ENTRIES` read from the environment
   the harness itself ran under (see "Broken control" below).
@@ -85,14 +85,14 @@ Phase C alone, standalone (no server, seconds not minutes):
 A harness that always reports a low peak regardless of what the app does is not
 proving anything. `lib/engine/scenario_cache.py` reads its resident-scenario cap
 from `BENCHUP_SCENARIO_ENTRIES` (default `1`) precisely so this harness can force
-the OLD (pre-D11) behaviour — three scenarios resident at once, the actual
+the OLD (pre-fix) behaviour — three scenarios resident at once, the actual
 Community-Cloud crash condition — without touching any app code:
 
 ```bash
-# control (D11 fix in effect)
+# control (fix in effect)
 ..\envs\env-app\Scripts\python.exe tests/stress/run_stress.py --phases A,B --minutes 4 --port 8651
 
-# broken control (pre-D11 behaviour reproduced)
+# broken control (pre-fix behaviour reproduced)
 set BENCHUP_SCENARIO_ENTRIES=3
 ..\envs\env-app\Scripts\python.exe tests/stress/run_stress.py --phases A,B --minutes 4 --port 8652
 ```
@@ -202,5 +202,5 @@ I4210142177  Pfizer-University of Granada-Junta de Andalucía Centre for Genomic
 - `cycle_scenarios.py` — phase C, standalone, no server.
 - This file.
 
-Reports and samples live in `V4/evals/stress/` (outside `app/` — this folder
-owns them, not `app/`).
+Reports and samples live in `tests/stress/reports/` (gitignored -- local,
+regenerable output, never committed).

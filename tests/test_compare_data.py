@@ -28,7 +28,7 @@ from lib import compare_data as CD
 from lib.engine import load_context, load_substrates
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
-GOLDEN_PATH = Path(__file__).resolve().parents[2] / "evals" / "goldens" / "v3_compare_anchors.json"
+GOLDEN_PATH = Path(__file__).resolve().parent / "golden" / "reference" / "compare_pairs.json"
 
 ATOL = 1e-6
 
@@ -40,7 +40,7 @@ def ctx():
 
 @pytest.fixture(scope="module")
 def subs(ctx):
-    """Compare's own pin (D10): bestfit taxonomy, full counting."""
+    """Compare's own pin: bestfit taxonomy, full counting."""
     return load_substrates(ctx, "bestfit", "full")
 
 
@@ -195,7 +195,7 @@ def test_all_subfields_is_dense_over_all_252_bestfit_subfields(ctx, subs, golden
     a, b = _pair_ids(golden, "ifremer_nioz")
     out = CD.all_subfields(ctx, subs, [a, b])
     assert out["subfield_id"].nunique() == 252
-    assert len(out) == 504  # 252 x 2 institutions, dense (D3 "All 252 subfields in Excel")
+    assert len(out) == 504  # 252 x 2 institutions, dense ("All 252 subfields in Excel")
     assert list(out.columns) == CD.SUBFIELD_WIDE_COLS
     # a subfield neither institution touches: share_full/vol_full are 0.0, never NaN
     zero_rows = out[out["combined_vol_full"] == 0.0]

@@ -1,6 +1,6 @@
 """
-app/lib/profile_data.py -- per-institution profile tables for the R1 Profile
-section (.2 L17, S9.3 R-B, S9.4 interface contracts).
+app/lib/profile_data.py -- per-institution profile tables for the Profile
+section (S9.3, S9.4 interface contracts).
 
 Pure functions, no Streamlit import: every function takes the engine's `ctx`
 (+ often `subs`, one scenario's substrates) and an `institution_id`, and
@@ -17,7 +17,7 @@ already computes for the L0/L1 lenses (`derive_shapes` output, or the shipped
 ->domain map (subfield->field never changes per tree, `trees_agg.
 subfield_to_field_map`).
 
-R2 L34 (.2): `si` at subfield grain is now RECOMPUTED here
+`si` at subfield grain is now RECOMPUTED here
 without the ratified G6 floor (`_unfloored_si`) -- `subs["subfields_df"]`'s own
 `si` column is NaN below `vol_frac >= 30` (the ratified LENS floor, untouched),
 but the profile display wants a value down to `vol_frac >= 10` ("thin" cells,
@@ -48,7 +48,7 @@ YEARLY_COLS = ["year", "domain_id", "domain_name", "vol_full", "vol_frac"]
 SDG_COLS = ["sdg_idx", "sdg_number", "sdg_label", "sdg_label_numbered", "share", "esi", "mass", "si_status"]
 ERC_COLS = ["panel_idx", "panel_code", "panel_label", "erc_domain", "share", "si", "mass", "si_status"]
 
-# R2 L34 (.2): harmonised display floors on FRACTIONAL mass
+# Harmonised display floors on FRACTIONAL mass
 # (vol_frac for subfields, `mass` for ERC/SDG) -- solid = safe to plot as a
 # filled mark, thin = hollow mark (small sample), none = no mark at all (this
 # is the "no SI mark at zero volume" ERC fix, triage #9). These are a PROFILE
@@ -127,7 +127,7 @@ def _year_cols(ctx: dict) -> list[int]:
     return ctx["topics_all_year_cols"]
 
 
-# -------------------------------------------------------- R2 L34 SI floors
+# -------------------------------------------------------- SI floors
 
 def si_status_from_mass(mass) -> pd.Series:
     """Harmonised display-floor status (L34): >= `SI_FLOOR_SOLID` -> "solid",
@@ -217,7 +217,7 @@ def topics_table(ctx: dict, subs: dict, iid: str) -> pd.DataFrame:
     `subs['basis']` (frac = `topics_all.share_frac` verbatim; full = the
     vol_full-normalised share). moved the per-scenario ASSEMBLY of
     that share out of the app; the SAME values are already resident in
-    `subs['l3']['share']` -- P1's dense (inst x topic) matrix for this basis,
+    `subs['l3']['share']` -- the substrate's dense (inst x topic) matrix for this basis,
     `cats == ctx['topic_ids']` -- so this reads them there by position
     instead: every row of this institution's slice has `ta_inst == idx` by
     construction (`mask`), so indexing the matrix at row `idx`, columns

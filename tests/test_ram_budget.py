@@ -1,15 +1,15 @@
-"""tests/test_ram_budget.py -- (RAM fit for Streamlit
-Community Cloud) permanent gate. Recalibrated by (2026-09-03) for
+"""tests/test_ram_budget.py -- RAM fit for Streamlit
+Community Cloud, permanent gate. Recalibrated for
 the unified-loader / one-resident-scenario architecture; carries forward the
 earlier file's structure and ORDER rules almost unchanged -- only the budgets, the
-loader-identity coverage and the NEW `test_scenario_cycle` are E1's.
+loader-identity coverage and the NEW `test_scenario_cycle` are new here.
 
 RSS-SENSITIVE, like `test_engine_identity.py:test_budgets` -- run this file
 ISOLATED, never mixed into the main pytest sweep. `test_full_loader_sweep_
 rss_delta` needs a clean just-imported baseline: a shared process that
 already ran other test files (which themselves call `lib.data_cache`
 loaders, e.g. `test_pages.py`) would read stale-warm frames and pass
-vacuously regardless of what this stream actually shipped. Gate ladder
+vacuously regardless of what this build actually shipped. Gate ladder
 convention: the main run excludes this whole file
 (`--ignore=tests/test_ram_budget.py`, mirroring test_budgets' own
 `--deselect`), then it runs on its own:
@@ -32,8 +32,8 @@ Covers:
   3. test_collab_parquets_never_loaded_whole -- duckdb pushdown
      contract: a single-pair slice never returns more than a few hundred
      rows. SKIPPED, not failed, while `lib.collab_data` cannot be imported
-     (see its own docstring below) -- a known, out-of-fence, wave-ordering
-     gap, not this stream's regression.
+     (see its own docstring below) -- a known, out-of-fence, ordering
+     gap, not this file's regression.
   4. test_scenario_cycle -- one process calls
      `scenario_cache.get` for all 6 (tree, basis) combinations in
      sequence; RSS must never exceed the first reading + SCENARIO_CYCLE_
@@ -42,16 +42,16 @@ Covers:
      the test's own docstring for why a bare dict can't be weakly
      referenced directly, and the empirical check that bare-mode eviction
      really frees, so no `streamlit run` subprocess was needed).
-  5. test_compare_pairs_sweep -- NEW (D12 concurrency fix, stress phase B,
-     STRESS_2026-09-03_1302.md): 40 distinct qualifying pairs through
+  5. test_compare_pairs_sweep -- NEW (a concurrency fix, found via a stress
+     test, phase B): 40 distinct qualifying pairs through
      Compare's six frame functions, sequentially, in one process; RSS
      growth from pair 10 to pair 40 must stay under
      COMPARE_SWEEP_GROWTH_BUDGET_MB -- the gate that would have caught the
      unbounded per-pair `ctx[key] = df` caches in `lib/collab_data.py`/
      `lib/leaders_data.py`/`lib/compare_data.py` before they ever reached
      a stress harness.
-  6. test_repeated_scenario_cycle_no_ratchet -- NEW (R2, stress phase B
-     FAIL, STRESS_2026-09-03_1354.md: peak 3477 MB, final 2412 MB, RETAINED
+  6. test_repeated_scenario_cycle_no_ratchet -- NEW (a stress test, phase B,
+     found a FAIL: peak 3477 MB, final 2412 MB, RETAINED
      growth from repeated scenario swapping, not just a transient spike).
      12 consecutive RANDOM `scenario_cache.get()` calls (same call pattern
      as `run_stress.py`'s chaos `scenario_combo` action); RSS after swap 12
@@ -102,11 +102,11 @@ DATA_DIR = APP_ROOT / "data"
 # Every lib/data_cache.py loader that returns a DataFrame (`manifest`
 # returns a dict, not a frame, and is deliberately excluded). Unchanged from
 # the earlier census -- aliased five of these onto bundle["ctx"]
-# (D11 task 2) but added or removed no loader.
+# but added or removed no loader.
 DATAFRAME_LOADERS = ["index", "fields", "subfields", "topics_dim", "erc", "sdg",
                      "doctype_by_year", "sdg_fields", "sdg_year"]
 
-# The five loaders D11 task 2 aliased onto scenario_cache.bundle["ctx"]
+# The five loaders aliased onto scenario_cache.bundle["ctx"]
 # `data_cache.<name>` must be the SAME OBJECT as `ctx["<key>"]`, not merely
 # an equal one. `topics_dim` is deliberately absent: `ctx["topics_dim_df"]`
 # is a 12-of-29-column SUBSET (`substrates.TOPICS_DIM_COLS`), a genuinely
@@ -117,7 +117,7 @@ DATAFRAME_LOADERS = ["index", "fields", "subfields", "topics_dim", "erc", "sdg",
 ALIASED_TABLES = {"index": "index_df", "fields": "fields_df", "subfields": "subfields_df",
                   "erc": "erc_df", "sdg": "sdg_df"}
 
-# Measured 2026-09-03 (this stream's own calibration, post D11 unification):
+# Measured 2026-09-03 (this file's own calibration, post-unification):
 # loader sweep RSS delta 429.70 MB WorkingSetSize -- ~1.6x headroom under
 # this ceiling (recalibrated DOWN from the earlier file's 900 MB; the five now-
 # aliased loaders stopped paying for a second copy of index/fields/
@@ -133,29 +133,29 @@ RSS_DELTA_BUDGET_MB = 700.0
 # ctx.topics_dim_df 0.51; ctx.index_df/fields_df/subfields_df/erc_df/sdg_df
 # contribute ZERO extra -- same objects as their data_cache.* counterparts)
 # ~3x headroom under this ceiling (recalibrated DOWN from the earlier file's
-# 600 MB: the pre-E1 census counted every aliased table TWICE, once as a
+# 600 MB: the earlier census counted every aliased table TWICE, once as a
 # data_cache frame and once as a separate ctx frame from an independent
 # `load_context` call).
 FRAME_BUDGET_MB = 450.0
 
-# D11's own scenario-swap ceiling:
+# The scenario-swap ceiling:
 # every RSS reading across the 6-scenario cycle must stay within this many
 # MB of the FIRST reading. Measured 2026-09-03: max delta ~300 MB (two
 # basis-keyed topic-share matrices, ~172 MB each, load once each and then
-# stay resident for the rest of the process by design -- D11 architecture
+# stay resident for the rest of the process by design -- an architecture
 # note "tree/basis-invariant blocks. loaded once and shared" -- NOT a
 # leak; see the test's own docstring) -- ~2.5x headroom.
 SCENARIO_CYCLE_BUDGET_MB = 750.0
 
 COLLAB_PAIR_ROW_CAP = 5000
-# E1's own anchor pair.
+# The reference anchor pair.
 IFREMER_ID, NIOZ_ID = "I154202486", "I4210107283"
 
 SCENARIOS = [(tree, basis)
             for tree in ("original", "conservative", "bestfit")
             for basis in ("frac", "full")]
 
-# NEW (D12 concurrency fix, stress phase B, STRESS_2026-09-03_1302.md): 40
+# NEW (a concurrency fix, found via a stress test, phase B): 40
 # distinct qualifying pairs, seeded, `core_total >= 20` (well above the P7
 # floor of 5 -- every function below has real rows to chew on, not empty
 # frames). Measured pre-fix: ~1.8 MB/pair sequential slope from the
@@ -194,11 +194,11 @@ def test_full_loader_sweep_rss_delta():
     is deliberate: `load_context` is a plain, uncached function, so a
     direct call here would build a SECOND ctx independent of the one the
     five aliased loaders already triggered, silently reintroducing the
-    exact duplication D11 removed and inflating this number by ~150 MB for
+    exact duplication a later change removed and inflating this number by ~150 MB for
     no reason. A collab parquet accidentally loaded whole again (3.4-15.4M
     rows) or a table read a second time outside the alias would blow this
     budget by an order of magnitude; the frame-census test below cannot
-    catch that on its own since it inspects only the OBJECTS this stream's
+    catch that on its own since it inspects only the OBJECTS this file's
     own loaders return, not incidental process-wide allocation."""
     baseline = process_rss_mb()
     assert baseline is not None, "could not read baseline process RSS (ctypes GetProcessMemoryInfo failed)"
@@ -219,7 +219,7 @@ def test_full_loader_sweep_rss_delta():
 def test_frame_census_under_budget():
     """Every lib/data_cache.py loader (DATAFRAME_LOADERS) + `bundle["ctx"]`'s
     own DataFrame-valued entries, fired on the REAL app/data -- summed
-    DataFrame.memory_usage(deep=True), DEDUPED BY PYTHON OBJECT IDENTITY (D11:
+    DataFrame.memory_usage(deep=True), DEDUPED BY PYTHON OBJECT IDENTITY --
     five of the eleven loaders are now the SAME object as a ctx frame; a
     plain sum would double-count them and this test would stop meaning
     anything). Runs AFTER the RSS-delta test above by definition order
@@ -230,15 +230,15 @@ def test_frame_census_under_budget():
     Also asserts the identity itself, per aliased table: not just "the
     total is small" but "these two names are LITERALLY one object"
     falsifiable by construction (revert one loader to its own
-    `pd.read_parquet` and this assertion fails, the vacuity proof this
-    stream's progress notes describe)."""
+    `pd.read_parquet` and this assertion fails, the vacuity proof
+    demonstrated when this test was written)."""
     ctx = SC.bundle()["ctx"]
 
     for dc_name, ctx_key in ALIASED_TABLES.items():
         dc_obj = getattr(DC, dc_name)()
         ctx_obj = ctx[ctx_key]
         assert dc_obj is ctx_obj, (
-            f"data_cache.{dc_name}() is not bundle()['ctx']['{ctx_key}'] -- D11 aliasing broken, "
+            f"data_cache.{dc_name}() is not bundle()['ctx']['{ctx_key}'] -- aliasing broken, "
             f"two copies of this table are resident")
 
     total = 0.0
@@ -269,18 +269,12 @@ def test_frame_census_under_budget():
 
 
 def test_collab_parquets_never_loaded_whole():
-    """: a single-pair duckdb pushdown never returns more than a
+    """A single-pair duckdb pushdown never returns more than a
     few dozen rows -- never the multi-million-row whole table.
 
-    SKIPPED while `lib.collab_data` cannot be imported: `collab_data.py` ->
-    `compare_data.py` -> `profile_data.py`, and `profile_data.py` still does `from.engine.substrates import
-    _topic_share_values`, a private helper substrates.py
-    rewrite dropped. Both files are outside this stream's fence (`app/lib/
-    collab_data.py` = P2, `app/lib/compare_data.py` = C1, `app/lib/
-    profile_data.py` = E2) -- exactly the class of cross-stream gap
-     already calls out for `views_find.py`'s own `build_
-    substrates` import ("owned by (wave 3) -- do NOT edit it").
-    `pytest.importorskip` turns that into an honest skip instead of a
+    `pytest.importorskip` guards this in case `lib.collab_data` (which chains
+    through `compare_data.py` and `profile_data.py`) ever fails to import
+    again, turning that into an honest skip instead of a
     collection-time crash that would take the rest of this file down with
     it (see the module docstring's TEST ORDER note -- a broken import here
     must never cost the RSS/census/cycle tests their result)."""
@@ -291,15 +285,12 @@ def test_collab_parquets_never_loaded_whole():
     # test instead (caught empirically before shipping this test).
     pytest.importorskip(
         "lib.collab_data", exc_type=ImportError,
-        reason="lib.collab_data -> compare_data -> profile_data currently fails to import "
-               "(profile_data.py still references substrates._topic_share_values, removed by "
-               "Stream P1; profile_data.py is Stream E2's file, wave 3, not started -- not this "
-               "stream's fence). Re-run once E2 lands.")
+        reason="lib.collab_data -> compare_data -> profile_data failed to import.")
     from lib import collab_data as CDL
 
     for attr in ("collab_pairs", "collab_pair_fields", "collab_topic_vols"):
         assert not hasattr(DC, attr), (
-            f"lib.data_cache still exposes {attr}() -- Stream P2/B was to delete this whole-table loader")
+            f"lib.data_cache still exposes {attr}() -- this whole-table loader should be deleted")
 
     ctx = {"data_dir": DATA_DIR}
     for table in ("collab_pairs", "collab_topic_vols", "collab_pair_fields"):
@@ -319,7 +310,7 @@ def test_scenario_cycle():
           `max_entries=1` bounds the cache to one resident scenario dict,
           not zero growth (the two basis-keyed topic-share matrices and the
           l4-l7 common block are deliberately cached once and shared across
-          every scenario -- D11 architecture note -- so the FIRST get pays
+          every scenario -- an architecture note -- so the FIRST get pays
           for those and every later swap should be cheap by comparison).
 
       (b) the PREVIOUS scenario's arrays are actually freed once a
@@ -381,7 +372,7 @@ def test_scenario_cycle():
 
 
 def test_compare_pairs_sweep():
-    """NEW (D12 concurrency fix). Runs Compare's six frame functions
+    """NEW (a concurrency fix). Runs Compare's six frame functions
     (`cards`, `top_subfields`, `sdg_frame`, `frontier_positioning`,
     `shared_frontier`, `relationship`) over 40 distinct qualifying pairs
     SEQUENTIALLY in this already-warm process -- reuses
@@ -473,7 +464,7 @@ def test_repeated_scenario_cycle_no_ratchet():
     and the two rejected alternatives (a whole-block cache also killed the
     ratchet but cost 433 MB more resident for no further benefit; raising
     `scenario_cache.py`'s own `max_entries` made the peak WORSE by
-    re-admitting the pre-D12 double-residency window).
+    re-admitting the earlier double-residency window).
 
     Deliberately LAST in this file (TEST ORDER, module docstring): runs
     against an ALREADY-WARM process (post `test_scenario_cycle` and

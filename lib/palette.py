@@ -53,7 +53,7 @@ mutual validator distance a NON-requirement (see palette_validation.txt run 6).
 # scripts/validate_palette.js, `--mode light` ONLY per the SIRIS house rule.
 # ---------------------------------------------------------------------------
 # Run 1: FOCAL + the 4 institution-type hues -> ALL
-#   CHECKS PASS. The type-identity set was DELETED in R1 (see the removal note
+#   CHECKS PASS. The type-identity set was DELETED early on (see the removal note
 #   at the bottom of this file); the run is kept in the log because FOCAL's own
 #   PASS line comes from it.
 # Run 2: COMPARISON/NEUTRAL/INK together -> expected
@@ -183,11 +183,11 @@ mutual validator distance a NON-requirement (see palette_validation.txt run 6).
 #   suppressed because they ARE on screen together. **SUPERSEDED by run 25**
 #   the palette moves BOTH families and the same co-occurrence now PASSES.
 #
-# --- PHASE. Runs 18-25 were the ONE colour
-#     rework of that phase: a light pastel institution trio (L = 0.77, the top
+# --- Runs 18-25 were the ONE colour
+#     rework of that period: a light pastel institution trio (L = 0.77, the top
 #     of the lightness band) replacing the original six-hue Okabe-Ito set, plus
 #     the ERC family's move to #6A3D9A/#009E73/#D55E00. Full numbers for that
-#     trio (now RETIRED, -- see the "PHASE " block below the family
+#     trio (now retired -- see the block below the family
 #     section) are in git history and `design-system/palette_validation.txt`;
 #     the ERC-family result (runs 23-24, still current) is: ERC trio ALONE ->
 #     ALL CHECKS PASS (worst CVD 11.0 deutan, worst normal 25.8); ERC trio +
@@ -238,7 +238,7 @@ INK = "#333333"
 
 SURFACE = "#FFFFFF"
 # The chart surface: every figure's `paper_bgcolor` and `plot_bgcolor`. It is
-# also the `--surface` argument every R1 validator run was executed against
+# also the `--surface` argument every validator run in that original series was executed against
 # (runs 3-8), so the contrast column of those runs describes the surface the
 # app actually paints, not the skill's off-white default #fcfcfb.
 
@@ -265,7 +265,7 @@ GRID = "#D9DDE2"
 # it must never compete with a bar it sits behind.
 
 NA_MARK = "n/a"
-# D53 / L8 convention (Lorraine Streamlit/lib/helpers.py:111 NA_MARK): a missing
+# Convention (Lorraine Streamlit/lib/helpers.py:111 NA_MARK): a missing
 # indicator is "n/a", never 0 and never a blank string. See INDICATOR_SPEC_v2.md
 # section 5/section 8 and ("n/a never 0"). In a chart, a
 # missing SI/ESI value is rendered as NO MARK AT ALL plus this text in the row's
@@ -274,7 +274,7 @@ NA_MARK = "n/a"
 # ---------------------------------------------------------------------------
 # FAMILY 1 -- OpenAlex domains (and, by inheritance, every field, subfield and
 # topic). Provenance: BenchUp V2 `DOMAIN_COLORS` / Lorraine
-# Streamlit/lib/helpers.py:45-53, hue-for-hue. FIXED by the R1 brief.
+# Streamlit/lib/helpers.py:45-53, hue-for-hue. FIXED by the original brief.
 # ---------------------------------------------------------------------------
 # Validator run 3 (the four alone) and run 5 (with ERC), `--mode light
 # --surface #FFFFFF --pairs all`. Run 3 is DESCRIPTIVE -- these hexes are
@@ -329,7 +329,7 @@ def domain_color(domain_id) -> str:
 # ---------------------------------------------------------------------------
 # FAMILY 2 -- ERC domains (PE / LS / SH). THREE NEW hues, chosen here.
 # ---------------------------------------------------------------------------
-# Requirement (R1 brief): normal-vision Delta E >= 12 from EVERY OA hue,
+# Requirement (the original brief): normal-vision Delta E >= 12 from EVERY OA hue,
 # CVD-safe within the set, contrast adequate for a filled bar carrying a text
 # label. Method: candidates screened pairwise against the four OA hues with the
 # dataviz validator's own `validate` (design-system/ab/screen_erc.mjs, output
@@ -426,13 +426,13 @@ def erc_color(erc_domain) -> str:
 # ---------------------------------------------------------------------------
 # FAMILY 3 -- the UN Sustainable Development Goals.
 # ---------------------------------------------------------------------------
-# SOURCE: the official UN goal colours as supplied by the R1 brief. A live
+# SOURCE: the official UN goal colours as supplied by the original brief. A live
 # cross-check against un.org's communications-material page CONFIRMS
 # the governing document -- "Sustainable Development Goals Guidelines for the use
 # of the SDG logo including the colour wheel and 17 icons", the August 2019
 # edition (SDG_Guidelines_AUG_2019_Final.pdf), since revised September 2023
 # but that page publishes the downloadable assets, not the hex table, so the
-# values below are recorded as: **manager-supplied, matching the 2019 UN
+# values below are recorded as: **matching the 2019 UN
 # guidelines as commonly published**. They are FIXED by the UN and are not the
 # app's to choose.
 #
@@ -589,7 +589,7 @@ OUTLINE_WIDTH = 2
 #
 # --- REPLACES AN EARLIER LIGHT PASTEL TRIO -----------------
 # with a DARK NAVY TRIO -- three shades
-# of the same ink-navy hue, darkest first. The pastel trio is RETIRED and no
+# of the same ink-navy hue, darkest first. The pastel trio is retired and no
 # longer appears anywhere in `lib/`; its own numbers
 # now live only in git history.
 #
@@ -678,7 +678,7 @@ SHARED_FRONTIER = "#821D13"
 #
 # --- REPLACED by `#821D13` shortly after --
 # the hex above cleared every check but the USER kept
-# reporting "not enough contrast" against the navy dots; the follow-up asked for a
+# reporting "not enough contrast" against the navy dots; the next iteration asked for a
 # LIGHTER hue (hue shift toward crimson/rose allowed). Three lighter candidates were
 # measured (L raised above 0.3771, hue rotated from
 # 33.5° toward 0-15°) against vermillion + the navy trio, both normal AND
@@ -718,12 +718,12 @@ SHARED_FRONTIER = "#821D13"
 
 
 FRONTIER_SHARED_HALO = {"color": SURFACE, "width": 1.5}
-# Contracted export name (2026-09-01, manager decisions log): CONSUMED BY VC,
+# Contracted export name: CONSUMED BY VC,
 # not drawn by this module. Every mark on the pooled frontier map already
 # carries a marker outline (`OUTLINE_WIDTH` in `SURFACE` or `INK` -- the
 # top-quartile-topic flag, see `charts_compare.fig_frontier_pooled`'s own
 # marker `line=` dict); this is a SEPARATE, additional non-colour signal for
-# the "held by more than one institution" case, because D7's own re-measurement
+# the "held by more than one institution" case, because a later re-measurement
 # (above) found that no ΔE-passing red fully fixes the dark-navy-vs-dark-red
 # luminance collision the user actually complained about. A `{"color",
 # "width"}` dict was chosen (rather than a bare hex) because that is the exact
@@ -742,7 +742,7 @@ FRONTIER_SHARED_HALO = {"color": SURFACE, "width": 1.5}
 # ---------------------------------------------------------------------------
 
 WARNING_CAPTION_COLOR = SHARED_FRONTIER
-# Contracted export name (2026-09-01, manager decisions log).
+# Contracted export name.
 # CHROME_CONTRACT.md §7: every ratio chart's basis/floor/coverage caption is
 # `INK_SECONDARY` in its normal state and, when taxa are unscored or a floor
 # bites, switches to "red, NOT bold, small" -- colour changes, weight (400) and
@@ -758,7 +758,7 @@ WARNING_CAPTION_COLOR = SHARED_FRONTIER
 # other chrome token in this module already follows (`INK_SECONDARY`, `GRID`).
 
 RATIO_HATCH_FLOOR = 50
-# Contracted export name (2026-09-01, manager decisions log). The USER-FACING
+# Contracted export name. The USER-FACING
 # rule stays ONE sentence
 # "a bar hatches when it rests on fewer than 50 works over 2020-2024" -- but the
 # IMPLEMENTATION is per metric family, because `denom_value` means two
@@ -818,9 +818,8 @@ MOMENTUM_GLYPHS = {
     "down": "\N{SOUTH EAST ARROW}",
     "stable": "\N{RIGHTWARDS ARROW}",
     # the four "can't classify with confidence" states share ONE neutral dash
-    # (never the stable arrow -- "n.s." must not read as "stable"): manager
-    # merge, aligning to collab_data's documented ladder + the Lorraine
-    # source convention.
+    # (never the stable arrow -- "n.s." must not read as "stable"): aligned
+    # to collab_data's documented ladder + the Lorraine source convention.
     "ns": "\N{EN DASH}",
     "new": "\N{EN DASH}",
     "dormant": "\N{EN DASH}",
@@ -893,9 +892,9 @@ def institution_ink(slot) -> str:
 #      fixed and one-way: colour on a MARK means the institution, colour on a
 #      LABEL means the taxonomy. If both could go either way, neither would
 #      mean anything.
-#  (user ruling 5, plan section 1.5) ADDS "oa" to the accent families.
+# A later ruling ADDS "oa" to the accent families.
 # The note above ("OA fields, subfields, topics take NO accent") is
-# RETIRED: every field/subfield row `fig_metric_bars` draws now carries its
+# retired: every field/subfield row `fig_metric_bars` draws now carries its
 # OA-domain chip too, the same idiom the ERC/SDG rows already used -- an
 # institution-coloured bar chart otherwise gives no visual cue AT ALL for
 # which domain a field belongs to, which the OA-coloured Find panels the
@@ -938,5 +937,5 @@ def label_accent_color(family, key) -> str:
 # its own column and as a post-filter; the seed's own type sits in the profile
 # header beside its badges. The five hexes (#D55E00, #009E73, #CC79A7, #6A3D9A
 # and the deliberate `education: None`) are recorded in palette_validation.txt
-# run 1 and in this comment, so restoring them needs no new validator run
-# only a new consumer and a line in the R1 progress file.
+# run 1 and in this comment, so restoring them needs no new validator run,
+# only a new consumer.

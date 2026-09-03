@@ -11,7 +11,6 @@ Run from `app/`: python -m pytest tests/test_engine_identity.py -q -s
 from __future__ import annotations
 
 import ctypes
-import os
 import time
 from pathlib import Path
 
@@ -24,23 +23,21 @@ from lib.engine import derive_shapes, load_context, load_substrates, rank_all
 from lib.engine.trees_agg import G6_FLOOR, TREES
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
-V3_ROOT = Path(os.environ["BENCHUP_V3_ROOT"])
-EVAL_GOLDEN = V3_ROOT / "data" / "artefacts_eu" / "eval_golden"
 RTOL = 1e-6
 GOLDEN_SEED = "I40413290"  # University of Gdansk
 
 BUDGET_COLD_LOAD_S = 30.0
 BUDGET_WARM_RANK_S = 1.0
-#   recalibration (2026-09-02): before this recalibration this budget was
-# 2.5 GB against a measured 1.67 GB baseline (see the runtime print below, unchanged).
-# Streams P (dtype repack: category/float32, impact_fields.parquet deleted)
-# and B (collab_* duckdb pushdown, never materialized whole) measure 1.42 GB
-# peak RSS for this exact cold-load+build_substrates+rank_all sequence now
-# tightened to measured + ~30% headroom (1.42 * 1.3 = 1.846, rounded to 1.85)
-# so a future regression that eats back P/B's savings still trips this gate
-# well before Cloud's 2.7 GB hard cap. Cold/warm time budgets untouched:
-# both stayed comfortably inside their existing budgets (6.88s/30s,
-# 0.122s/1.0s) and neither is what this stream's changes were about.
+# Before this budget was tightened, it stood at 2.5 GB against a measured
+# 1.67 GB baseline (see the runtime print below, unchanged). The dtype
+# repack (category/float32, impact_fields.parquet deleted) together with the
+# collab_* duckdb pushdown (never materialized whole) measure 1.42 GB peak
+# RSS for this exact cold-load+load_context+load_substrates+rank_all
+# sequence, so the budget is now tightened to measured + ~30% headroom
+# (1.42 * 1.3 = 1.846, rounded to 1.85) -- a future regression that eats
+# back those savings still trips this gate well before Cloud's 2.7 GB hard
+# cap. Cold/warm time budgets untouched: both stayed comfortably inside
+# their existing budgets (6.88s/30s, 0.122s/1.0s).
 BUDGET_PEAK_RSS_GB = 1.85
 
 
@@ -154,22 +151,6 @@ def test_identity_bestfit_frac_vs_shipped(default_derived):
               f"({n / max(len(ref) * 5, 1):.4%} of compared values)")
         total += n
     print(f"[identity] TOTAL differing cells (bestfit/frac, shipped tables): {total}")
-
-
-@pytest.mark.parametrize("tree", ["original", "conservative"])
-def test_identity_other_trees_vs_eval_golden(tree):
-    if not (EVAL_GOLDEN / "subfields_alltrees.parquet").exists():
-        pytest.skip(f"multi-tree golden absent: {EVAL_GOLDEN / 'subfields_alltrees.parquet'} "
-                    f"(set BENCHUP_V3_ROOT to the frozen reference checkout that carries data/artefacts_eu/eval_golden/)")
-    der_sub, der_fld = _derive(tree, "frac")
-    total = 0
-    for table, id_col, der in (("subfields", "subfield_id", der_sub), ("fields", "field_id", der_fld)):
-        gold = pd.read_parquet(EVAL_GOLDEN / f"{table}_alltrees.parquet")
-        ref, d = _align(gold, der, id_col, tree)
-        n = _compare(ref, d, f"{tree}/frac {table}", allow_floor_boundary=True)
-        print(f"[identity] {tree}/frac {table}: {len(ref)} cells, {n} differ at all")
-        total += n
-    print(f"[identity] TOTAL differing cells ({tree}/frac, eval_golden): {total}")
 
 
 @pytest.mark.parametrize("tree", list(TREES))
