@@ -115,7 +115,7 @@ wherever a figure needs it.
 
 `docs/data_contract.yaml` is the one schema authority for every file `data/` ships: grain, keys,
 columns, dtypes, and the denominator of every share or ratio column, checked by `ops/
-contract_check.py` on every deploy. `config.yaml` carries every threshold the app itself applies
+contract_check.py`. `config.yaml` carries every threshold the app itself applies
 at run time (lens set, depth, the specialisation floor, the scale-guard bands, the type-override
 file), each with a one-line comment naming why the value is what it is.
 
@@ -138,7 +138,7 @@ folder (the ranking engine's precomputed substrates). There is no separate data 
 Check the data you have against the contract at any time:
 
 ```powershell
-python ops/deploy.py --check-only
+python ops/contract_check.py
 ```
 
 ## Tests
@@ -170,36 +170,7 @@ the stress harness and `test_ram_budget.py` both build on it.
 
 - `config.yaml`: every threshold the app applies at run time, one key at a time, each commented.
 - `docs/data_contract.yaml`: the schema authority for every file `data/` ships, validated by
-  `ops/contract_check.py`, `ops/deploy.py --check-only`, and `tests/test_contract*.py`.
-- `docs/VENDORED.md`, `lib/engine/VENDORED_engine.md`: provenance for every piece of code copied
-  in from elsewhere rather than written for this project, with what changed on the way in.
-
-## Pipeline refresh
-
-Refreshing the analytical data (a new OpenAlex snapshot, a taxonomy change, a new derived table)
-is documented end to end in `../pipeline/README.md`, step by step, with credentials,
-checkpoint/resume behaviour and the exact run order:
-
-| Step | What it builds |
-|---|---|
-| 14 | Institution metadata for non-indexed institutions |
-| 16 | The SDG and impact-time cross tables, plus the corpus checkpoint later steps read |
-| 17 | FWCI reference table and per-work FWCI |
-| 18 | FWCI_EU by field, subfield, SDG and ERC panel |
-| 19 | PP10_WD by field, subfield, SDG and ERC panel |
-| 15 | Collaboration pass: pair tables, momentum, the pair-level FWCI join |
-| 21 | The ranking engine's precomputed per-scenario substrates (`data/scenarios/`) |
-| 22 | The pair x domain x year rollup behind the relationship chart |
-| 23 | World leaders, pulled live from OpenAlex |
-| 24 | Star papers, pulled live from OpenAlex |
-| 25 | Institution-level leader and star-paper figures, from steps 23 to 24 |
-| 26 | Institution-level FWCI_EU |
-| 20 | The final repack: every deployed table cast to its RAM-lean dtype, run last |
-
-**That link only resolves for a SIRIS operator with the full private project tree.** This repo
-(`app/`) is a subfolder of a larger private working copy; the pipeline, the raw corpus and the
-staging data directory all live one level up and are not part of this public repository. A clone
-of this repo gets the app and its already-baked data, never the pipeline that produced it.
+  `ops/contract_check.py` and `tests/test_contract*.py`.
 
 ## Repository layout
 
@@ -210,7 +181,7 @@ of this repo gets the app and its already-baked data, never the pipeline that pr
 | `data/` | The 27 declared tables plus `data/scenarios/`, validated against `docs/data_contract.yaml` |
 | `docs/` | The data contract, the design system's chrome contract and viz spec, the Methods source text |
 | `config.yaml` | Every run-time threshold, one key at a time |
-| `ops/` | The deploy and contract-check scripts, an RSS reader |
+| `ops/` | The contract-check script and an RSS reader |
 | `tests/` | Pytest suite, the Playwright smoke and probe scripts (`tests/ui/`), the memory stress harness (`tests/stress/`), fixtures and golden files |
 
 ## Deploy
@@ -218,8 +189,8 @@ of this repo gets the app and its already-baked data, never the pipeline that pr
 Public Streamlit Community Cloud app, built from this repository, branch `master`, main file
 `Menu.py`. Community Cloud builds directly from the repository's `data/`, already baked; there
 is no separate data upload. A single session's steady memory footprint measures under 1 GB.
-Before pushing a data refresh, run `ops/deploy.py --check-only` so a contract violation is caught
-here, not on the deploy platform.
+The contract check (`ops/contract_check.py`) runs before any data refresh is pushed, so a
+contract violation is caught here, not on the deploy platform.
 
 ## Limits
 

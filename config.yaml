@@ -1,62 +1,58 @@
-# app/config.yaml -- FLAT app config resolved from the source pipeline's own config.yaml
-# (proposal_r5 block, ratified at.md). Every key below carries a one-line
-# comment naming the ruling id it traces to. No
-# value is invented here: a key not present in that source config or is
-# left out of this file. Loaded by lib/app_config.py into CFG (dict) -- nothing else reads
-# a config file at app runtime (standalone principle, CLAUDE.md).
+# app/config.yaml -- every run-time threshold and toggle the app applies, in one flat file,
+# each key with a one-line comment naming why the value is what it is. Loaded by
+# lib/app_config.py into CFG (a dict) -- nothing else reads a config file at app runtime.
 
 lenses:
-  default: [L0, L1, L3, F1, L2f, L4, L5, L6]  # proposal_r5.lenses.shown, M5.1 -- L0 field-grain reinstated as 8th default lens
-  optional: [C1, L7]                          # proposal_r5.lenses.optional, M5.2 -- both off by default (C1: S1.8; L7 reinstated with a "mostly noise" warning)
+  default: [L0, L1, L3, F1, L2f, L4, L5, L6]  # the 8 lenses shown on Find by default
+  optional: [C1, L7]                          # off by default: C1 is a narrower repeat of L1, L7 tends to run noisy
 
 depth:
-  default: 50  # fixed at 50 (D17); the 30/50 radio is retired
-  max: 50      # fixed at 50 (D17); the 30/50 radio is retired
+  default: 50  # every ranked list shows 50 candidates; the tail is searchable and downloadable
+  max: 50      # same as default -- there is no separate, deeper page to load past the top 50
 
-concordance_N: 30  # proposal_r5.concordance_N, M5.5 -- supersedes R2.24 #8b's 20; matches the new depth default
+concordance_N: 50  # the concordance counts each lens's top-50, the same depth as every ranked list
 
 scenario:
-  tree_default: bestfit  # config.yaml scenario.tree_default, R2.20
-  basis_default: frac    # config.yaml scenario.basis_default, R2.20 (D5)
+  tree_default: bestfit  # the best-fit taxonomy repair is the default view; original/conservative are opt-in
+  basis_default: frac    # fractional counting is the default view; full counting sits in hover/toggle
   toggles:
-    tree: [original, conservative, bestfit]  # config.yaml scenario.toggles.tree / taxonomy.trees, R2.11
-    basis: [frac, full]                      # proposal_r4.scenarios.toggles, R4.5 -- the 811 toggle is REMOVED, not a third basis value
+    tree: [original, conservative, bestfit]  # the three taxonomy repairs a reader can switch between
+    basis: [frac, full]                      # the two counting bases a reader can switch between
 
 scale_guard:
-  lt_20k: 8                     # proposal_r5.scale_guard.lt_20k_works, M5.6/H15 -- a single x5 multiplier is not band-safe
-  ge_20k: 4                     # proposal_r5.scale_guard.ge_20k_works, M5.6/H15
-  band_threshold_works: 20000   # proposal_r5.scale_guard band split point (lt_20k vs ge_20k), M5.6/H15
+  lt_20k: 8                     # below 20,000 works, two institutions can differ up to 8x in size and still be compared
+  ge_20k: 4                     # at or above 20,000 works, the same guard tightens to 4x -- a flat multiplier is not size-safe
+  band_threshold_works: 20000   # the size, in full-counted works, where the guard switches from 8x to 4x
 
 umbrella_badge:
-  types: [government, funder, facility, nonprofit]  # proposal_r5.umbrella_badge.types, M5.7 -- widened from proposal_r4's {government, funder}
-  multiplier: 5                                      # proposal_r5.umbrella_badge.multiplier, unchanged from proposal_r4 -- best zero-FP tradeoff at ~68% coverage
-  reference: country_type_median                     # proposal_r5.umbrella_badge.reference, kept for continuity with proposal_r4
-  basis_column: type  # patched type -- never type_openalex
+  types: [government, funder, facility, nonprofit]  # institution types eligible for the umbrella-organisation badge
+  multiplier: 5                                      # an institution over 5x its country/type median size gets the badge
+  reference: country_type_median                     # the badge threshold is relative to peers of the same country and type
+  basis_column: type  # the badge reads the SIRIS-corrected type -- never the raw OpenAlex type
 
-family_filter_threshold: 0.7  # config.yaml family_filter_threshold, R2.24 #8c -- opt-in post-filter per proposal_r5.family_filter, M5.12/gate rev 6 ruling 4
+family_filter_threshold: 0.7  # opt-in post-filter that hides candidates likely to be the seed's own sister institution
 
 type_overrides:
-  file: data/overrides/type_overrides.csv                     # proposal_r5.type_overrides.file, M5.8/H13 -- 16 applied, 0 gated
-  ui_badge: "type corrected by SIRIS (was: {type_openalex})"  # proposal_r5.type_overrides.ui_badge
+  file: data/overrides/type_overrides.csv                     # the locked list of institutions whose OpenAlex type was corrected
+  ui_badge: "type corrected by SIRIS (was: {type_openalex})"  # the badge text shown on a corrected institution
 
-window: [2020, 2024]  # config.yaml window_analytical, D1 -- analytical window for impact/shape indicators
-bonus_year: 2025       # config.yaml bonus_year, D1 -- trends/volume only, reported but excluded from impact
+window: [2020, 2024]  # the 5-year analytical window every impact and shape indicator is computed over
+bonus_year: 2025       # the extra year shown for trend/volume only, excluded from every impact indicator
 
-perimeter_countries: [at, be, bg, hr, cy, cz, dk, ee, fi, fr, de, gr, hu, ie, it, lv, lt, lu, mt, nl, pl, pt, ro, sk, si, es, se, gb, ch, "no", is]  # config.yaml perimeter_countries, R2.3/D10 -- EU27 + GB/CH/NO/IS
+perimeter_countries: [at, be, bg, hr, cy, cz, dk, ee, fi, fr, de, gr, hu, ie, it, lv, lt, lu, mt, nl, pl, pt, ro, sk, si, es, se, gb, ch, "no", is]  # the index's country perimeter: EU27 plus the UK, Switzerland, Norway and Iceland
 
-snapshot: august_2026  # config.yaml snapshot, R2.1 -- single-vintage reference corpus
+snapshot: august_2026  # the OpenAlex harvest vintage every page reads
 
-g6_floor: 30  # config.yaml g6_impact_floor, R2.6/R2.24 #8d -- impact-cell bootstrap-CI floor (fractional mass); verdict unchanged at r2
+g6_floor: 30  # the minimum fractional mass a subfield cell needs before it carries a specialisation-index value
 
 l2f_floor:
-  value: 30            # proposal_r4.l2_si_floor.value, candidate (f)
-  basis: paper_count   # proposal_r4.l2_si_floor.basis, candidate (f) -- SEMANTICS CHANGE: replaces the shipped fractional-mass floor
+  value: 30            # the minimum paper count a subfield needs before it counts toward the shared-specialisations lens
+  basis: paper_count   # this floor is counted in papers, not fractional mass -- a deliberate, disclosed choice
 
-erc_tau: 0.5  # config.yaml erc_tau, R2.23 -- global; per-panel exception considered and rejected
+erc_tau: 0.5  # the classification-confidence threshold an ERC panel probability must clear to count
 
-corpus_types: [article, review, book, book-chapter, letter]  # harvest server-side filter, pipeline/01b_harvest_eu27_aug.py lines 10-14; L23
-openalex_filters: {has_doi: true}  # same harvest filter; L23
+corpus_types: [article, review, book, book-chapter, letter]  # document types the underlying harvest includes
+openalex_filters: {has_doi: true}  # the harvest only keeps works that carry a DOI
 
-compare_cap: 3  #  decision /A13 -- Compare itself is capped at 3, hard, unchanged
-compare_slots: 2  #  (BenchUp trim) D1 -- Compare is two independent search slots, same matcher as Find
-
+compare_cap: 3  # the hard ceiling on institutions a shareable Compare link can carry
+compare_slots: 2  # Compare itself shows two independent search slots, the same matcher Find uses
