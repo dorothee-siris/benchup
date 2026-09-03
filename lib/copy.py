@@ -38,18 +38,6 @@ BASIS_LABELS = {
 # R2 / L29: the code stays the identifier (Overview chips, evidence column,
 # CSV export), the name says what the lens looks at. Tabs carry these labels.
 
-LENS_NAMES = {
-    "L0": "L0 · Field overlap",
-    "L1": "L1 · Subfield overlap",
-    "L3": "L3 · Topic overlap",
-    "F1": "F1 · Frontier-topic overlap",
-    "L2f": "L2f · Shared specialisations",
-    "L4": "L4 · ERC panel overlap",
-    "L5": "L5 · ERC specialisation overlap",
-    "L6": "L6 · SDG profile overlap",
-    "C1": "C1 · Core-shape overlap",
-    "L7": "L7 · SDG specialisation (experimental)",
-}
 
 # One plain sentence per lens: what "similar" means here, and what the lens
 # reads well or badly. Source: INDICATOR_SPEC_v2.md S1. No placeholder, on
@@ -154,8 +142,6 @@ VERDICT_LINE = "Candidates for review, not a verdict."
 
 # ------------------------------------------------------------ tooltips ------
 
-BASIS_NOT_APPLIED_TOOLTIP = ("The ERC and SDG lenses (L4, L5, L6, L7) are built on fractional counting "
-                             "alone, so this setting leaves them unchanged.")
 L3_COUNTRY_TOOLTIP = ("Of this lens's top candidates, {share} share the seed's country, the highest "
                       "figure among the default lenses; the country filter is worth a look here in "
                       "particular.")
@@ -163,8 +149,6 @@ UMBRELLA_BADGE_LABEL = "umbrella / aggregate (EXPERIMENTAL)"
 UMBRELLA_TOOLTIP = ("EXPERIMENTAL: this institution publishes far more than the {median} median for "
                     "its country and type, which usually means the record covers a group of "
                     "institutions rather than one. The list of known umbrellas is not exhaustive.")
-CATCHALL_TOOLTIP = ("Catch-all topics sit outside the subject scope of the taxonomy. Share of this "
-                    "institution's publications that sit in them: {share}.")
 
 # --------------------------------------------------------------- strip ------
 
@@ -184,13 +168,11 @@ STRIP_FAMILY = "family filter on (L0 field overlap at or above {threshold})"
 
 # --------------------------------------------------------- empty states -----
 
-SEARCH_EMPTY_TEMPLATE = "No institution matches '{query}'. Check the spelling, or try an acronym."
 EMPTY_STATE_JOIN = " and "
 NO_ACTIVE_FILTER_LABEL = "the active filters"
 EMPTY_STATE_TEMPLATE = ("No candidate matches {filters} for {seed}. Remove a filter, or show more rows "
                         "per lens.")
 UNDEFINED_LENS_TEMPLATE = "{lens} cannot be computed for this seed: {reason}."
-CONCORDANCE_CAPTION = "Placed in the top-{N} by {k} of the {n} lenses defined for this seed."
 
 # ----------------------------------------------------------- depth/export ---
 
@@ -227,11 +209,6 @@ FIND = {
                    "counting credits the whole publication to every institution named on it, which "
                    "raises the totals of institutions that co-publish widely. The ERC and SDG lenses "
                    "(L4, L5, L6, L7) are fractional-only and do not change with this setting."),
-    "DEPTH_HEADER": "Depth",
-    "DEPTH_LABEL": "Rows shown per lens",
-    "OPTIONAL_HEADER": "Optional lenses",
-    "L7_HEADER": "Experimental view",
-    "FILTERS_HEADER": "Post-filters",
     "FILTERS_HELP": "Applied after ranking: they remove rows, they never change a rank.",
     "TYPE_LABEL": "Institution type",
     "COUNTRY_LABEL": "Country",
@@ -267,7 +244,6 @@ FIND = {
     # pipeline/01b_harvest_eu27_aug.py l.10-14, app/config.yaml l.42-43,
     # pipeline/agg/attribution.py l.1-16 and pipeline/agg/enriched_corpus.py
     # `classify_grey_state` l.792-798 -- citations in progress/R2_C.md).
-    "PUBLICATIONS_LINK_LABEL": "What counts as a publication",
     "PUBLICATIONS_TOOLTIP": (
         "A publication here is an OpenAlex record of type article, review, book, book chapter or "
         "letter, carrying a DOI and published between {y0} and {y1}. {bonus_year} is harvested as a "
@@ -279,28 +255,12 @@ FIND = {
         "smaller set than the size tiles."),
 
     # ---- legacy seed card, superseded by the profile tiles below ---------
-    "CARD_SIZE_FULL": "Size (full counting)",
-    "CARD_SIZE_FRAC": "Size (fractional counting)",
-    "CARD_HHI": "Concentration",
-    "CARD_BREADTH": "Breadth (subfields)",
-    "CARD_DENOM_CAPTION": ("Publications from {y0} to {y1}. Full counting credits a whole publication "
-                           "to the institution; fractional counting credits its author share. "
-                           "Concentration is the subfield concentration index ({hhi_value}); breadth "
-                           "is the number of subfields present."),
-    "CARD_TOP_FIELDS": "Top fields",
-    "CARD_TOP_SUBFIELDS": "Top subfields",
-    "CARD_EVIDENCE": "Coverage evidence for this seed",
     "EV_L2F": ("L2f compares specialisations only in subfields where both institutions publish enough "
                "to judge: {value} of this institution's subfields qualify."),
     "EV_SDG": "SDG-tagged share of publications: {value}",
-    "EV_ERC": "Share of the seed's fractional publications that carry an ERC panel: {value}",  # manager reword 2026-08-29: must not share the retired coverage line's prefix (probe/test check)
+    "EV_ERC": "Share of the seed's fractional publications that carry an ERC panel: {value}",  # must not share the retired coverage line's prefix (probe/test check)
     "EV_FRONTIER": "Frontier top-quartile share: {value}",
     "EV_CATCHALL": "Share of publications in catch-all topics, outside the subject scope: {value}",
-    "CARD_PP": "PP(top10%): {pp} [{lo}{dash}{hi}]",
-    "CARD_PP_CAPTION": ("Share of the institution's fractional output in the world top decile of its "
-                        "own citation distribution, with its bootstrap interval, never the point "
-                        "estimate alone."),
-    "LINK_OPENALEX": "OpenAlex publications",
     "LINK_ROR": "ROR",
     "LINK_HOMEPAGE": "Homepage",
     "TAB_OVERVIEW": "Overview",
@@ -325,15 +285,10 @@ FIND = {
                     "considered."),
     "COL_RANK": "Rank",
     "COL_INSTITUTION": "Institution",
-    "COL_WORKS": "OpenAlex publications",
     "COL_COUNTRY": "Country",
     "COL_TYPE": "Type",
-    "COL_SIZE": "Size (full)",
     "COL_PP": "PP(top10%)",
-    "COL_CI": "Interval",
     "COL_L1": "L1 overlap",
-
-    # ---- Refinement R1 ----------
 
     # L22: shared table columns -- both size bases, and the lens-specific
     # evidence cell (replaces the old "Top field" line: L22/#7, "top field"
@@ -344,9 +299,6 @@ FIND = {
 
     # L16: the controls row (depth / C1 / L7 / post-filters), moved out of
     # the sidebar to sit with the benchmark tables it controls (feedback #1).
-    "CONTROLS_HEADER": "Benchmark controls",
-    "DEPTH_HELP": ("Sets how many rows are shown per lens. A display cutoff only: the full ranking is "
-                   "always computed, and can be downloaded whatever this is set to."),
     "C1_HELP": ("Restricts the anchor lens (L1) to the seed's own top-{core_top_n} subfields, "
                 "for a tighter reading of its core specialisation."),
     "L7_HELP": ("An experimental view, off by default: most of what it surfaces is noise, "
@@ -366,22 +318,6 @@ FIND = {
     # L17/L18: the profile section that replaces the old seed card.
     "PROFILE_HEADER": "Profile",
     "TILES_HEADER": "Key figures",
-    "TILE_SIZE_FULL": "Size (full)",
-    "TILE_SIZE_FULL_SUB": "publications {y0}{dash}{y1}, whole publication credited",
-    "TILE_SIZE_FRAC": "Size (fractional)",
-    "TILE_SIZE_FRAC_SUB": "author-share credited",
-    "TILE_HHI": "Concentration",
-    "TILE_HHI_SUB": "subfield concentration index; higher means more concentrated",
-    "TILE_BREADTH": "Breadth",
-    "TILE_BREADTH_SUB": "subfields with at least {floor} fractional publications",
-    "TILE_SDG": "SDG-tagged share",
-    "TILE_SDG_SUB": "of SDG-eligible publications, any keyword hit",
-    "TILE_FRONTIER": "Frontier top-quartile share",
-    "TILE_FRONTIER_SUB": "of frontier-scorable output",
-    "TILE_PP": "PP(top10%)",
-    "TILE_PP_SUB": "[{lo}{dash}{hi}] bootstrap interval, articles and reviews",
-    "TILE_BONUS_YEAR": "Publications in {year} (bonus year)",
-    "TILE_BONUS_YEAR_SUB": "volume only, left out of the impact indicators",
 
     # ---- R2 / L31: every tile positioned against the index ---------------
     "TILE_BASELINE_SUB": "index median {median} {sep} higher than {pct} of institutions",
@@ -390,8 +326,6 @@ FIND = {
                       "A value under it places the institution within the population, and says "
                       "nothing on its own about how well it performs."),
 
-    "COVERAGE_LINE": ("ERC-classified share {erc} {sep} SDG-tagged share {sdg} {sep} "
-                      "catch-all share {catchall} {sep} L2f-eligible subfields {l2f}"),
     "WORDCLOUD_CAPTION": ("Subfields {sep} size = publications on the current counting basis, "
                           "colour = domain"),
 
@@ -402,7 +336,6 @@ FIND = {
     "BREAKDOWN_DOCTYPE": "Document type",
     "BREAKDOWN_GLOBAL_TITLE": "Overall breakdown",
     "BREAKDOWN_YEARLY_TITLE": "Yearly breakdown",
-    "BONUS_YEAR_CAPTION": "{year} is a bonus year: volume only, left out of the impact indicators",
 
     # L17 block 5: the six collapsed chart panels.
     "PANEL_FIELDS": "Fields",
@@ -445,10 +378,6 @@ FIND = {
     "FRACTIONAL_ONLY_PANEL": ("This panel is fractional-only: the counting-basis setting does not "
                               "change it"),
 
-    # ---- Refinement R1, added by (the page that composes the
-    # above). Additive only: every key below is a string R-F2's set did not
-    # carry and the composed page needs (.3 R-E2 fence).
-
     # The benchmark half of the page -- the section the controls row heads.
     "BENCHMARK_HEADER": "Benchmark",
     "BENCHMARK_INTRO": ("Candidate peers, ranked by each lens independently. The controls "
@@ -457,8 +386,6 @@ FIND = {
     # L23 / bug #9: the publications link carries the harvest's own
     # server-side filters, so it counts the same corpus the app does, give or
     # take the drift between a live query and a frozen snapshot.
-    "LINK_OPENALEX_HELP": ("Live OpenAlex count with the same filters as the snapshot; "
-                           "expect a small difference"),
 
     # The yearly breakdown's residual series: publications the topic table
     # cannot place in a domain (they carry no primary topic). Shown, never
@@ -482,10 +409,9 @@ FIND = {
                             "carries every topic."),
 
     # ======================================================================
-    # Phase,. ADDITIVE
-    # ONLY: every key below is new. The eight-tile keys above are left in
-    # place -- lib/views_compare.py still reads BONUS_YEAR_CAPTION, and a
-    # deleted key is a crash in another stream's file, not a cleanup.
+    # Every key below is additive: the profile tiles above were later
+    # replaced by four summary cards (see CARD_* below); only
+    # TILE_BASELINE_SUB and BASELINE_HELP are still read from that section.
     # ======================================================================
 
     # : the results list no longer auto-loads its best match. The
@@ -497,13 +423,6 @@ FIND = {
     # its methodology in its own `?` tooltip -- the sublines that used to
     # print a definition under every tile are gone from the page surface.
     "KPI_PUBS_LABEL": "Publications",
-    "KPI_PUBS_FRAC_LABEL": "on fractional counting",
-    "KPI_PUBS_HELP": (
-        "Publications from {y0} to {y1}. The large figure is full counting, which credits the "
-        "whole publication to every institution named on it; the second figure is fractional "
-        "counting, which credits only the author share the institution holds. {bonus_year} is "
-        "harvested as a bonus year, reported for volumes only and left out of every impact "
-        "indicator. The index position under the card is computed on full counting."),
     "KPI_SDG_LABEL": "SDG-tagged share",
     "KPI_SDG_HELP": (
         "Share of the institution's SDG-eligible fractional mass that carries at least one hit "
@@ -517,13 +436,6 @@ FIND = {
         "both the numerator and the denominator, so this is a share of what can be scored, never "
         "a share of everything published."),
     "KPI_PP_LABEL": "PP10_WD",
-    "KPI_PP_VALUE_CI": "[{lo}{dash}{hi}]",
-    "KPI_PP_CI_LABEL": "bootstrap interval",
-    "KPI_PP_HELP": (
-        "Share of the institution's fractional output that sits in the world top decile of its "
-        "own citation distribution. The bootstrap interval is shown with the value and never "
-        "dropped for the point estimate alone: two institutions whose intervals overlap are not "
-        "separated by this measure. Articles and reviews only; the bonus year is excluded."),
 
     # : the two P5 profile tiles (moved here from
     # views_find.py module constants, ).
@@ -532,13 +444,6 @@ FIND = {
 
     # : two identity-column facts. The columns land on index.parquet
     # later this phase; until they do, both read n/a -- never 0.
-    "IDENTITY_INTL_LABEL": "International co-publications",
-    "IDENTITY_COMPANY_LABEL": "with a company",
-    "IDENTITY_FACTS_HELP": (
-        "Share of the institution's publications from {y0} to {y1}, full counting, carrying at "
-        "least one other institution named directly on the record: based in another country for "
-        "the first figure, typed as a company for the second. Both read n/a until the "
-        "co-publication tables ship."),
 
     #  / A15: what the cloud encodes, and the one thing a reader has to
     # know before comparing two renders of it.
@@ -622,12 +527,9 @@ FIND = {
     },
 
     # ======================================================================
-    # Phase, (-1a / -6 / -8, Find
-    # scope). ADDITIVE ONLY -- every key below is new, and the keys the cards
-    # stop using (KPI_PUBS_HELP, KPI_PP_HELP, IDENTITY_FACTS_HELP,
-    # PUBLICATIONS_LINK_LABEL) are left exactly as they stand for
-    # own plain-language sweep to dispose of. Deleting one here would be a
-    # crash in another stream's file, never a cleanup.
+    # The KPI tiles' help text was later replaced by cards; the keys the
+    # cards no longer use (KPI_PUBS_HELP, KPI_PP_HELP, IDENTITY_FACTS_HELP,
+    # PUBLICATIONS_LINK_LABEL) have been deleted.
     # ======================================================================
 
     # -1a: the type correction is no longer a badge. It renders INLINE in
@@ -755,13 +657,11 @@ NAV = {
     "FIND_LABEL": "Find peers",
     "FIND_BLURB": ("Start from one institution and see who resembles it, lens by lens, with the "
                    "agreement between lenses shown rather than averaged away."),
-    "FIND_LEAD": "Which institutions have a research profile close to this one?",
 
     "COMPARE_LABEL": "Compare",
     "COMPARE_BLURB": ("Put two institutions side by side: key figures, thematic and SDG shape, "
                       "frontier positioning and the shared frontier, and the relationship "
                       "between the two."),
-    "COMPARE_LEAD": "Where do these institutions differ, and by how much?",
 
     "METHODS_LABEL": "How it is built",
     "METHODS_BLURB": ("Every definition, threshold and known weakness behind the figures, one "
@@ -769,44 +669,13 @@ NAV = {
     "METHODS_LEAD": "Where does each number come from, and what does it leave out?",
 }
 
-# ==========================================================================
-# Phase,: two plain-language templates
-# a reader meets on more than one page, hoisted here so more than one page
-# could read one shared wording rather than each writing its own
-# for the same two situations: a measure this page does not show, and a row
-# too thin to break down further. Neither names a plan code, a stream, or a
-# table or file name: tests/test_forbidden_vocabulary.py scans this dict
-# like every other constant in this file.
-#
-# Historical note (disclosed minimal touch -- this comment sits outside
-# the COMPARE dict this stream otherwise owns, but the staleness is a direct
-# consequence of a COMPARE-side deletion): COMPARE's own METRIC_HIDDEN_HEADER/
-# METRIC_HIDDEN_LINE, named below as the precedent for this pattern, are
-# DELETED (E12 -- they were already dead, `_not_offered_expander` never
-# actually read them; see `copy.py`'s own COMPARE-section comment beside
-# where they used to sit). `NOT_OFFERED_HEADER`/`_LINE` themselves are now
-# unused by any live page too (Compare's own call sites removed this round)
-# flagged for TEV5's dead-key sweep, not deleted here (this dict is outside
-# this stream's fence).
-# ==========================================================================
-
-SHARED = {
-    "NOT_OFFERED_HEADER": "Not shown here, and why",
-    "NOT_OFFERED_LINE": "{feature}: {reason}",
-    "BELOW_FLOOR_NOTICE": (
-        "{item} holds {n} publications, under the {floor} a breakdown needs to stay readable. "
-        "The total above is shown; the breakdown itself is not."),
-}
-
 # --------------------------------------------------------- Compare page ----
-# , BenchUp V4 trim, 2026-09-03. REWRITTEN END TO END:
-# every key below is what `lib/views_compare.py` actually renders; nothing
-# from the pre-trim Compare page (the N-institution "Compare by" matrix, ERC
-# panels, dynamics, the pooled frontier scatter, coverage, impact-by-subfield)
-# survives -- those sections are gone from the app (:
-# stays the archive). Every caption names its own window and basis (D2/D10/
-# E5): Compare is PINNED to the best-fit taxonomy and full counting, so no
-# key here offers a toggle-facing sentence the way Find's do.
+# Every key below is what `lib/views_compare.py` actually renders: the
+# N-institution "Compare by" matrix, ERC panels, dynamics, the pooled
+# frontier scatter, coverage and impact-by-subfield sections are not part of
+# the app. Every caption names its own window and basis: Compare is PINNED
+# to the best-fit taxonomy and full counting, so no key here offers a
+# toggle-facing sentence the way Find's do.
 
 COMPARE = {
     "PAGE_TITLE": "Compare",
@@ -997,9 +866,6 @@ def _lens_concordance_table() -> str:
 # are plain facts (config.yaml methods_facts / source_manifest.json), never
 # typed in here; `tests/test_pages_methods.py` pins the coverage number
 # against the pipeline function it is actually read off.
-IMPACT_CI_CAPTION = (
-    "A {ci_coverage}% bootstrap interval, from {n_bootstrap} resamples of the cell's own "
-    "fractional citation mass, is shown beside every impact figure and never in place of it.")
 
 # FWCI_NOT_AVAILABLE_LINE (-11(c) / MU3) DELETED (TEV-U wave 3, MT
 # sweep casualty #4): FWCI is a real, always-attempted column now (ruling 4,
@@ -1014,15 +880,6 @@ IMPACT_CI_CAPTION = (
 # the same convention. The rule itself: institution colour fills a mark, a
 # taxonomy's own colour never does (COMPARE's CAPTION_ACCENT_ERC/_SDG already
 # say the narrower, per-chart version of this same sentence).
-COLOUR_SYSTEM_NOTE = (
-    "One colour system runs through every page. An institution keeps one colour for as long as "
-    "it stays in a comparison or a pair, drawn from a small set of light, deliberately "
-    "understated hues chosen so a mark reads first as data and only second as decoration.\n\n"
-    "A taxonomy, an OpenAlex domain, an ERC panel or a Sustainable Development Goal, carries its "
-    "own official colour too, fixed by the body that owns it rather than chosen by this tool. "
-    "That colour never fills a bar or a mark that also carries an institution's colour: it "
-    "appears on a label or a small chip beside a name instead, so the two colour systems are "
-    "always readable apart and never asked to share one mark.")
 
 METHODS = {
     "what_it_is": {

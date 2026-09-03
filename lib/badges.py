@@ -88,14 +88,6 @@ def corrected_from(row) -> str | None:
     return t_oa
 
 
-def catchall_tooltip(share) -> str:
-    """CFG-free formatting wrapper around copy.CATCHALL_TOOLTIP: NaN/None ->
-    palette.NA_MARK, never 0."""
-    if share is None or pd.isna(share):
-        return copy.CATCHALL_TOOLTIP.format(share=palette.NA_MARK)
-    return copy.CATCHALL_TOOLTIP.format(share=f"{float(share):.1%}")
-
-
 def badges_for(row, flags: pd.Series, medians: dict) -> list[str]:
     """Text labels for one row's badge cell -- since -1a, the umbrella
     badge and nothing else. The list shape is kept (rather than a bool) because

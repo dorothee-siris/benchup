@@ -28,12 +28,6 @@ from lib.app_config import CFG
 # st.selectbox(., key="tree", **state.PERSIST).
 PERSIST = dict(persist_state="session")
 
-# Compare's own slot count is config-backed the same
-# way as every other ruled number in this app (`config.yaml`'s `compare_cap`
-# key); a config snapshot that predates that key falls back to this module
-# constant instead of raising.
-COMPARE_CAP: int = int(CFG.get("compare_cap", 3))
-
 
 def ensure() -> None:
     """setdefault the two pieces of cross-page state this module owns. Call

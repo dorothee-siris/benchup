@@ -72,17 +72,3 @@ def workbook_filename(ids) -> str:
     return "BenchUp_compare_" + "_".join(str(i) for i in ids) + ".xlsx"
 
 
-def find_workbook_filename(seed_id: str, tree: str, basis: str) -> str:
-    """`benchup_find_{seed}_{tree}_{basis}.xlsx` -- the Find page's own
-    counterpart to `workbook_filename` above (ONE seed rather than a list of
-    compared ids), self-describing outside the app the same way."""
-    return f"benchup_find_{seed_id}_{tree}_{basis}.xlsx"
-
-
-def collab_workbook_filename(a: str, b: str, tree: str, basis: str) -> str:
-    """`benchup_collab_{a}_{b}_{tree}_{basis}.xlsx` -- the pair view's
-    own single end-of-page workbook, same self-
-    describing shape as `workbook_filename` above, kept as its own function
-    rather than a shared one because the pair view's institution set is always
-    exactly a pair, never an arbitrary-length id list."""
-    return f"benchup_collab_{a}_{b}_{tree}_{basis}.xlsx"

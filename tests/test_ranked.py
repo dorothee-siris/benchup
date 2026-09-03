@@ -1,7 +1,7 @@
 """
 Tests for `lib/ranked.py`.
 
-Pure-function tests only (`format_rows`, `depth_caption`, `format_concordance`,
+Pure-function tests only (`format_rows`, `format_concordance`,
 `concordance_caption`) -- no Streamlit server, run directly:
     python -m pytest tests/test_ranked.py -q
 """
@@ -17,7 +17,7 @@ from lib.engine import (
     CONCORDANCE_N, DEFAULT_LENSES, build_rows, concordance, load_context, load_substrates, rank_all,
 )
 from lib.palette import NA_MARK
-from lib.ranked import concordance_caption, depth_caption, format_concordance, format_rows
+from lib.ranked import concordance_caption, format_concordance, format_rows
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 SEED = "I40413290"  # University of Gdansk
@@ -133,24 +133,6 @@ def test_format_rows_country_is_english_name_code_kept_hidden():
     df = format_rows([row], lens="L1", depth=1)
     assert df.iloc[0]["country"] == "United Kingdom"
     assert df.iloc[0]["country_code"] == "GB"
-
-
-def test_depth_caption_parametric():
-    cap = depth_caption(30, 7556, 30)
-    assert "30" in cap
-    assert "7556" in cap
-    other_digits = [c for c in cap if c.isdigit()]
-    # every digit present must belong to one of the two numbers passed in
-    allowed = set("30") | set("7556")
-    assert set(other_digits) <= allowed
-    # and both full numbers appear as substrings, not just their digits scattered
-    assert "top 30" in cap
-    assert "of 7556" in cap
-
-
-def test_depth_caption_with_ties():
-    cap = depth_caption(32, 7556, 30, n_tied_extra=2)
-    assert "32" in cap and "7556" in cap and "30" in cap and "2" in cap
 
 
 @pytest.fixture(scope="module")

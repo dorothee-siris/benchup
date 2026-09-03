@@ -31,7 +31,7 @@ from ..app_config import CFG
 from . import lens_lib as L
 
 ALL_LENSES = ["L0", "L1", "L3", "F1", "L2f", "L4", "L5", "L6", "L7", "C1"]
-DEFAULT_LENSES = ["L0", "L1", "L3", "F1", "L2f", "L4", "L5", "L6"]          # L1 of the plan
+DEFAULT_LENSES = list(CFG["lenses"]["default"])   # the lenses Find shows by default; config.yaml is the single source
 GOLDEN_CONCORDANCE_LENSES = ["L1", "L3", "F1", "L2f", "L4", "L5", "L6"]     # gen_lists_v2
 RANK_VISIBLE_MAX = 50
 DEPTH = 50
@@ -49,15 +49,6 @@ def full_sorted_positive(scores: np.ndarray, self_idx: int) -> tuple[np.ndarray,
     ordered_scores = s[order]
     mask = ordered_scores > 1e-12
     return order[mask], ordered_scores[mask]
-
-
-def top_n_pairs_with_ties(sorted_idx: np.ndarray, sorted_scores: np.ndarray, n: int):
-    """gen_lists_v2.py verbatim."""
-    if len(sorted_idx) <= n:
-        return sorted_idx, sorted_scores
-    cut_score = sorted_scores[n - 1]
-    keep = sorted_scores >= cut_score
-    return sorted_idx[keep], sorted_scores[keep]
 
 
 def cut_with_ties(sorted_ids: list, sorted_scores: np.ndarray, n: int) -> tuple[list, np.ndarray]:

@@ -1,11 +1,11 @@
 """tests/test_contract_collab_tables.py -- collaboration-table additions to the data contract.
 
 Covers what test_contract.py's existing test_contract_check_clean does NOT pin explicitly:
-the 5 collaboration tables' exact column sets, the new index columns' bounds, pool_excluded's
-identity against overrides/pool_exclusions.csv, collab_pairs' a<b uniqueness, and the
-ratio-window rule -- the two window strings must appear verbatim in the contract text, guarding
-against a future edit silently dropping which window a share divides by (the generalised form
-of a real defect once found this way: an "ERC-classified share" reading 109%).
+the collaboration tables' exact column sets, the new index columns' bounds, pool_excluded's
+count, collab_pairs' a<b uniqueness, and the ratio-window rule -- the two window strings must
+appear verbatim in the contract text, guarding against a future edit silently dropping which
+window a share divides by (the generalised form of a real defect once found this way: an
+"ERC-classified share" reading 109%).
 """
 from __future__ import annotations
 
@@ -21,7 +21,6 @@ CONTRACT_PATH = ROOT / "docs" / "data_contract.yaml"
 
 NEW_TABLES = [
     "collab_pairs.parquet",
-    "collab_pair_topics.parquet",
     "collab_pair_fields.parquet",   # pair x field, uncapped, bestfit-only
     "sdg_fields.parquet",
     "sdg_year.parquet",
@@ -50,7 +49,7 @@ def _read(fname: str) -> pd.DataFrame:
 #    with EXACTLY the contracted columns
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("fname", NEW_TABLES + ["overrides/pool_exclusions.csv"])
+@pytest.mark.parametrize("fname", NEW_TABLES)
 def test_new_table_exists_with_exact_columns(contract: dict, fname: str) -> None:
     assert fname in contract["files"], f"{fname} is not declared in data_contract.yaml"
     path = DATA_DIR / fname
@@ -64,22 +63,26 @@ def test_new_table_exists_with_exact_columns(contract: dict, fname: str) -> None
     )
 
 
-def test_contract_declares_27_files(contract: dict) -> None:
+def test_contract_declares_23_files(contract: dict) -> None:
     # History of this count (each step live-verified against `ops/deploy.py
     # --check-only`'s own printed total, not typed in twice): ... -> 23 ->
     # 22 (impact_fields.parquet deleted, dead, superseded by impact_taxa.parquet)
-    # -> 27 (contract v1.5, this rebuild): five new tables --
-    # collab_pair_domain_year.parquet, topic_leaders.parquet, topics_led.parquet,
-    # inst_stars.parquet, pair_stars.parquet (world leaders, star papers, the
-    # yearly pair x domain rollup). `collab_facts.json` (momentum constants)
-    # and the pipeline-internal `fwci_ref.parquet`/`fwci_work.parquet` do NOT
-    # join this count -- all are DELIBERATELY excluded from `contract["files"]`
-    # by the contract's own documented design (not a parquet table this
-    # app/data/ directory ships with a column schema to check). `data/
-    # scenarios/` (the ranking engine's precomputed substrates) is ALSO not
-    # counted here -- it is validated separately via `contract["scenario_files"]`,
-    # since its members are not one-row-per-key tables.
-    assert len(contract["files"]) == 27, sorted(contract["files"])
+    # -> 27 (contract v1.5): five new tables -- collab_pair_domain_year.parquet,
+    # topic_leaders.parquet, topics_led.parquet, inst_stars.parquet,
+    # pair_stars.parquet (world leaders, star papers, the yearly pair x domain
+    # rollup) -> 23 (contract v1.6, this stream): impact_cells.parquet and
+    # collab_pair_topics.parquet deleted (dead, no code path read either);
+    # type_overrides.csv and pool_exclusions.csv moved to the private pipeline
+    # tree (the app never read them at run time either). `collab_facts.json`
+    # (momentum constants) and the pipeline-internal `fwci_ref.parquet`/
+    # `fwci_work.parquet` do NOT join this count -- all are DELIBERATELY
+    # excluded from `contract["files"]` by the contract's own documented design
+    # (not a parquet table this app/data/ directory ships with a column schema
+    # to check). `data/scenarios/` (the ranking engine's precomputed
+    # substrates) is ALSO not counted here -- it is validated separately via
+    # `contract["scenario_files"]`, since its members are not one-row-per-key
+    # tables.
+    assert len(contract["files"]) == 23, sorted(contract["files"])
 
 
 # ---------------------------------------------------------------------------
@@ -98,16 +101,15 @@ def test_intl_company_share_bounds() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 3. pool_excluded: exactly 3 True, identity with overrides/pool_exclusions.csv
+# 3. pool_excluded: exactly 3 True (the exclusion list itself is a private
+#    pipeline-tree input, not shipped with the app -- see docs/data_contract.yaml)
 # ---------------------------------------------------------------------------
 
-def test_pool_excluded_exactly_three_and_matches_csv() -> None:
+def test_pool_excluded_exactly_three() -> None:
     idx = _read("index.parquet")
-    excl = _read("overrides/pool_exclusions.csv")
     flagged = set(idx.loc[idx["pool_excluded"] == True, "institution_id"])  # noqa: E712
     print(f"index.pool_excluded True: {len(flagged)} -- {sorted(flagged)}")
     assert len(flagged) == 3
-    assert flagged == set(excl["institution_id"])
 
 
 # ---------------------------------------------------------------------------
@@ -129,35 +131,12 @@ def test_collab_pairs_a_lt_b_and_unique() -> None:
     assert n_violations == 0
 
 
-def test_collab_pair_topics_within_floor_and_cap() -> None:
-    """Re-pin: floor 5 total co-pubs, top-100 topics/pair (an earlier round shipped floor
-    3 / top-20, 78.7 MB --
-    see docs/data_contract.yaml's collab_pair_topics.parquet grain note) --
-    sampled structural check."""
-    pairs = _read("collab_pairs.parquet").set_index(["a", "b"])
-    topics = _read("collab_pair_topics.parquet")
-    per_pair_n = topics.groupby(["a", "b"], observed=True).size()
-    print(f"collab_pair_topics: {len(per_pair_n):,} distinct pairs, max rows/pair="
-          f"{per_pair_n.max()}")
-    assert per_pair_n.max() <= 100, "top-100-per-pair cap violated"
-
-    sample_pairs = per_pair_n.sample(n=min(2_000, len(per_pair_n)), random_state=42).index
-    below_floor = 0
-    for a, b in sample_pairs:
-        total = pairs.loc[(a, b), "copubs_total"]
-        if total < 5:
-            below_floor += 1
-    print(f"floor-5 sample check: {below_floor} of {len(sample_pairs)} sampled pairs below floor")
-    assert below_floor == 0
-
-
-def test_collab_pair_fields_uncapped_and_same_floor() -> None:
-    """`collab_pair_fields.parquet` shares `collab_pair_topics`'
-    floor-5 qualifying-pair set but carries NO per-pair cap (every field the
+def test_collab_pair_fields_uncapped_and_within_floor() -> None:
+    """`collab_pair_fields.parquet` carries NO per-pair cap (every field the
     pair has any joint mass in ships) -- a pair spans a mean of ~4 fields
-    (WT #13), so uncapped never approaches the 100-topic cap's order of
-    magnitude; this is a structural guard against that ratio drifting, not a
-    hardcoded row-count pin."""
+    (WT #13), so uncapped never approaches a 100-row order of magnitude; this
+    is a structural guard against that ratio drifting, not a hardcoded
+    row-count pin."""
     pairs = _read("collab_pairs.parquet").set_index(["a", "b"])
     fields = _read("collab_pair_fields.parquet")
     per_pair_n = fields.groupby(["a", "b"], observed=True).size()
@@ -166,13 +145,6 @@ def test_collab_pair_fields_uncapped_and_same_floor() -> None:
     # Uncapped, but a "field" is a coarse taxon -- OA has 26 -- so it can
     # never exceed that no matter how large the pair's joint corpus is.
     assert per_pair_n.max() <= 26, "collab_pair_fields must never exceed the field taxonomy's own size"
-
-    # Same qualifying-pair SET as collab_pair_topics ("same floor
-    # and qualifying-pair set as collab_pair_topics.parquet", contract text).
-    topic_pairs = set(map(tuple, _read("collab_pair_topics.parquet")[["a", "b"]].drop_duplicates().to_numpy()))
-    field_pairs = set(map(tuple, fields[["a", "b"]].drop_duplicates().to_numpy()))
-    assert field_pairs == topic_pairs, (
-        "collab_pair_fields and collab_pair_topics must ship the identical qualifying-pair set")
 
     sample_pairs = per_pair_n.sample(n=min(2_000, len(per_pair_n)), random_state=42).index
     below_floor = sum(1 for a, b in sample_pairs if pairs.loc[(a, b), "copubs_total"] < 5)
@@ -213,15 +185,12 @@ def test_window_strings_appear_verbatim_on_the_columns_that_use_them(contract_te
 
 def test_type_overrides_count_is_41_not_stale(contract: dict) -> None:
     """P4 flagged the contract's own '34 rows' text as stale (41 after the 7 gated-type
-    resolutions); this pins the fix and the identity against the shipped CSV."""
+    resolutions); this pins the fix. The identity check against the shipped CSV moved with
+    overrides/type_overrides.csv to the private pipeline tree, which the app no longer reads."""
     spec = contract["files"]["index.parquet"]["type_overrides"]
     assert spec["n_ids"] == 41
     assert len(spec["institution_ids"]) == 41
-    overrides = _read("overrides/type_overrides.csv")
-    assert len(overrides) == 41
-    assert set(overrides["institution_id"]) == set(spec["institution_ids"])
-    # NOTE: the structured checks above (n_ids==41, institution_ids length==41, set-equality
-    # with the shipped CSV) are the actual regression guard -- a raw substring search for the
-    # stale "34" was tried and dropped, it also matches this file's own v1.2 changelog prose
-    # explaining the fix (e.g. "34 + 7 gated-type resolutions"), which is correct narration,
-    # not a live spec value, and would make this test permanently red for the wrong reason.
+    # NOTE: a raw substring search for the stale "34" was tried and dropped, it also matches
+    # this file's own v1.2 changelog prose explaining the fix (e.g. "34 + 7 gated-type
+    # resolutions"), which is correct narration, not a live spec value, and would make this
+    # test permanently red for the wrong reason.

@@ -103,8 +103,8 @@ DATA_DIR = APP_ROOT / "data"
 # returns a dict, not a frame, and is deliberately excluded). Unchanged from
 # the earlier census -- aliased five of these onto bundle["ctx"]
 # (D11 task 2) but added or removed no loader.
-DATAFRAME_LOADERS = ["index", "fields", "subfields", "topics_dim", "erc", "sdg", "impact_cells",
-                     "topics_all_slim", "doctype_by_year", "sdg_fields", "sdg_year"]
+DATAFRAME_LOADERS = ["index", "fields", "subfields", "topics_dim", "erc", "sdg",
+                     "doctype_by_year", "sdg_fields", "sdg_year"]
 
 # The five loaders D11 task 2 aliased onto scenario_cache.bundle["ctx"]
 # `data_cache.<name>` must be the SAME OBJECT as `ctx["<key>"]`, not merely
@@ -126,9 +126,9 @@ ALIASED_TABLES = {"index": "index_df", "fields": "fields_df", "subfields": "subf
 # process-level signal than the frame census below).
 RSS_DELTA_BUDGET_MB = 700.0
 
-# Measured 2026-09-03: frame census 152.45 MB DEDUPED BY IDENTITY (index
+# Measured 2026-09-03: frame census 91.42 MB DEDUPED BY IDENTITY (index
 # 17.12 + fields 4.84 + subfields 23.47 + topics_dim 3.55 + erc 5.53 +
-# sdg 2.99 + impact_cells 3.00 + topics_all_slim 58.03 + doctype_by_year
+# sdg 2.99 + doctype_by_year
 # 2.97 + sdg_fields 5.30 + sdg_year 8.02 + ctx.index_by_id 17.12 +
 # ctx.topics_dim_df 0.51; ctx.index_df/fields_df/subfields_df/erc_df/sdg_df
 # contribute ZERO extra -- same objects as their data_cache.* counterparts)
@@ -297,12 +297,12 @@ def test_collab_parquets_never_loaded_whole():
                "stream's fence). Re-run once E2 lands.")
     from lib import collab_data as CDL
 
-    for attr in ("collab_pairs", "collab_pair_topics", "collab_pair_fields", "collab_topic_vols"):
+    for attr in ("collab_pairs", "collab_pair_fields", "collab_topic_vols"):
         assert not hasattr(DC, attr), (
             f"lib.data_cache still exposes {attr}() -- Stream P2/B was to delete this whole-table loader")
 
     ctx = {"data_dir": DATA_DIR}
-    for table in ("collab_pairs", "collab_pair_topics", "collab_topic_vols", "collab_pair_fields"):
+    for table in ("collab_pairs", "collab_topic_vols", "collab_pair_fields"):
         df = CDL._collab_pair_slice(ctx, table, IFREMER_ID, NIOZ_ID)
         print(f"[ram] {table} slice for Ifremer x NIOZ: {len(df)} row(s)")
         assert len(df) < COLLAB_PAIR_ROW_CAP, (

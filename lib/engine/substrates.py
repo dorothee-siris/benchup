@@ -37,12 +37,9 @@ scenario to `app/data/scenarios/` offline. This module keeps `load_context`
 `build_substrates` used to (same keys, dtypes, shapes, memory order
 `tests/test_scenarios.py` proves it against the pipeline step's own
 in-process build) by reading the precomputed files instead. `derive_shapes`
-(`.derive`) and `l2_vectors`/`_raw_scenario` (`.l2_vectors`) are NOT deleted
-from the app package -- `lib/engine/l2_vectors.py` imports `derive_shapes` directly, and `tests/test_engine_identity.py`
-tests `derive_shapes` itself, independent of `build_substrates`; deleting
-either would break `lib.engine`'s package-level import for every stream.
-Only the RAM-heavy per-scenario assembly was removed from the live app -- see progress/P1.md
-"deviations" for the full rationale.
+(`.derive`) is kept in the app package even though nothing on the live pages
+calls it any more -- `tests/test_engine_identity.py` tests it directly as the
+reference build the shipped scenario substrates must reproduce exactly.
 
 Tree/basis-invariant blocks (D11 architecture note) are cached at module
 level, lazily, keyed by basis (topic-share matrix) or unconditionally (the
@@ -83,7 +80,6 @@ from . import lens_lib as L  # load_context still calls L.load_subfield_codebook
 
 DEFAULT_TREE = "bestfit"
 DEFAULT_BASIS = "frac"
-DEFAULT_SCENARIO = (DEFAULT_TREE, DEFAULT_BASIS, False)  # tree, basis, exclude_811 (R2.20)
 
 TOPICS_ALL_COLS = ["inst_key", "topic_id", "share_frac", "vol_frac", "vol_full"]
 TOPICS_DIM_COLS = ["topic_id", "subfield_id", "subfield_name", "field_id", "field_name",
@@ -99,9 +95,7 @@ BASIS_APPLIES = {"L0": True, "L1": True, "C1": True, "L3": True, "F1": True, "L2
 # --------------------------------------------------------------- context ----
 
 def load_context(data_dir) -> dict:
-    """Loads every table the engine needs from a deployed `app/data/` folder.
-    `impact_cells` is NOT loaded here (only the aspirational/impact views need
-    it -- see `load_impact_cells`)."""
+    """Loads every table the engine needs from a deployed `app/data/` folder."""
     data_dir = Path(data_dir)
     index_df = pd.read_parquet(data_dir / "index.parquet")
 
@@ -176,13 +170,6 @@ def load_context(data_dir) -> dict:
         "ta_vol_frac": ta_vol_frac, "ta_vol_full": ta_vol_full,
         "subfield_name_by_id": subfield_name_by_id, "field_name_by_id": field_name_by_id,
     }
-
-
-def load_impact_cells(ctx: dict) -> pd.DataFrame:
-    """Lazy: only the per-subfield impact views need this 6 MB table."""
-    if "impact_cells_df" not in ctx:
-        ctx["impact_cells_df"] = pd.read_parquet(ctx["data_dir"] / "impact_cells.parquet")
-    return ctx["impact_cells_df"]
 
 
 # -------------------------------------------------- precomputed scenarios

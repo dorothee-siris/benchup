@@ -43,7 +43,8 @@ NAMES = {"Iz": "Institution Z", "Ia": "Institution A"}
 
 @pytest.fixture
 def slots() -> dict:
-    return P.institution_slots(KEYS)
+    # slot = rank by ascending inst_key, id insertion order does not matter
+    return {k: i for i, k in enumerate(sorted(KEYS, key=KEYS.get))}
 
 
 # ---------------------------------------------------------------------------
@@ -610,7 +611,7 @@ def test_every_builder_takes_every_colour_from_a_palette_constant(name, slots):
     known = (set(P.INSTITUTION_COLORS) | set(P.OA_DOMAIN_COLORS.values())
             | {P.SHARED_FRONTIER, P.SURFACE, P.INK, P.INK_SECONDARY, P.BORDER,
                P.GRID, P.WARNING_CAPTION_COLOR, P.FRONTIER_SHARED_HALO["color"],
-               P.NEUTRAL, X.GUTTER_PHANTOM_FILL})
+               X.GUTTER_PHANTOM_FILL})
     found = set()
     for tr in fig.data:
         mc = getattr(getattr(tr, "marker", None), "color", None)

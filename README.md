@@ -116,8 +116,8 @@ wherever a figure needs it.
 `docs/data_contract.yaml` is the one schema authority for every file `data/` ships: grain, keys,
 columns, dtypes, and the denominator of every share or ratio column, checked by `ops/
 contract_check.py`. `config.yaml` carries every threshold the app itself applies
-at run time (lens set, depth, the specialisation floor, the scale-guard bands, the type-override
-file), each with a one-line comment naming why the value is what it is.
+at run time (lens set, depth, the specialisation floor, the scale-guard bands), each with a
+one-line comment naming why the value is what it is.
 
 ## Run locally
 
@@ -133,7 +133,7 @@ pip install -r requirements-dev.txt   # only needed to run tests/smoke/probe, no
 streamlit run Menu.py
 ```
 
-The clone already contains `data/`, ready to run: 27 declared tables plus the `data/scenarios/`
+The clone already contains `data/`, ready to run: 23 declared tables plus the `data/scenarios/`
 folder (the ranking engine's precomputed substrates). There is no separate data download step.
 Check the data you have against the contract at any time:
 
@@ -178,7 +178,7 @@ the stress harness and `test_ram_budget.py` both build on it.
 |---|---|
 | `Menu.py`, `pages/` | The three pages: Find, Compare, How it is built |
 | `lib/` | Data loaders, the ranking engine (`lib/engine/`), page logic, chart builders, workbook exports |
-| `data/` | The 27 declared tables plus `data/scenarios/`, validated against `docs/data_contract.yaml` |
+| `data/` | The 23 declared tables plus `data/scenarios/`, validated against `docs/data_contract.yaml` |
 | `docs/` | The data contract, the design system's chrome contract and viz spec, the Methods source text |
 | `config.yaml` | Every run-time threshold, one key at a time |
 | `ops/` | The contract-check script and an RSS reader |

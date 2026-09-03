@@ -20,7 +20,6 @@ from lib.engine import scenario_cache as _SC
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
-TOPICS_ALL_SLIM_COLUMNS = ["inst_key", "topic_id", "share_frac", "vol_frac", "vol_full"]
 
 # D11 "one copy of each table": the five loaders
 # below used to each `pd.read_parquet` their own copy of a file
@@ -98,22 +97,6 @@ def sdg() -> pd.DataFrame:
     Aliased to `scenario_cache.bundle["ctx"]["sdg_df"]` (D11) -- same object as
     `load_context`'s own read of this file, never a second copy."""
     return _ctx_frame("sdg_df")
-
-
-@st.cache_resource
-def impact_cells() -> pd.DataFrame:
-    """Bootstrap PP(top10%) cells with CI, keyed by institution x subfield x tree x floor."""
-    return pd.read_parquet(DATA_DIR / "impact_cells.parquet")
-
-
-@st.cache_resource
-def topics_all_slim() -> pd.DataFrame:
-    """topics_all.parquet column-subsetted to what the engine needs (L3/F1 substrate).
-
-    The full frame is 533 MB, mostly object strings -- reading only
-    these four columns keeps this the one place the app ever touches that file.
-    """
-    return pd.read_parquet(DATA_DIR / "topics_all.parquet", columns=TOPICS_ALL_SLIM_COLUMNS)
 
 
 @st.cache_resource

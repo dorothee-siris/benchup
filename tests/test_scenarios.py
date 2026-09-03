@@ -32,6 +32,9 @@ APP_DIR = Path(__file__).resolve().parents[1]
 V4_ROOT = APP_DIR.parent
 DATA_DIR = APP_DIR / "data"
 PIPELINE_SCRIPT = V4_ROOT / "pipeline" / "21_scenario_substrates.py"
+if not PIPELINE_SCRIPT.exists():
+    pytest.skip("the offline build step that writes data/scenarios/ is not part of this repository; "
+                "this identity check runs only where it is present", allow_module_level=True)
 
 # conftest.py puts APP_DIR on sys.path under pytest; running this file
 # directly (`python tests/test_scenarios.py`, the RAM-proof entry point)

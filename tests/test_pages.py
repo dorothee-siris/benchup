@@ -225,7 +225,7 @@ def undefined_l2f_seed(engine_ctx) -> str:
 
 
 # ------------------------------------------------ Find: the R1 profile -----
-# Refinement R1: the seed card
+# The seed card
 # became a PROFILE section (header, 7 KPI tiles, coverage caption, wordcloud +
 # yearly breakdown pair, six collapsed chart panels) and the benchmark controls
 # moved out of the sidebar into a controls row at the head of the Benchmark
@@ -266,8 +266,9 @@ def test_find_profile_section_renders_header_and_eight_cards():
     for label in (views_find.KPI_STARS_LABEL, views_find.KPI_LED_LABEL):
         assert any(label in html for html in rendered), label
     from lib.app_config import CFG
-    dropped = [copy.FIND["TILE_HHI"], copy.FIND["TILE_BREADTH"],
-               copy.FIND["TILE_BONUS_YEAR"].format(year=CFG["bonus_year"])]
+    # the retired tile design's own labels (Concentration, Breadth, the bonus-year tile)
+    dropped = ["Concentration", "Breadth",
+               f"Publications in {CFG['bonus_year']} (bonus year)"]
     for label in dropped:
         assert not any(label in html for html in rendered), label
     # .and every one of the SIX ORIGINAL cards' small line is the index
@@ -340,7 +341,8 @@ def test_find_profile_has_no_coverage_line():
     at = _find_app(seed_id=STRASBOURG).run()
     assert not at.exception, [str(e) for e in at.exception]
     page_text = " ".join(x.value for x in (*at.caption, *at.markdown, *at.info))
-    fixed = _template_literal_segment(copy.FIND["COVERAGE_LINE"])
+    # the retired coverage caption's own fixed opening segment, now gone from copy.py too
+    fixed = "ERC-classified share "
     assert fixed not in page_text, fixed
     # ...and the relocated items ARE on the page, where they were moved to.
     erc_fixed = _template_literal_segment(copy.FIND["CAPTION_ERC"])
@@ -376,7 +378,6 @@ def test_find_lens_tabs_carry_the_lens_names_and_the_guide_is_present():
     for lens in shown:
         disp = copy.LENS_DISPLAY_CODE[lens]
         assert disp in labels, (lens, disp, labels)
-        assert copy.LENS_NAMES[lens] not in labels, (lens, labels)   # never the old full name
         tab = at.tabs[labels.index(disp)]
         body_text = " ".join(x.value for x in tab.markdown)
         assert copy.LENS_DISPLAY_NAMES[lens] in body_text, (lens, body_text)

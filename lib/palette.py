@@ -29,11 +29,6 @@ comment style) + BenchUp V2 `domain_color` inheritance pattern.
                        read as TEXT (value labels, legend text, the KPI dot's
                        caption) -- the relief the fills' contrast WARN obliges.
 
-Plus ONE ordered ramp, which is NOT an identity family:
-    GREY_STATE_COLORS 5 sequential neutral steps for the grey-accounting
-                       states of the coverage strip (an ORDINAL severity, so it
-                       takes a one-hue ramp, not categorical hues).
-
 COEXISTENCE RULE (binding; VIZ_SPEC.md section 1.1 and section 2 ter): **one
 identity family per chart**. A chart is coloured by OA domain, OR by ERC
 domain, OR by SDG, OR by document type, OR by institution -- never two families
@@ -63,31 +58,31 @@ mutual validator distance a NON-requirement (see palette_validation.txt run 6).
 #   PASS line comes from it.
 # Run 2: COMPARISON/NEUTRAL/INK together -> expected
 #   FAIL, documenting that they are chrome, never identities.
-# Run 3 (2026-08-29, R1/R-D2): the 4 OA domain hues alone -> FAIL on the fixed
+# Run 3: the 4 OA domain hues alone -> FAIL on the fixed
 #   hue #FFCB3A (lightness 0.865, above the 0.43-0.77 band) + contrast WARN.
 #   These hexes are FIXED by lineage (BenchUp V2 / Lorraine DOMAIN_COLORS) and
-#   by the R1 brief; the run is DESCRIPTIVE and the two findings are carried as
+#   by lineage; the run is DESCRIPTIVE and the two findings are carried as
 #   binding relief rules, never as a reason to change a hex.
-# Run 4 (2026-08-29, R1/R-D2): the 3 ERC hues alone, `--pairs all` -> ALL CHECKS
+# Run 4: the 3 ERC hues alone, `--pairs all` -> ALL CHECKS
 #   PASS (worst CVD 8.8 protan, worst normal-vision 20.3, all contrasts >= 3:1).
-# Run 5 (2026-08-29, R1/R-D2): OA(4) + ERC(3) together, `--pairs all`, the
-#   co-occurrence the R1 brief asks for -> every ERC hue clears every check and
+# Run 5: OA(4) + ERC(3) together, `--pairs all`, the
+#   co-occurrence the design asks for -> every ERC hue clears every check and
 #   the worst ALL-PAIRS normal-vision distance in the 7-slot set is 20.3
 #   (i.e. every OA<->ERC pair is >= 20.3, far above the >= 12 requirement) and
 #   every ERC-involving CVD pair is >= 8.1. The only FAIL/WARN lines are the
 #   three pre-existing fixed-OA findings from run 3 plus the fixed OA pair
 #   #F85C32<->#0CA750 (deutan 7.6).
-# Run 6 (2026-08-29, R1/R-D2): DOCTYPE(5, i.e. Lorraine's 4 + the new `letter`
+# Run 6: DOCTYPE(5, i.e. Lorraine's 4 + the new `letter`
 #   hue) alone, `--pairs all` -> ALL CHECKS PASS. Then DOCTYPE(5) + OA(4)
 #   together -> FAIL, entirely on two PRE-EXISTING fixed pairs that do not
 #   involve the new hue (#667900 book <-> #0CA750 Life, normal 13.1; #667900
 #   <-> #F85C32 Health, protan 3.3). Disposition: the coexistence rule above
 #   the two families are never on screen together. The NEW hue #A10A4E clears
 #   OA by minimum normal-vision 24.0 / minimum CVD 17.5 on its own.
-# Run 7 (2026-08-29, R1/R-D2): the 17 UN SDG hexes, `--pairs all` -> FAIL,
+# Run 7: the 17 UN SDG hexes, `--pairs all` -> FAIL,
 #   DESCRIPTIVE ONLY. The UN fixes these colours; a validator finding is never a
 #   reason to change one. Relief is structural instead (see SDG_COLORS).
-# Run 8 (2026-08-29, R1/R-D2): the chrome tokens INK_SECONDARY/BORDER/GRID ->
+# Run 8: the chrome tokens INK_SECONDARY/BORDER/GRID ->
 #   expected FAIL, same class as run 2: chrome, never an identity.
 # Run 9: INSTITUTION_COLORS, the six in SHIPPED SLOT ORDER,
 #   `--pairs all` -> ALL CHECKS PASS (worst all-pairs normal-vision 15.6, worst
@@ -217,7 +212,7 @@ FOCAL = "#0072B2"
 # (coexistence rule, module docstring). Also mirrored, and ONLY there, by
 # `.streamlit/config.toml` theme.primaryColor, which Streamlit uses to paint
 # ProgressColumn bars, links and buttons -- tests/test_palette.py pins the two
-# together. Validator: PASS, run 1, 2026-08-29, light.
+# together. Validator: PASS, run 1, light mode.
 
 COMPARISON = "#8C9196"
 # Grey: candidate rows, reference bars, "rest of the ranking", and the
@@ -229,7 +224,6 @@ COMPARISON = "#8C9196"
 # against actual usage (fills/bars that always carry a text label alongside,
 # never body text) -- palette_validation.txt run 2 disposition.
 
-NEUTRAL = "#E6E8EB"
 # Background / unclassified fill (RULES section 4: "Background/unclassified is
 # #E6E8EB, not the low end of the scale"). Table zebra striping, empty-state
 # panels, disabled controls, KPI tile background. Never a categorical identity;
@@ -423,12 +417,6 @@ ERC_DOMAIN_COLORS = {
 ERC_DOMAIN_ORDER = ("PE", "LS", "SH")
 # Fixed ERC display order (the panel codes run PE1-11, LS1-9, SH1-8).
 
-ERC_DOMAIN_LABELS = {
-    "PE": "Physical Sciences and Engineering",
-    "LS": "Life Sciences",
-    "SH": "Social Sciences and Humanities",
-}
-
 
 def erc_color(erc_domain) -> str:
     """Colour for an ERC domain code. Unknown -> COMPARISON grey."""
@@ -439,7 +427,7 @@ def erc_color(erc_domain) -> str:
 # FAMILY 3 -- the UN Sustainable Development Goals.
 # ---------------------------------------------------------------------------
 # SOURCE: the official UN goal colours as supplied by the R1 brief. A live
-# cross-check against un.org's communications-material page (2026-08-29) CONFIRMS
+# cross-check against un.org's communications-material page CONFIRMS
 # the governing document -- "Sustainable Development Goals Guidelines for the use
 # of the SDG logo including the colour wheel and 17 icons", the August 2019
 # edition (SDG_Guidelines_AUG_2019_Final.pdf), since revised September 2023
@@ -661,7 +649,6 @@ INSTITUTION_COLORS_DARK = [
 # hex (see the ADJUSTED note above); slots 1-2 are their own fill, which is
 # legal here because they already clear 4.5:1 unmodified.
 
-INSTITUTION_SLOT_MAX = len(INSTITUTION_COLORS)
 # The hard ceiling. A fourth institution is NEVER a generated hue (dataviz
 # non-negotiable) -- `charts_compare.COMPARE_MAX_SERIES` refuses the figure and
 # `institution_color` hands back COMPARISON grey rather than cycling.
@@ -670,16 +657,15 @@ INSTITUTION_SLOT_MAX = len(INSTITUTION_COLORS)
 SHARED_FRONTIER = "#821D13"
 # **NOT a fourth institution slot** -- deliberately kept OUT of
 # `INSTITUTION_COLORS` so `institution_color` can never hand it to an
-# institution and `INSTITUTION_SLOT_MAX` keeps meaning what it says.
+# institution.
 #
 # WHAT IT MEANS: in the pooled Compare frontier
 # map a topic is painted in an institution's own hue when ONLY that institution
 # holds it, and in this hue when EVERY compared institution holds it
 # "shared" is the intersection, so it takes a hue no entity owns. It paints the
 # pooled frontier map and the "who holds the shared frontier" bar chart ONLY --
-# a separate constant, `JOINT_COLOR` below, covers the pair's own joint-corpus
-# accent, so this hue and the vermillion ERC-SH/momentum-down hue are never
-# both reachable from the same figure.
+# this hue and the vermillion ERC-SH/momentum-down hue are never both
+# reachable from the same figure.
 #
 # RE-MEASUREMENT (user ruling 5): the previous
 # `SHARED_FRONTIER` failed outright against ERC-SH/momentum-down vermillion
@@ -712,11 +698,7 @@ SHARED_FRONTIER = "#821D13"
 # ERC (label accents) min 20.5, vs SDG-6 cyan 43.1, vs momentum grey 20.5, vs
 # FOCAL 28.9, vs COMPARISON 29.2 -- all comfortably clear. Contrast on white:
 # 9.84:1 (old was 10.81:1, still far above the ~3:1 mark-fill floor and the
-# 4.5:1 body-text floor). The one FAIL in run 37 (vs `JOINT_COLOR`, deutan
-# 13.82) is the SAME coexistence disposition as every other cross-family pair
-# in this file: `JOINT_COLOR` and
-# `SHARED_FRONTIER` paint different figures, never one
-# screen (see `JOINT_COLOR`'s own docstring below).
+# 4.5:1 body-text floor).
 #
 # RESIDUAL, DISCLOSED HONESTLY (binding -- do not silently
 # drop this on a future edit): luminance/contrast SEPARATION vs navy slot 2
@@ -799,21 +781,6 @@ RATIO_HATCH_FLOOR = 50
 # rate at this floor (6.1 %) and FWCI-subfield's (~83 %, heavy but accepted as
 # honest disclosure -- one constant to change if feedback objects).
 
-JOINT_COLOR = "#2F3B52"
-# The relationship-pulse bars and other JOINT-corpus accents (
-# user ruling 5). Dark ink-navy, deliberately NOT a red: the
-# pulse chart's only mark is the PAIR's joint corpus, and the ERC-SH/momentum-
-# down vermillion `#D55E00` renders on the SAME page (the topic
-# table's Momentum column), so painting the pulse in any red risked exactly the
-# collision `SHARED_FRONTIER` was just re-measured out of (contrast on white
-# 11.24:1). Never chip-adjacent to an institution chip: the pulse is the one
-# figure whose colour carries no institution identity
-# at all, so a chip strip that
-# would otherwise show a JOINT chip beside institution chips drops the joint
-# chip instead rather than asking a reader to tell JOINT_COLOR apart from the
-# darkest institution navy.
-
-
 # ---------------------------------------------------------------------------
 # MOMENTUM -- the pair view's up/down/stable read (ruling 6, Lorraine
 # port; class thresholds and windows live in `collab_facts.json`, not here).
@@ -861,22 +828,10 @@ MOMENTUM_GLYPHS = {
 }
 
 
-def momentum_color(mom_class) -> str:
-    """Colour for a `mom_class` value. Unknown -> COMPARISON grey, the family
-    convention -- never a fill, see the section note above."""
-    return MOMENTUM_COLORS.get(str(mom_class).strip().lower(), COMPARISON)
-
-
-def momentum_glyph(mom_class) -> str:
-    """Glyph for a `mom_class` value. Unknown -> the neutral en dash, never
-    blank -- a momentum chip is never colour or text alone."""
-    return MOMENTUM_GLYPHS.get(str(mom_class).strip().lower(), MOMENTUM_GLYPHS["ns"])
-
-
 def institution_color(slot) -> str:
-    """Colour for an institution SLOT (zero-based, as returned by
-    `institution_slots`). Out of range / unknown -> COMPARISON grey, the same
-    unknown-slot convention every other family helper uses. It never wraps
+    """Colour for an institution SLOT (zero-based). Out of range / unknown ->
+    COMPARISON grey, the same unknown-slot convention every other family
+    helper uses. It never wraps
     around: a cycled categorical palette is the one thing the dataviz
     non-negotiables forbid outright."""
     try:
@@ -910,44 +865,6 @@ def institution_ink(slot) -> str:
     if 0 <= key < len(INSTITUTION_COLORS_DARK):
         return INSTITUTION_COLORS_DARK[key]
     return INK_SECONDARY
-
-
-def institution_slots(inst_keys) -> dict:
-    """Assign colour slots to the compared institutions -- the ONE place this
-    happens, so a slot cannot drift between two views of the same comparison.
-
-    RULE: slots go by **ASCENDING `inst_key`**,
-    never by click order and never by the order the caller happens to hold the
-    ids in. Click order would repaint the whole chart when the reader removes
-    the institution they added first -- "colour follows the entity, never its
-    rank" applied to selection order rather than to a sort.
-
-    Two accepted input shapes, because the caller has two natural ones:
-      * a SEQUENCE of `inst_key`s -> ``{inst_key: slot}``
-      * a MAPPING ``{identifier: inst_key}`` -> ``{identifier: slot}``, which is
-        what a page holds (the frames are keyed by `institution_id` while the
-        stable ordering key is `inst_key`).
-    Duplicates collapse; anything past `INSTITUTION_SLOT_MAX` still gets a slot
-    number, and `institution_color` turns it into COMPARISON grey rather than
-    cycling -- an over-long comparison degrades visibly instead of lying.
-    """
-    if hasattr(inst_keys, "items"):
-        pairs = list(inst_keys.items())
-    else:
-        pairs = [(k, k) for k in inst_keys]
-    seen: dict = {}
-    for ident, key in pairs:
-        if ident not in seen:
-            seen[ident] = key
-
-    def _order(item):
-        key = item[1]
-        try:
-            return (0, float(key), "")
-        except (TypeError, ValueError):
-            return (1, 0.0, str(key))
-
-    return {ident: i for i, (ident, _k) in enumerate(sorted(seen.items(), key=_order))}
 
 
 # ---------------------------------------------------------------------------
@@ -986,8 +903,6 @@ def institution_slots(inst_keys) -> dict:
 # binds "oa" identically: chip on the LABEL only, institution colour never
 # reaches a label accent, and the label text still names the field in full.
 
-LABEL_ACCENT_FAMILIES = ("erc", "sdg", "oa")
-
 
 def label_accent_color(family, key) -> str:
     """Colour for a ROW-LABEL accent glyph, by taxonomy family.
@@ -1009,59 +924,7 @@ def label_accent_color(family, key) -> str:
 
 
 # ---------------------------------------------------------------------------
-# THE ORDINAL RAMP -- grey-accounting states
-# ---------------------------------------------------------------------------
-# NOT an identity family: these five states are ORDERED by distance from usable
-# text, so they take a one-hue sequential ramp (dataviz: "Sequential = one hue,
-# light->dark"), and the sixth segment of the strip -- the classified-eligible
-# mass -- is painted in the compared institution's OWN identity colour. That
-# keeps the coexistence rule intact (the only identity in the figure is still
-# the institution) and gives the strip the highlight-plus-mute reading the
-# Studio colour formula asks for: one coloured segment that is the answer, a
-# muted ramp behind it that accounts for the rest.
-#
-# The five sum with `mass_classified_eligible` to `total_frac` EXACTLY for all
-# 7,557 institutions (measured, A9) -- which is what makes the
-# stacked 100 % strip a true statement and the one stacked bar this app draws.
-#
-# VALIDATOR run 12: the categorical checks FAIL by design (five neutrals below
-# the chroma floor; adjacent normal-vision 7.8) -- the validator's own scope
-# line says a sequential ramp is checked for lightness monotonicity instead.
-# `validateOrdinal` returns OK on all four applicable checks: monotone
-# light->dark, every adjacent dL >= 0.06, light-end contrast 2.14:1 (floor 2:1),
-# single hue (spread 4 degrees). Contrasts vs SURFACE, lightest to darkest:
-# 2.14 / 2.84 / 3.89 / 5.39 / 7.77.
-
-GREY_STATE_COLORS = {
-    "title_only": "#ACB2B9",
-    "lang_uncertain": "#939AA2",
-    "untranslated_grey": "#7B828A",
-    "unusable": "#646B73",
-    "retracted_excluded": "#4D535B",
-}
-
-GREY_STATE_ORDER = ("classified_eligible", "title_only", "lang_uncertain",
-                    "untranslated_grey", "unusable", "retracted_excluded")
-# Fixed segment order of the coverage strip, left to right: the usable mass
-# first (the institution's own hue), then the ramp light -> dark. The order is
-# the ramp's meaning -- re-sorting it by size would turn an ordinal scale into a
-# categorical one and make the lightness gradient a lie.
-
-CLASSIFIED_ELIGIBLE_STATE = "classified_eligible"
-# The one segment of the strip that is NOT grey: it takes the institution's own
-# `institution_color`. Named here rather than typed into the chart module so the
-# "which segment is the highlight" decision lives with the colours.
-
-
-def grey_state_color(state) -> str:
-    """Colour for a grey-accounting state. The classified-eligible state has no
-    grey of its own (the caller paints it with `institution_color`); an unknown
-    state -> COMPARISON, the family convention."""
-    return GREY_STATE_COLORS.get(str(state).strip().lower(), COMPARISON)
-
-
-# ---------------------------------------------------------------------------
-# REMOVED in R1 (2026-08-29): TYPE_COLORS and type_group
+# REMOVED: TYPE_COLORS and type_group
 # ---------------------------------------------------------------------------
 #  removes the badge column from every table (user ruling
 # #8: "badge column not relevant, the type filter exists"), which

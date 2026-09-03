@@ -77,7 +77,7 @@ THE FOUR BUILDERS THIS STREAM ADDS
 
 `colors`, everywhere in this module (`two_tab_bars`, `reciprocity_bars`,
 `mirror_frontier`), is the institution SLOT mapping/sequence -- i.e. exactly
-what `palette.institution_slots(.)` returns (`{institution_id: slot}` for
+what the app's institution-slot map returns (`{institution_id: slot}` for
 the two Mapping-shaped builders; `[slot_a, slot_b]` for `mirror_frontier`,
 whose frame carries no `institution_id` column at all to key a Mapping by).
 It is named `colors` rather than `slots` because that is ALL a slot ever is
@@ -213,7 +213,6 @@ DOT_HTML_PX = 10              # the KPI card's best-value dot
 DOT_GAP_PX = 6
 CAPTION_FONT_WEIGHT = 400      # D5 (CHROME_CONTRACT.md SS7): the basis caption
                               # is NEVER bold, in either colour state
-COLOR_BY = ("owner", "domain")  # `map_legend_strip`'s own two legend shapes
 
 ACCENT_GLYPH = "\N{BLACK VERTICAL RECTANGLE}"
 # The row-label accent: a GLYPH in the taxonomy's OFFICIAL hue
@@ -543,7 +542,7 @@ def fig_metric_bars(
     suppression: the bar is still drawn at full size, only the ink that
     prints its own number changes.
 
-    ENCODING. Bar = institution (`palette.institution_slots`, ascending
+    ENCODING. Bar = institution (ascending
     `inst_key` via `slots`). Row label = the taxon; for SDG (and, generally,
     field/subfield) it carries a glyph in the taxonomy's official colour -- taxonomy colour on labels,
     institution colour on marks, never the reverse.
@@ -739,7 +738,7 @@ def two_tab_bars(
                        concept.
 
     `colors` is the institution SLOT mapping (`institution_id -> int`, as
-    returned by `palette.institution_slots`), resolved to a hex fill via
+    returned by the institution-slot map), resolved to a hex fill via
     `palette.institution_color`/`institution_ink` inside `fig_metric_bars`.
     `gutter=False` below the ~600 px plot-width breakpoint (CHROME_CONTRACT.md
     SS10.7) drops the LEFT column; the raw volume stays in hover regardless.
@@ -837,7 +836,6 @@ MIRROR_THREE_LINE_FACTOR = 3.0
 # with real headroom (18 px x 3.0 = 54 px pitch against a measured 47.2 px
 # need, ~6.8 px margin) rather than a formula extrapolated from a different
 # case's own increment.
-
 
 
 def _wrap_topic_label(text, width: int = MIRROR_LABEL_WRAP_WIDTH,
@@ -939,7 +937,7 @@ def mirror_frontier(
 
     `names`/`colors` are TWO-ITEM SEQUENCES, `[a, b]`, matching `vol_a`/
     `vol_b`'s own order -- this frame carries no `institution_id` column to
-    key a Mapping by. `colors` holds SLOT ints (`palette.institution_slots`
+    key a Mapping by. `colors` holds SLOT ints (the institution-slot map
     order), resolved via `palette.institution_color`, matching every other
     builder in this module. `top_n` keeps the `top_n` rows with the largest
     `vol_a + vol_b` ("combined volume", D5); `None` draws every row given.
@@ -1369,24 +1367,6 @@ def _chip_strip(items: Sequence[tuple[str, str, str]]) -> str:
             f'margin:{C.CHIP_GAP_PX}px {C.NO_PX}px;">{chips}</div>')
 
 
-def map_legend_strip(ids: Sequence, *, slots: Mapping, names: Mapping | None = None,
-                     color_by: str = "owner", shared: bool = True,
-                     shared_label: str = LABEL_SHARED,
-                     domain_items: Sequence[tuple] = ()) -> str:
-    """A legend rebuilt on a colour-by swap. `color_by="owner"` returns the
-    institution strip plus the shared chip; `color_by="domain"` (this is
-    `yearly_domain_stack`'s own legend) returns the OpenAlex domain chips
-    instead, resolved here through `palette.domain_color` -- the caller
-    supplies `(domain_id, label)` pairs, the words stay with the page's copy."""
-    if color_by not in COLOR_BY:
-        raise ValueError(f"color_by must be one of {COLOR_BY}, got {color_by!r}")
-    if color_by == "domain":
-        return _chip_strip([(str(label), P.domain_color(did), P.INK_SECONDARY)
-                            for did, label in domain_items])
-    return legend_strip(ids, slots=slots, names=names, shared=shared,
-                        shared_label=shared_label)
-
-
 def chart_note(reading: str, tooltip: str | None = None) -> str:
     """ONE short reading line under a chart, with the methodology folded into
     a `?` the reader can hover (CHROME_CONTRACT.md SS6). A `reading` longer
@@ -1429,7 +1409,7 @@ def basis_caption(text: str, *, warn: bool = False) -> str:
 def best_value_dot(slot, label: str | None = None) -> str:
     """The Compare overview card's leader mark: a small dot in the LEADING
     institution's colour, optionally followed by that institution's name in
-    its dark twin. `slot` is the zero-based slot (`palette.institution_slots`),
+    its dark twin. `slot` is the zero-based institution slot,
     so the dot on a card and the bar in the chart below it cannot disagree."""
     dot = (f'<span style="display:inline-block;width:{DOT_HTML_PX}px;'
            f'height:{DOT_HTML_PX}px;border-radius:{DOT_HTML_PX}px;'

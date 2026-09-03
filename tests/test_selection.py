@@ -15,11 +15,6 @@ KNOWN = {"A", "B", "C", "D", "E", "F", "G", "H"}
 
 # ------------------------------------------------------------- state.py -----
 
-def test_compare_cap_kept():
-    """The old Compare hard cap survives (still config-backed) even though
-    the shortlist it used to cap alongside is gone."""
-    assert state.COMPARE_CAP == 3
-
 
 def _fresh_state():
     """Resets the live st.session_state singleton. Works outside a running
@@ -79,84 +74,6 @@ def test_parse_ids_empty_and_none():
     assert selection.parse_ids("", KNOWN) == ([], [])
 
 
-def test_parse_query_compare_only_pair_is_gone():
-    """`?pair=` is retired along with the page that used it -- parse_query's
-    return shape no longer carries a "pair" key at all."""
-    out = selection.parse_query({"compare": "A,B,C"}, KNOWN)
-    assert out == {"compare": ["A", "B", "C"], "dropped": []}
-    assert "pair" not in out
-
-
-def test_parse_query_drops_and_reports_unknown():
-    out = selection.parse_query({"compare": "A,X,B,Y"}, KNOWN)
-    assert out["compare"] == ["A", "B"]
-    assert out["dropped"] == ["X", "Y"]
-
-
-def test_parse_query_missing_key_is_empty():
-    out = selection.parse_query({}, KNOWN)
-    assert out == {"compare": [], "dropped": []}
-
-
-def test_compare_ids_query_wins_then_shortlist_fills_capped():
-    shortlist = ["D", "E", "F", "G"]
-    query = "A,B"
-    out = selection.compare_ids(shortlist, query, KNOWN, cap=3)
-    assert out == ["A", "B", "D"]  # query first, shortlist fills the remaining slot, capped
-
-
-def test_compare_ids_dedupes_across_query_and_shortlist():
-    out = selection.compare_ids(["A", "B"], "B,C", KNOWN, cap=6)
-    assert out == ["B", "C", "A"]
-
-
-def test_compare_ids_drops_unknown_from_either_side():
-    out = selection.compare_ids(["A", "ZZZ"], "YYY,B", KNOWN, cap=6)
-    assert out == ["B", "A"]
-
-
-# --------------------------------------------------- compare_ids_capped -----
-
-def test_compare_ids_capped_query_wins_then_shortlist_fills_and_reports_cut():
-    """4 candidates (A,B from query; D,E,F,G from the shortlist) = 6
-    combined, capped at 3 -- 3 are cut (E, F, G)."""
-    shortlist = ["D", "E", "F", "G"]
-    query = "A,B"
-    out, n_truncated = selection.compare_ids_capped(shortlist, query, KNOWN, cap=3)
-    assert out == ["A", "B", "D"]
-    assert n_truncated == 3
-
-
-def test_compare_ids_capped_dedupes_no_truncation():
-    out, n_truncated = selection.compare_ids_capped(["A", "B"], "B,C", KNOWN, cap=6)
-    assert out == ["B", "C", "A"]
-    assert n_truncated == 0
-
-
-def test_compare_ids_capped_drops_unknown_from_either_side():
-    out, n_truncated = selection.compare_ids_capped(["A", "ZZZ"], "YYY,B", KNOWN, cap=6)
-    assert out == ["B", "A"]
-    assert n_truncated == 0
-
-
-def test_compare_ids_capped_truncation_count_at_the_hard_cap():
-    """5 known candidates capped at state.COMPARE_CAP (3) reports
-    n_truncated == 2, surviving ids in query-then-shortlist order."""
-    out, n_truncated = selection.compare_ids_capped(["C", "D", "E"], "A,B", KNOWN, cap=state.COMPARE_CAP)
-    assert out == ["A", "B", "C"]
-    assert n_truncated == 2
-
-
-def test_compare_ids_capped_matches_compare_ids_ids_half():
-    """compare_ids_capped's `ids` half is byte-identical to compare_ids on
-    the same inputs -- one function is not quietly a different resolution
-    order from the other."""
-    shortlist, query = ["D", "E", "F"], "A,B"
-    plain = selection.compare_ids(shortlist, query, KNOWN, cap=3)
-    capped_ids, _ = selection.compare_ids_capped(shortlist, query, KNOWN, cap=3)
-    assert plain == capped_ids
-
-
 def test_pair_from_is_gone():
     """Retired with the `?pair=` deep link and the page that used it."""
     assert not hasattr(selection, "pair_from")
@@ -170,13 +87,14 @@ def test_render_sidebar_and_slots_row_are_gone():
     assert not hasattr(selection, "slots_row")
 
 
-def test_deeplink_round_trips_through_parse_query():
+def test_deeplink_round_trips_through_parse_ids():
     link = selection.deeplink("compare", ["A", "B", "C"])
     assert link == "?compare=A,B,C"
     qs = link.lstrip("?")
-    key, value = qs.split("=", 1)
-    out = selection.parse_query({key: value}, KNOWN)
-    assert out["compare"] == ["A", "B", "C"]
+    _key, value = qs.split("=", 1)
+    kept, dropped = selection.parse_ids(value, KNOWN)
+    assert kept == ["A", "B", "C"]
+    assert dropped == []
 
 
 # ------------------------------------------------- slot hydration (pure) ----

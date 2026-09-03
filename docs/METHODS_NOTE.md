@@ -208,8 +208,8 @@ The taxonomy repair leaves gaps too: 859 of the taxonomy's 4,516 topics needed a
 no-fit placement, sitting in the tree without a confident match (`topics_dim.parquet`
 `fit_quality` in `{forced, no_fit}`, measured live). The type behind a fair pool, or a company and
 international share, follows a small set of corrections SIRIS made to OpenAlex's own institution
-type (`data/overrides/type_overrides.csv`); a type this tool has not reviewed keeps OpenAlex's own
-label.
+type (a locked, human-adjudicated override list applied at data-build time, upstream of what
+ships in `app/data/`); a type this tool has not reviewed keeps OpenAlex's own label.
 
 World leaders and star papers are pulled from OpenAlex on the day they were built, a different
 moment from the harvest snapshot behind every other figure on the page, so the two can drift a

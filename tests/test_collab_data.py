@@ -1,6 +1,6 @@
 """
 lib/collab_data.py acceptance tests (Tier A). Anchors are concrete values
-recomputed from app/data/*.parquet on 2026-08-29 (env-app, bestfit/frac
+recomputed from app/data/*.parquet (env-app, bestfit/frac
 default scenario).
 
 2026-09-03: `shared_topics`/`joint_profile`/`untapped` and their test suites
@@ -38,65 +38,12 @@ def subs_bestfit(ctx):
     return load_substrates(ctx)  # default: bestfit / frac
 
 
-# ----------------------------------------------------------- breadth_jaccard-
-
-@pytest.mark.parametrize("a,b,want", [
-    (STRASBOURG, SORBONNE, {"jaccard": 0.6997792494481236, "n_a": 2741, "n_b": 3419, "n_shared": 2536}),
-    (STRASBOURG, GDANSK, {"jaccard": 0.4779322853688029, "n_a": 2741, "n_b": 2148, "n_shared": 1581}),
-    (IFPEN, SORBONNE, {"jaccard": 0.08974358974358974, "n_a": 321, "n_b": 3419, "n_shared": 308}),
-    (GDANSK, ISCTE, {"jaccard": 0.28376268540202965, "n_a": 2148, "n_b": 1141, "n_shared": 727}),
-])
-def test_breadth_jaccard_anchor(ctx, subs_bestfit, a, b, want):
-    got = CL.breadth_jaccard(ctx, subs_bestfit, a, b)
-    assert got["n_a"] == want["n_a"]
-    assert got["n_b"] == want["n_b"]
-    assert got["n_shared"] == want["n_shared"]
-    np.testing.assert_allclose(got["jaccard"], want["jaccard"], rtol=1e-9)
-
-
-def test_breadth_jaccard_recomputed_by_hand(ctx, subs_bestfit):
-    """Independent by-hand recomputation (set arithmetic on the raw L3
-    matrix, no reuse of the function's own code path) for one pair."""
-    a_idx, b_idx = ctx["id_pos"][STRASBOURG], ctx["id_pos"][SORBONNE]
-    l3 = subs_bestfit["l3"]["share"]
-    topics_a = set(np.nonzero(l3[a_idx] > 0)[0].tolist())
-    topics_b = set(np.nonzero(l3[b_idx] > 0)[0].tolist())
-    inter = topics_a & topics_b
-    union = topics_a | topics_b
-    want_jaccard = len(inter) / len(union)
-    got = CL.breadth_jaccard(ctx, subs_bestfit, STRASBOURG, SORBONNE)
-    np.testing.assert_allclose(got["jaccard"], want_jaccard, rtol=1e-9)
-    assert got["n_shared"] == len(inter)
-
-
-def test_breadth_jaccard_symmetric(ctx, subs_bestfit):
-    fwd = CL.breadth_jaccard(ctx, subs_bestfit, STRASBOURG, GDANSK)
-    bwd = CL.breadth_jaccard(ctx, subs_bestfit, GDANSK, STRASBOURG)
-    np.testing.assert_allclose(fwd["jaccard"], bwd["jaccard"], rtol=1e-12)
-    assert fwd["n_a"] == bwd["n_b"] and fwd["n_b"] == bwd["n_a"]
-    assert fwd["n_shared"] == bwd["n_shared"]
-
-
-def test_breadth_jaccard_min_full_floor_shrinks_sets(ctx, subs_bestfit):
-    """Manager addition 2026-08-29 (E5): a publication floor never grows a
-    topic set, and min_full=1 equals the nonzero-share rule (every touched
-    topic has >= 1 full publication)."""
-    subs = subs_bestfit
-    base = CL.breadth_jaccard(ctx, subs, "I68947357", "I40413290")
-    one = CL.breadth_jaccard(ctx, subs, "I68947357", "I40413290", min_full=1)
-    two = CL.breadth_jaccard(ctx, subs, "I68947357", "I40413290", min_full=2)
-    assert one["n_a"] == base["n_a"] and one["n_b"] == base["n_b"]
-    assert two["n_a"] <= base["n_a"] and two["n_b"] <= base["n_b"] and two["n_shared"] <= base["n_shared"]
-    assert 0.0 <= two["jaccard"] <= 1.0
-
-
 CNRS = "I1294671590"
 
 
 # ============================================================================
-# Anchors recomputed 2026-08-30 via an INDEPENDENT code path (plain pandas
-# over app/data/collab_pairs.parquet / collab_pair_topics.parquet, no import
-# of lib.collab_data).
+# Anchors recomputed via an INDEPENDENT code path (plain pandas
+# over app/data/collab_pairs.parquet, no import of lib.collab_data).
 # ============================================================================
 
 def test_pulse_pinned_anchor_cnrs_strasbourg_table_order(ctx):

@@ -248,7 +248,7 @@ def test_the_pp_card_no_longer_prints_its_interval(profile_app):
     pp = [h for h in cards if copy.FIND["KPI_PP_LABEL"] in h]
     assert len(pp) == 1, len(pp)
     assert tiles.VALUE2_CLASS not in pp[0], pp[0]
-    assert copy.FIND["KPI_PP_CI_LABEL"] not in pp[0], pp[0]
+    assert "bootstrap interval" not in pp[0], pp[0]  # the retired PP tile's own CI label
     helped = [m.help for m in profile_app.markdown
               if tiles.TILE_CLASS in m.value and copy.FIND["KPI_PP_LABEL"] in m.value]
     assert helped and copy.FIND["KPI_PP_HELP_R2"] in helped[0], helped
@@ -284,8 +284,9 @@ def test_the_four_dropped_measures_are_off_the_card_grid(profile_app):
     """ drops concentration, breadth, the second size tile as a tile of
     its own, and the bonus-year tile. Asserted absent, not merely unasserted."""
     cards = " ".join(_cards(profile_app))
-    for label in (copy.FIND["TILE_HHI"], copy.FIND["TILE_BREADTH"],
-                  copy.FIND["TILE_BONUS_YEAR"].format(year=CFG["bonus_year"])):
+    # the retired tile design's own labels (Concentration, Breadth, the bonus-year tile)
+    for label in ("Concentration", "Breadth",
+                  f"Publications in {CFG['bonus_year']} (bonus year)"):
         assert label not in cards, label
 
 
@@ -389,19 +390,6 @@ def test_the_copy_template_itself_no_longer_types_the_stamp():
     assert "1,234" in rendered
 
 
-def test_the_export_keeps_a_plain_provenance_column():
-    """A14: the CSV keeps FACTUAL provenance (one column, one label) -- the
-    stamp was never in the file and the column is now self-describing."""
-    rows = [{"rank": 1, "institution_id": "I1", "display_name": "A", "country_code": "FR",
-             "type": "education", "total_full_2020_2024": 10.0,
-             "total_frac_2020_2024": 5.0, "lens_score": 0.5}]
-    csv = exports.ranking_csv(rows, seed_id="I0", lens="L1", tree="bestfit", basis="frac",
-                              snapshot="august_2026", filters_label="none").decode("utf-8")
-    header = csv.splitlines()[0].split(",")
-    assert "data_snapshot" in header, header
-    assert "snapshot" not in header, header
-
-
 def test_the_data_date_label_parses_the_manifest_stamp_and_degrades_honestly():
     assert exports.data_date_label("2026-08-27T13:41:28.350794+00:00", NA_MARK) == \
         "August 27, 2026"
@@ -420,7 +408,9 @@ def test_the_bonus_year_is_starred_on_the_axis():
 
 def test_the_bonus_year_banner_is_gone_and_its_footnote_is_in_the_tooltip(profile_app):
     text = _page_strings(profile_app)
-    banner = copy.FIND["BONUS_YEAR_CAPTION"].format(year=CFG["bonus_year"])
+    # the retired coverage-caption banner's own template, now gone from copy.py too
+    banner = ("{year} is a bonus year: volume only, left out of the impact "
+              "indicators").format(year=CFG["bonus_year"])
     assert banner not in text, text[:400]
     expected = copy.FIND["BREAKDOWN_SECTION_HELP"].format(
         year=CFG["bonus_year"], star=views_find.BONUS_STAR)

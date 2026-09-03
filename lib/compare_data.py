@@ -91,7 +91,6 @@ def _lru_touch(ctx: dict, key: str, prefix: str) -> None:
 # `compare_data.py` (same numbers, same helper functions, ANCHOR-tested).
 # ---------------------------------------------------------------------------
 CORE_WINDOW = tuple(CFG["window"])                  # (2020, 2024)
-N_CORE_YEARS = CORE_WINDOW[1] - CORE_WINDOW[0] + 1   # 5
 DYNAMICS_W1 = (2020, 2022)  # mean annual volume, window 1 (3 years)
 DYNAMICS_W2 = (2023, 2024)  # mean annual volume, window 2 (2 years)
 
@@ -285,12 +284,6 @@ def _fwci_taxon(ctx: dict, ids: list[str], level: str) -> pd.DataFrame:
     })
     out["eu_median_fwci"] = out["taxon_id"].map(ref).astype("float64")
     return out
-
-
-SHARE_DENOM_SUBFIELD = ("the institution's whole output across every subfield, not only the ones "
-                        "in the field it belongs to")
-SHARE_DENOM_SDG = ("the institution's own SDG-tagged output; a publication can carry several "
-                   "goals, so the shares can add up to more than the whole")
 
 
 def _taxon_si_from_share(share: pd.Series, taxon_id: pd.Series, ref: pd.Series) -> pd.Series:

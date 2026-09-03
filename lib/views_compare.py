@@ -77,7 +77,7 @@ def _pval(p) -> str:
 def _names_and_slots(ctx: dict, ids: list[str]) -> tuple[dict, dict]:
     """Slot 0 = A, slot 1 = B -- the
     reader's own slot layout IS the colour key ('s own `_slots`/`_names`
-    idiom, `/app/lib/views_compare.py`), not `palette.institution_slots`'s
+    idiom, `/app/lib/views_compare.py`), not the institution-slot map's
     ascending-id rule (that rule serves a caller with no natural pick
     order; here the picker order itself is the order)."""
     idx_by_id = ctx["index_by_id"]

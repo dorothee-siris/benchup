@@ -305,7 +305,7 @@ def yearly_by_domain(ctx: dict, iid: str, tree: str) -> pd.DataFrame:
                         "vol_full": r[f"vol_full_{y}"], "vol_frac": r[f"vol_frac_{y}"]})
     out = pd.DataFrame(rows, columns=YEARLY_COLS)
 
-    # Manager edit (R1, 2026-08-29): topics_all only holds works that carry a
+    # topics_all only holds works that carry a
     # primary topic, so Sigma over domains runs a few works short of the index's
     # own by-year totals (measured up to 0.23 %, progress/R1_B.md). The yearly
     # breakdown is SWAPPABLE with the document-type view, whose totals ARE the
@@ -324,72 +324,6 @@ def yearly_by_domain(ctx: dict, iid: str, tree: str) -> pd.DataFrame:
                       "vol_full": max(int(round(tot_full.get(y, got_full) - got_full)), 0),
                       "vol_frac": max(tot_frac.get(y, got_frac) - got_frac, 0.0)})
     return pd.concat([out, pd.DataFrame(resid, columns=YEARLY_COLS)], ignore_index=True)
-
-
-SUBFIELD_YEARLY_COLS = ["year", "subfield_id", "subfield_name", "vol_full", "vol_frac"]
-
-
-def yearly_by_subfield(ctx: dict, iid: str, tree: str) -> pd.DataFrame:
-    """(year, subfield_id, subfield_name, vol_full, vol_frac) -- the SAME
-    predicate-pushdown duckdb query as `yearly_by_domain`, generalised to
-    subfield grain. `tree` picks which
-    `{tree}_subfield_id` resolves each topic's subfield.
-
-    Carries the SAME "Unclassified" residual row per year as
-    `yearly_by_domain` (subfield_id `UNCLASSIFIED_DOMAIN_ID`, name
-    `UNCLASSIFIED_DOMAIN_NAME`) so that Sigma over subfields per year is
-    IDENTICAL to Sigma over domains per year for the same institution/tree
-    both reconcile to the same `index.vol_*_by_year_this_run` total
-    (tests/test_compare_data.py's cross-grain identity check)."""
-    years = _year_cols(ctx)
-    if not years:
-        return pd.DataFrame(columns=SUBFIELD_YEARLY_COLS)
-
-    inst_key = int(ctx["index_by_id"].loc[iid, "inst_key"])
-    tree_col = f"{tree}_subfield_id"
-    topic_subfield = ctx["topics_dim_df"][["topic_id", tree_col]].rename(columns={tree_col: "subfield_id"})
-    topic_subfield = topic_subfield.merge(
-        _subfield_field_domain_map(ctx)[["subfield_id", "subfield_name"]],
-        on="subfield_id", how="left")[["topic_id", "subfield_id", "subfield_name"]]
-
-    con = duckdb.connect()
-    con.register("_topic_subfield", topic_subfield)
-    ta_posix = Path(ctx["topics_all_path"]).as_posix()
-    year_cols_sql = ", ".join(f"vol_full_{y}, vol_frac_{y}" for y in years)
-    year_select = ", ".join(f"SUM(vol_full_{y}) AS vol_full_{y}, SUM(vol_frac_{y}) AS vol_frac_{y}"
-                            for y in years)
-    sql = f"""
-        WITH ta_filtered AS (
-            SELECT topic_id, {year_cols_sql}
-            FROM read_parquet('{ta_posix}')
-            WHERE inst_key = {inst_key}
-        )
-        SELECT ts.subfield_id, ts.subfield_name, {year_select}
-        FROM ta_filtered ta
-        JOIN _topic_subfield ts USING (topic_id)
-        GROUP BY ts.subfield_id, ts.subfield_name
-    """
-    wide = con.sql(sql).df()
-    con.close()
-
-    rows = []
-    for _, r in wide.iterrows():
-        for y in years:
-            rows.append({"year": y, "subfield_id": r["subfield_id"], "subfield_name": r["subfield_name"],
-                        "vol_full": r[f"vol_full_{y}"], "vol_frac": r[f"vol_frac_{y}"]})
-    out = pd.DataFrame(rows, columns=SUBFIELD_YEARLY_COLS)
-
-    row = ctx["index_by_id"].loc[iid]
-    tot_full = _parse_packed_years(row["vol_full_by_year_this_run"])
-    tot_frac = _parse_packed_years(row["vol_frac_by_year_this_run"])
-    resid = []
-    for y in years:
-        got_full = float(out.loc[out["year"] == y, "vol_full"].sum())
-        got_frac = float(out.loc[out["year"] == y, "vol_frac"].sum())
-        resid.append({"year": y, "subfield_id": UNCLASSIFIED_DOMAIN_ID, "subfield_name": UNCLASSIFIED_DOMAIN_NAME,
-                      "vol_full": max(int(round(tot_full.get(y, got_full) - got_full)), 0),
-                      "vol_frac": max(tot_frac.get(y, got_frac) - got_frac, 0.0)})
-    return pd.concat([out, pd.DataFrame(resid, columns=SUBFIELD_YEARLY_COLS)], ignore_index=True)
 
 
 UNCLASSIFIED_DOMAIN_ID = 0

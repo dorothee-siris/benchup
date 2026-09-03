@@ -2,8 +2,8 @@
 
 Pins the RAM-fit repack (`pipeline/20_repack_app_data.py`) as a standing contract on
 every deployed `app/data/*.parquet`: ID/label columns load as `category`, no `float64`
-column survives anywhere, `impact_fields.parquet` stays gone, and `impact_cells.parquet`
-ships floor=30 only. Data-driven, no fixtures -- reads app/data/ directly, so it
+column survives anywhere, and `impact_fields.parquet` stays gone. Data-driven, no
+fixtures -- reads app/data/ directly, so it
 automatically covers every new table the pipeline adds at the top level of app/data/
 (no per-table edit needed here when a table is added, only the count pin below).
 """
@@ -36,8 +36,8 @@ def test_impact_fields_deleted() -> None:
     )
 
 
-def test_deployed_table_count_is_27() -> None:
-    assert len(PARQUET_FILES) == 24, sorted(PARQUET_FILES)  # 24 parquet + 3 override csv = 27
+def test_deployed_table_count_is_23() -> None:
+    assert len(PARQUET_FILES) == 22, sorted(PARQUET_FILES)  # 22 parquet + 1 override csv = 23
 
 
 @pytest.mark.parametrize("fname", PARQUET_FILES)
@@ -65,6 +65,3 @@ def test_object_columns_are_only_known_holdouts(fname: str) -> None:
     assert unexpected == [], f"{fname}: unexpected object-dtype column(s) after repack: {unexpected}"
 
 
-def test_impact_cells_floor_is_30_only() -> None:
-    df = pd.read_parquet(DATA_DIR / "impact_cells.parquet", columns=["floor"])
-    assert set(df["floor"].unique().tolist()) == {30}

@@ -222,15 +222,15 @@ funnel). Kept vs. rejected, explicitly:
 
 ## 7. `<slug>` for the record
 
-`design-system/benchup-/MASTER.md` — persisted 2026-08-29, density 8/10,
+`design-system/benchup-/MASTER.md` — persisted, density 8/10,
 category "Analytics Dashboard", query "peer benchmarking analytics dashboard
 higher education research" (`--design-system` mode) + 3 targeted `--domain ux`
 queries ("ranked table dense rows readable", "active filters disclosure strip",
 "tab navigation many tabs").
 
-## 8. R1 addendum — the profile section
+## 8. Addendum — the profile section
 
-Refinement R1 adds a chart-heavy profile section (VIZ_SPEC §1.9, §2.10–§2.20).
+The profile section (VIZ_SPEC §1.9, §2.10–§2.20) is chart-heavy.
 Two sources were consulted for it, in the house order: `dataviz` first and
 binding (form heuristic, colour formula, the runnable validator, mark specs),
 then ONE `ui-ux-pro-max` pass for a FORM second opinion only. **SIRIS wins every

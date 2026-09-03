@@ -36,13 +36,3 @@ TREES = ("original", "conservative", "bestfit")
 G6_FLOOR = 30.0
 
 
-def subfield_to_field_map(topics_dim: pd.DataFrame) -> pd.DataFrame:
-    """Constant (tree-independent) subfield_id -> field_id/field_name/domain_id/
-    domain_name map, derived from the ORIGINAL-tree topics_dim table and
-    asserted to be a clean 252-row 1:1 mapping (never re-derived per tree)."""
-    m = topics_dim[["subfield_id", "field_id", "field_name", "domain_id", "domain_name"]].drop_duplicates()
-    assert m["subfield_id"].is_unique, (
-        f"subfield_id -> field_id is not 1:1 in topics_dim -- {len(m)} rows for "
-        f"{m['subfield_id'].nunique()} distinct subfield_id"
-    )
-    return m

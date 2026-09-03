@@ -151,7 +151,7 @@ def test_every_family_value_is_a_six_digit_hex():
     for name in EXPECTED_KEYS:
         for key, value in getattr(palette, name).items():
             assert isinstance(value, str) and HEX6.match(value), f"{name}[{key!r}] = {value!r}"
-    for token in ("FOCAL", "COMPARISON", "NEUTRAL", "INK", "SURFACE",
+    for token in ("FOCAL", "COMPARISON", "INK", "SURFACE",
                   "INK_SECONDARY", "BORDER", "GRID"):
         assert HEX6.match(getattr(palette, token)), token
 
@@ -197,16 +197,14 @@ def test_fixed_display_orders_cover_their_families():
     assert set(palette.ERC_DOMAIN_ORDER) == set(palette.ERC_DOMAIN_COLORS)
     assert set(palette.DOCTYPE_ORDER) == set(palette.DOCTYPE_COLORS)
     assert set(palette.DOCTYPE_LABELS) == set(palette.DOCTYPE_COLORS)
-    assert set(palette.ERC_DOMAIN_LABELS) == set(palette.ERC_DOMAIN_COLORS)
 
 
 def test_theme_primary_is_focal():
-    """ Decisions log 2026-08-29 ("`.streamlit/config.toml`
-    `primaryColor = #0072B2` (= palette.FOCAL) is the ONE hex outside
-    palette.py"): Streamlit paints ProgressColumn bars, links and buttons
-    with the theme's primaryColor, so it must track lib.palette.FOCAL rather
-    than drift to Streamlit's off-palette default red. extension
-    named explicitly in that decisions-log row.
+    """`.streamlit/config.toml`'s `primaryColor = #0072B2` (= palette.FOCAL) is
+    the ONE hex outside palette.py: Streamlit paints ProgressColumn bars,
+    links and buttons with the theme's primaryColor, so it must track
+    lib.palette.FOCAL rather than drift to Streamlit's off-palette default
+    red.
     """
     import sys
 
@@ -254,7 +252,6 @@ def test_institution_family_is_three_distinct_validated_hexes():
     palette = _palette()
     fam = palette.INSTITUTION_COLORS
     assert isinstance(fam, list) and len(fam) == 3
-    assert palette.INSTITUTION_SLOT_MAX == 3
     for hexval in fam:
         assert isinstance(hexval, str) and HEX6.match(hexval), hexval
     upper = [h.upper() for h in fam]
@@ -322,48 +319,9 @@ def test_institution_family_shares_no_hue_with_any_other_family():
     others = ([v.upper() for v in palette.OA_DOMAIN_COLORS.values()]
               + [v.upper() for v in palette.ERC_DOMAIN_COLORS.values()]
               + [v.upper() for v in palette.DOCTYPE_COLORS.values()]
-              + [v.upper() for v in palette.SDG_COLORS.values()]
-              + [v.upper() for v in palette.GREY_STATE_COLORS.values()])
+              + [v.upper() for v in palette.SDG_COLORS.values()])
     clash = [h for h in (c.upper() for c in palette.INSTITUTION_COLORS) if h in others]
     assert not clash, f"institution hue(s) already used by another family: {clash}"
-
-
-def test_institution_slots_are_assigned_by_ascending_inst_key():
-    palette = _palette()
-    keys = {"I_late": 900, "I_early": 7, "I_mid": 120}
-    slots = palette.institution_slots(keys)
-    assert slots == {"I_early": 0, "I_mid": 1, "I_late": 2}
-    # a plain sequence of keys is the other accepted shape
-    assert palette.institution_slots([900, 7, 120]) == {7: 0, 120: 1, 900: 2}
-    # duplicates collapse rather than consuming two slots
-    assert palette.institution_slots([7, 7, 120]) == {7: 0, 120: 1}
-    # a non-numeric key still sorts deterministically instead of raising
-    mixed = palette.institution_slots({"a": "zz", "b": 3})
-    assert set(mixed.values()) == {0, 1}
-
-
-def test_grey_state_ramp_is_ordinal_and_covers_the_six_accounting_states():
-    """A9: five grey states plus classified-eligible, exhaustive over
-    `total_frac`. The five greys are an ORDERED severity, so they are a
-    sequential ramp (validated by lightness monotonicity, run 12), and the sixth
-    segment takes the institution's own colour rather than a sixth grey."""
-    palette = _palette()
-    assert palette.CLASSIFIED_ELIGIBLE_STATE == "classified_eligible"
-    assert len(palette.GREY_STATE_ORDER) == 6
-    assert palette.GREY_STATE_ORDER[0] == palette.CLASSIFIED_ELIGIBLE_STATE
-    assert set(palette.GREY_STATE_ORDER) - {palette.CLASSIFIED_ELIGIBLE_STATE} \
-        == set(palette.GREY_STATE_COLORS)
-    assert len(palette.GREY_STATE_COLORS) == 5
-    hexes = [palette.GREY_STATE_COLORS[s] for s in palette.GREY_STATE_ORDER[1:]]
-    assert len(set(h.upper() for h in hexes)) == len(hexes)
-    for h in hexes:
-        assert HEX6.match(h), h
-    # monotone light -> dark, which is the ramp's whole claim (run 12)
-    lum = [int(h[1:3], 16) + int(h[3:5], 16) + int(h[5:7], 16) for h in hexes]
-    assert lum == sorted(lum, reverse=True), lum
-    assert palette.grey_state_color("title_only") == palette.GREY_STATE_COLORS["title_only"]
-    assert palette.grey_state_color("classified_eligible") == palette.COMPARISON
-    assert palette.grey_state_color("nonsense") == palette.COMPARISON
 
 
 def test_hex_scan_actually_covers_the_new_compare_charts_module():
@@ -386,6 +344,6 @@ def test_viz_spec_has_rejected_alternative_per_compare_view_row():
     spec_path = APP_DIR / "docs" / "VIZ_SPEC.md"
     text = spec_path.read_text(encoding="utf-8")
     compare_rows = len(re.findall(r"^### 3\.\d+", text, flags=re.MULTILINE))
-    assert compare_rows >= 13, f"expected the 2B view rows in VIZ_SPEC, found {compare_rows}"
+    assert compare_rows >= 11, f"expected the 2B view rows in VIZ_SPEC, found {compare_rows}"
     find_rows = len(re.findall(r"^### 2\.\d+", text, flags=re.MULTILINE))
     assert text.count("Rejected alternative:") >= find_rows + compare_rows

@@ -1,6 +1,6 @@
 # VIZ SPEC — BenchUp Find tab
 
-**Produced by:**, 2026-08-29, before any page exists. Format follows an earlier
+**Produced by:** the design team, before any page exists. Format follows an earlier
 SIRIS studio run's own VIZ_SPEC convention: one app-wide system
 section, then one row per view, each with form / encoding / interaction /
 empty-state / export / composition and a named rejected alternative.
@@ -66,7 +66,7 @@ reasons are listed in `lib/palette.py`.
 **Family 3 — the UN SDGs** (`SDG_COLORS`, 17 stored, **16 drawn**): the official
 UN goal colours, FIXED by the UN. Source: manager-supplied, matching the 2019 UN
 guidelines as commonly published; a live check of un.org's communications-material
-page (2026-08-29) confirms the governing document — *Sustainable Development
+page confirms the governing document — *Sustainable Development
 Goals Guidelines for the use of the SDG logo including the colour wheel and 17
 icons*, August 2019 edition, revised September 2023 — but that page publishes the
 assets, not the hex table. Validator run 7 **FAILS and is descriptive only**; the
@@ -141,9 +141,6 @@ that changes one section lives at the head of that section.**
    SDG lenses are fractional-only; this toggle does not change them"
    (INDICATOR_SPEC_v2 §5, L5). Scenario is app-wide because it re-derives every
    shape on the page, profile panels included.
-2. **Cross-tab shortlist — RETIRED.** The persistent, plain session-state list
-   this item once named is gone along with the page it fed (see §2.9); Compare
-   now reads two independent search slots directly instead.
 
 **Controls row (at the head of the Benchmark section, above the lens tabs):**
 C1 checkbox · L7 checkbox (depth is fixed at 50, no control needed) — each
@@ -271,7 +268,7 @@ top to bottom:
    Fields · Top subfields · Top topics · Frontier positioning · SDG profile ·
    ERC profile.
 
-The former "Coverage caption" step is GONE (§2.12, RETIRED): its four items
+The former "Coverage caption" step is GONE: its four items
 relocated to the panel/tile/tab each one actually qualifies, so there is no
 longer a fourth composition step between the tiles and the breakdown row.
 
@@ -403,7 +400,7 @@ below — never a bespoke per-lens layout.
 
 | Form id | Form & encoding | Interaction | Empty-state | Export |
 |---|---|---|---|---|
-| `tbl-lens-ranked` | table: competition rank · institution (OpenAlex works deep link) · country · type+badge · size (full) · score (form decided by Cross-cutting A/B #1, §3) · evidence (continuous line, lens-specific) · secondary reference "rank under L1/L3" · add-to-shortlist button (retired, §2.9) | column sort disabled on score (rank order IS the read — RULES honesty rule 6, no re-sorting past what the ranking already asserts); search scoped to the full ranking (§2.7) | lens undefined for this seed → §1.6 reason line replaces the table entirely | full filtered ranking CSV, §1.7 |
+| `tbl-lens-ranked` | table: competition rank · institution (OpenAlex works deep link) · country · type+badge · size (full) · score (form decided by Cross-cutting A/B #1, §3) · evidence (continuous line, lens-specific) · secondary reference "rank under L1/L3" · add-to-shortlist button (retired) | column sort disabled on score (rank order IS the read — RULES honesty rule 6, no re-sorting past what the ranking already asserts); search scoped to the full ranking (§2.7) | lens undefined for this seed → §1.6 reason line replaces the table entirely | full filtered ranking CSV, §1.7 |
 
 **Per-lens gloss + caveat (source: `INDICATOR_SPEC_v2.md` §1; caveat sits
 directly under the gloss, never tooltip-only, per this brief's placement rule):**
@@ -515,22 +512,9 @@ two SEPARATE, distinctly-worded badges make legible at a glance; RULES §4's
 "never encode two facts as one colour" reasoning generalises to "never encode
 two facts as one badge."
 
-### 2.9 Cross-tab comparator shortlist — RETIRED
+## 2 bis. View specs — the profile section and the changed controls/tables
 
-The persistent, cross-tab shortlist described here (a running "+ Add" list
-that survived switching lens tabs and pages, ready to seed Compare) is
-retired along with the page it fed: Compare now reads two independent search
-slots directly (`lib/state.py`), so there is nothing left to hold a shared,
-ordered list across pages. Kept as the relocation record rather than
-silently deleting the section number (the same "SUPERSEDED, not deleted"
-convention §2.10 uses for the old §2.2 seed card).
-
-
----
-
-## 2 bis. View specs — the R1 profile section and the changed controls/tables
-
-Added by (refinement R1, 2026-08-29) under –L22. Same row format as §2.1–§2.9: form / encoding / interaction /
+Same row format as §2.1–§2.8: form / encoding / interaction /
 empty-state / export, each ending in ONE named rejected alternative. Builders
 live in `lib/charts.py` (pure plotly, no Streamlit import); `lib/views_find.py`
 composes. Frames are the §9.4 column contracts from `lib/profile_data.py`.
@@ -578,102 +562,44 @@ otherwise the R1 text unaltered.
 > actually encodes (§1.1) — one entity's own type is not a categorical worth a
 > hue when it is stated in words two characters away.
 
-### 2.11 KPI tiles
+### 2.11 KPI cards
 
-> **Shipped deviation (R2-E3, manager-accepted 2026-08-29):** the eight tiles render as **4 rows × 2 columns** inside the ruled `[1.0, 2.0, 1.4]` middle column — at 1280 px that column measures ~344 px, so four tiles across would be ~74 px each with every label broken mid-word (`e3_find_top_1280.png`). One constant (`views_find.TILE_GRID_COLS`) flips it back if the column widths are re-ruled.
+`lib/views_find.py`'s `_profile_cards`/`_card_specs` build EIGHT cards in a
+2×4 grid filling the left half of the profile row (cards left, identity and
+its wordcloud right): publications, SDG-tagged share, frontier top-quartile
+share, PP(top10%), international co-publications, industrial co-publications,
+star papers, and topics led. Concentration (HHI), breadth, the two separate
+size measures (merged into the publications card's fractional-basis small
+line) and the bonus-year figure (now read on the yearly breakdown's own year
+axis, §2.14) are NOT cards — dropped or relocated, not carried forward from
+an earlier tile design.
 
-
-**R2 rewrite (L30, L31 — user ruling items 3 and 7: "profile space not
-optimised. coverage line reads as leftovers" / "every KPI positioned against
-the index baseline").** Two changes at once, both forced by the same feedback:
-the tile row moves into COLUMN 2 of the section's three-column row 1 as a
-**2×4 grid** (was a seven-tile wrapping row spanning full width), and the
-now-eighth tile absorbs a metric that used to live in the coverage caption
-(§2.12, RETIRED below) rather than growing the row to nine.
-
-- **Form.** EIGHT tiles in a 2×4 grid filling column 2, each **value + label +
-  baseline subline** (the Lorraine `_kpi_tile` HTML pattern, copied in
-  `st.metric` has no subline and the subline is the point). Tile chrome:
-  `NEUTRAL` fill, `BORDER` hairline, `INK` value, `INK_SECONDARY` subline — all
-  from `palette.py`, never inline hex.
-- **Encoding.** In fixed order (`lib/baselines.py`'s `KPI_COLUMNS`, L31): size
-  full · size fractional · concentration (HHI value, no class word — L32) ·
-  breadth (subfields at or above the fractional floor) · SDG-tagged share ·
-  frontier top-quartile share · PP(top10%) with its interval · **publications in
-  {bonus_year} (bonus year)** — the eighth tile, see the rejected alternative
-  below for why this one and not a relocated coverage item. **Every subline now
-  positions the value against the INDEX**, not just its own denominator: "index
-  median {m} · higher than {pct} of institutions" (`copy.FIND["TILE_BASELINE_SUB"]`,
-  L29/L31), the percentile computed over institutions with a non-null value for
-  that column; the tooltip on every tile carries the skew caveat — the index is
-  itself dominated by HEIs, so "median" is a population fact, not a norm to
-  chase. This is what "every KPI pairs value with denominator/coverage" (L11)
-  now MEANS for this row: the reference moved from "a raw count's own unit" to
-  "where this seed sits in the population."
-- **Interaction.** None (a tile is not a control). The interval on PP(top10%)
-  renders as a value plus its bounds, never as a bare point estimate (RULES
-  §9.6). Concentration (L32) shows the HHI value with its index percentile and
-  median and NO class tag — `hhi_class`'s 1,500/2,500 textbook thresholds are
-  RETIRED from the UI (they called 86% of the index "generalist," which is not
-  a distinction); the coherence check that ratified this is the 16-seed table
-  in `progress/2A_P.md`.
-- **Empty state.** `n/a` for any tile the data cannot support — never 0, never a
-  hidden tile: a missing indicator is information (§1.6, `palette.NA_MARK`). A
-  tile whose baseline cannot be computed (e.g. a metric with too few non-null
-  index values) shows the value alone and states why the subline is absent,
-  never a blank subline.
+- **Form.** `tiles.kpi_tile`: **value + label + one small line**, chrome
+  `NEUTRAL` fill, `BORDER` hairline, `INK` value, `INK_SECONDARY` subline —
+  all from `palette.py`, never inline hex. Every definition that used to
+  print as a subline now lives in the card's own `?` tooltip: the card
+  surface carries only the name, the value and (for six of the eight) the
+  index position.
+- **Encoding.** Fixed order (`copy.FIND`'s `KPI_*_LABEL`/`KPI_*_HELP` keys):
+  publications · SDG-tagged share · frontier top-quartile share · PP(top10%)
+  · international co-publications · industrial co-publications · star papers
+  · topics led. Six of the eight position their value against the index
+  ("index median {m} · higher than {pct} of institutions"); the publications
+  card's small line is the same measure on the fractional basis instead
+  (a companion figure, not an index position); star papers and topics led
+  read `index.parquet` directly (P5's own columns).
+- **Interaction.** None (a card is not a control).
+- **Empty state.** `n/a` (or `MISSING_KPI_MARK` for the two P5 cards) for
+  anything the data cannot support — never 0, never a hidden card (§1.6,
+  `palette.NA_MARK`).
 - **Export.** The same eight numbers are the seed's row in every CSV the page
   writes.
 
-> **Rejected alternative (tile form):** `st.metric` with its delta arrow, one
-> call per tile. Rejected twice over: it has no subline, so the baseline
-> sentence would have to move into a caption underneath the row and stop being
-> attached to its own number; and its delta arrow implies a change-over-time
-> read that none of these eight measures has (they are all one snapshot),
-> which is exactly the "does the form imply something the data doesn't"
-> failure the Studio rules flag.
-> **Rejected alternative (eighth tile):** re-promote one of the four items §2.12
-> relocates OUT of the coverage line (ERC-classified share, catch-all share,
-> SDG-tagged share is already tile #5, L2f-eligible count) back into tile #8.
-> Rejected because it would directly contradict the SAME ruling in the SAME
-> paragraph that just moved those items OUT for being over-weighted relative to
-> the other seven — a coverage share deserves caption weight, not tile weight,
-> whichever slot it sits in. Bonus-year publications is not a coverage
-> statement at all: it is a genuinely new fact (does this institution have any
-> 2025-indexed output yet) that pairs naturally with the two size tiles right
-> beside it, and it is exactly the column `lib/baselines.py`'s `KPI_COLUMNS`
-> (L31) already commits to — keeping it avoids a cross-stream mismatch between
-> what this spec asks for and what the baselines module computes.
-
-### 2.12 Coverage caption — RETIRED (L30)
-
-**R2 (user ruling item 3: "coverage line reads as leftovers").** The former
-single caption line under the tiles is REMOVED, not shrunk: its four items each
-move to the ONE place they are actually read, so a reader meets each number
-next to the panel it qualifies instead of in a pre-emptive list nobody has
-context for yet.
-
-| Former coverage item | New home |
-|---|---|
-| ERC-classified mass share | ERC panel caption (§2.20) |
-| Catch-all (811) share | Top-topics panel caption (§2.17) — it already counted the flagged rows from data there |
-| L2f-eligible subfield-cell count | The L2f tab's own intro line (Benchmark section, outside the profile — L29's "How to read the lenses" expander) |
-| SDG-tagged share | STAYS a KPI tile (§2.11, tile #5) — it was already tile-worthy, not a coverage leftover |
-
-- **Form.** No form of its own any more — this row exists only as the
-  relocation record above, kept in this document rather than silently deleting
-  the section number (the same "SUPERSEDED, not deleted" convention §2.10 uses
-  for the old §2.2 seed card).
-- **Encoding / Interaction / Empty state / Export.** N/A — see each item's new
-  home for its own rules; nothing about a relocated item's OWN behaviour
-  changes, only where on the page it is read.
-
-> **Rejected alternative:** keep the caption line but shorten it to the two
-> items that did not find another home. Rejected because a caption with two
-> items reads exactly like the four-item version it replaces — the actual
-> complaint (item 3) was the caption's POSITION and cognitive weight relative
-> to the tiles above it, not its item count, and a shorter version in the same
-> place would not have answered it.
+The single caption line once shown under an earlier tile design is gone: its
+items each moved to the place they are actually read instead of a
+pre-emptive list nobody had context for yet — ERC-classified mass share to
+the ERC panel caption (§2.20), catch-all (811) share to the top-topics panel
+caption (§2.17), and SDG-tagged share to a card (§2.11) above.
 
 ### 2.13 Subfield wordcloud
 
@@ -779,7 +705,7 @@ width instead of half of it each.
 > laid over four different hues is not comparable across hues — the reader cannot
 > tell a "strong" yellow from a "weak" green.
 
-> **Fix X3 (Refinement R1, inspection finding I-4).** A/B #4's own verdict
+> **Fix X3 (inspection finding I-4).** A/B #4's own verdict
 > (§5, "left text gutter, numbers right-aligned against the zero baseline")
 > held at 1280 px but broke at 390 px: the gutter number was a SEPARATE
 > annotation from the y-axis category label, so nothing kept the two apart at
@@ -1061,7 +987,7 @@ classified publications at all).**
   subfield, topic, ERC panel or SDG label — with its contribution share of the
   score. The pre-R1 "Top field" column only ever made sense for L1.
 - **Interaction.** Unchanged (sort, tail search, CSV download; the add-to-shortlist
-  button described here is retired, §2.9).
+  button described here is retired).
 - **Empty state.** Unchanged (§1.6), except that the emptied-list message now
   names countries by NAME.
 - **Export.** CSV gains `country`, `total_frac_2020_2024` and the lens-specific
@@ -1078,7 +1004,7 @@ classified publications at all).**
 
 ## 2 ter. View specs — the Compare view (earlier spec, superseded by §11 below)
 
-**Produced by:**, 2026-08-29, in wave 1 — before `pages/2_⚖️_Compare.py`
+**Produced by:** the design team, in an early wave — before `pages/2_⚖️_Compare.py`
 existed, against the `` §4 column
 contracts. Same row format as §2 and
 §2 bis: form / encoding / interaction / empty state / export, and one NAMED
@@ -1285,8 +1211,8 @@ forbids relying on.
 > quadrants plus not-scored as segments. It is the more obvious picture and it is
 > refused for one reason: the segments would need a second identity family
 > (quadrant hues) inside a Compare chart, and makes the institution the only
-> identity. The coverage strip (§3.9) is the single exemption, and only because
-> its segments are grey STATES rather than identities.
+> identity. An earlier coverage-strip chart was the one exemption on the same
+> reasoning (grey STATES rather than identities), but that chart is retired.
 
 > **Rejected alternative (plane):** the overlay as the default. Measured in
 > A/B #6: 90.7 % of marks have their centre covered by a mark of a DIFFERENT
@@ -1356,47 +1282,6 @@ forbids relying on.
 > subfield lines in one panel with no identity family free to colour them
 > institution is taken.
 
-### 3.9 Coverage strip
-
-- **Form.** `fig_coverage_strip` — one stacked, exhaustive 100 % bar per
-  institution. **This is the only stacked bar in the app**, and the exemption is
-  earned by arithmetic, not by preference: the six `mass_*` columns sum to
-  `total_frac` EXACTLY for all 7,557 institutions (A9), so the segments really
-  are the parts of one whole. Everywhere else in Compare the categories are not a
-  partition and a stack would assert a total that does not exist.
-- **Encoding.** SIX segments, not five (A9 corrects rev 0, which dropped
-  `mass_unusable`): classified-eligible, title-only, language-uncertain,
-  untranslated, unusable, retracted. The classified-eligible segment takes the
-  institution's OWN colour; the five grey states take the ordinal ramp
-  `palette.GREY_STATE_COLORS`, light → dark by distance from usable text. That
-  split is what keeps the coexistence rule intact — the only identity in the
-  figure is still the institution — and it gives the strip the
-  highlight-plus-mute reading the Studio colour formula asks for. Segments are
-  separated by the 2 px SURFACE gap the dataviz spacers require, never by a
-  stroke.
-- **Interaction.** Hover per segment: institution, state in words, share of
-  `total_frac`.
-- **Empty state.** A state with zero mass renders as a zero-width segment and
-  keeps its hover — the absence is a fact about the institution, and the six
-  always sum to one.
-- **Export.** The six shares plus their absolute masses and the denominator.
-
-> **Rejected alternative:** six dot rows (one per state, a dot per institution),
-> which is the grammar every other row of this section uses. Rejected precisely
-> because it would hide the property that makes this view worth having: the
-> reader's question is "how much of this institution's output could the
-> classifiers actually read", which is a part-to-whole read, and dots on six
-> separate rows never add up to a whole on screen.
-
-### 3.10 Shared-topics header — RETIRED
-
-The two-card pair header and shared-topics table this section once
-described (a table of the topics both institutions hold, sorted by
-`min_share`) is retired along with the standalone page it fed; kept as the
-relocation record rather than silently deleting the section number (the
-same "SUPERSEDED, not deleted" convention §2.10 uses for the old §2.2 seed
-card). §3.13 (Link-outs, below) still describes the shared-topics tables'
-own external-link row, which survives independently of this header.
 
 ### 3.11 Gaps tables (A → B and B → A)
 
@@ -1408,7 +1293,7 @@ own external-link row, which survives independently of this header.
   column order — a directional table read the wrong way round is a wrong answer,
   not a confusing one.
 - **Interaction.** Sort by B's share (default) or by subfield; the frontier
-  filter is shared with §3.10.
+  filter is the same taxonomy that fed the retired shared-topics header.
 - **Empty state.** No gap rows → a stated sentence naming the pair and the
   subfield scope; the honest reading is "nothing B does inside A's strengths
   that A does not already do", which is a finding.
@@ -2057,7 +1942,7 @@ row in §2 of this document.
 
 ---
 
-## 5. A/B verdicts — refinement R1
+## 5. A/B verdicts — the profile section forms
 
 Two further A/Bs were run on REAL deployed data (Universite de Strasbourg
 `I68947357`, resolved by `display_name` in `data/index.parquet`, and University
@@ -2083,7 +1968,7 @@ criteria, commands and screenshots: `design-system/ab/AB_VERDICT.md` (R1 section
   label on a bar encoding that very number (the yearly global breakdown) keeps
   its end label.
 
-  **Fix X3 note (Refinement R1 re-gate, inspection finding I-4):** the verdict
+  **Fix X3 note (re-gated on inspection finding I-4):** the verdict
   above still stands, but the ORIGINAL implementation of it (a separate
   `add_annotation` per row, independent of the y tick label) collided with the
   category label at 390 px — see §2.15's fix note for the mechanism, the
@@ -2213,7 +2098,7 @@ plan assumed.
 
 A/B #5 governs the **mirror** family (§3.2–§3.5): a categorical axis, one value
 per institution per category. It says nothing about a part-to-whole read, which
-is why the coverage strip (§3.9) is a stacked bar and not dot rows. A/B #6
+is why a part-to-whole read earns a stacked bar rather than dot rows. A/B #6
 governs a **topic-cloud** plane; it does not reopen §2.18's single-institution
 frontier scatter, which has one series and no occlusion problem.
 

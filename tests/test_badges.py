@@ -79,11 +79,6 @@ def test_badges_for_single_badge_ok():
     assert badges.badges_for(umbrella_row, flags, {}) == [copy.UMBRELLA_BADGE_LABEL]
 
 
-def test_catchall_tooltip_na_and_value():
-    assert badges.catchall_tooltip(None).endswith("n/a.")
-    assert "5.0%" in badges.catchall_tooltip(0.05)
-
-
 # --------------------------------------------------------------- exports ----
 
 def _synthetic_rows():
@@ -98,24 +93,6 @@ def _synthetic_rows():
          "type": "facility", "total_full_2020_2024": 300.0, "lens_score": 0.7,
          "shape_top3_fields": []},
     ]
-
-
-def test_ranking_csv_roundtrip_preserves_rows_and_ranks():
-    rows = _synthetic_rows()
-    raw = exports.ranking_csv(rows, seed_id="I0", lens="L1", tree="bestfit", basis="frac",
-                              snapshot="august_2026", filters_label="none")
-    back = pd.read_csv(io.BytesIO(raw))
-    assert len(back) == len(rows)
-    assert back["rank"].tolist() == [r["rank"] for r in rows]  # gaps preserved (1, 1, 3)
-    assert set(back["institution_id"]) == {"I1", "I2", "I3"}
-    assert (back["seed_id"] == "I0").all()
-
-
-def test_ranking_filename_pattern():
-    assert exports.ranking_filename("I40413290", "L1", "bestfit", "frac", False) == \
-        "benchup_I40413290_L1_bestfit_frac.csv"
-    assert exports.ranking_filename("I40413290", "L1", "bestfit", "frac", True) == \
-        "benchup_I40413290_L1_bestfit_frac_filtered.csv"
 
 
 # ------------------------------------------------------------ copy.py -------

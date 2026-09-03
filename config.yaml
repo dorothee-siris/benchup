@@ -4,7 +4,6 @@
 
 lenses:
   default: [L0, L1, L3, F1, L2f, L4, L5, L6]  # the 8 lenses shown on Find by default
-  optional: [C1, L7]                          # off by default: C1 is a narrower repeat of L1, L7 tends to run noisy
 
 depth:
   default: 50  # every ranked list shows 50 candidates; the tail is searchable and downloadable
@@ -27,14 +26,9 @@ scale_guard:
 umbrella_badge:
   types: [government, funder, facility, nonprofit]  # institution types eligible for the umbrella-organisation badge
   multiplier: 5                                      # an institution over 5x its country/type median size gets the badge
-  reference: country_type_median                     # the badge threshold is relative to peers of the same country and type
   basis_column: type  # the badge reads the SIRIS-corrected type -- never the raw OpenAlex type
 
 family_filter_threshold: 0.7  # opt-in post-filter that hides candidates likely to be the seed's own sister institution
-
-type_overrides:
-  file: data/overrides/type_overrides.csv                     # the locked list of institutions whose OpenAlex type was corrected
-  ui_badge: "type corrected by SIRIS (was: {type_openalex})"  # the badge text shown on a corrected institution
 
 window: [2020, 2024]  # the 5-year analytical window every impact and shape indicator is computed over
 bonus_year: 2025       # the extra year shown for trend/volume only, excluded from every impact indicator
@@ -43,16 +37,11 @@ perimeter_countries: [at, be, bg, hr, cy, cz, dk, ee, fi, fr, de, gr, hu, ie, it
 
 snapshot: august_2026  # the OpenAlex harvest vintage every page reads
 
-g6_floor: 30  # the minimum fractional mass a subfield cell needs before it carries a specialisation-index value
-
 l2f_floor:
   value: 30            # the minimum paper count a subfield needs before it counts toward the shared-specialisations lens
   basis: paper_count   # this floor is counted in papers, not fractional mass -- a deliberate, disclosed choice
 
-erc_tau: 0.5  # the classification-confidence threshold an ERC panel probability must clear to count
-
 corpus_types: [article, review, book, book-chapter, letter]  # document types the underlying harvest includes
 openalex_filters: {has_doi: true}  # the harvest only keeps works that carry a DOI
 
-compare_cap: 3  # the hard ceiling on institutions a shareable Compare link can carry
 compare_slots: 2  # Compare itself shows two independent search slots, the same matcher Find uses

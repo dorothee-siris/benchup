@@ -35,7 +35,7 @@ NAMES = {IID: "Institution X"}
 
 
 def _slots():
-    return P.institution_slots({IID: 1})
+    return {IID: 0}  # sole institution -> rank/slot 0
 
 
 def _ink() -> str:

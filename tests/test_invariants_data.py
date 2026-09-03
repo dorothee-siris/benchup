@@ -97,7 +97,7 @@ def test_sdg_mass_any_le_field_mass_full_table():
 # ============================================================================
 
 def test_ordering_n_top10_le_n_covered_le_vol_full_tables():
-    for name in ("collab_pair_fields.parquet", "collab_pair_topics.parquet", "collab_pairs.parquet"):
+    for name in ("collab_pair_fields.parquet", "collab_pairs.parquet"):
         cols = ["n_top10", "n_covered"] + (["core_total"] if name == "collab_pairs.parquet" else ["vol"])
         df = pd.read_parquet(DATA_DIR / name, columns=cols)
         vol_col = "core_total" if name == "collab_pairs.parquet" else "vol"
@@ -136,13 +136,13 @@ def test_fwci_stratum_citation_weighted_mean_equals_one():
 
 def test_fwci_median_nonnegative_and_null_rate_sane():
     """`fwci_median` (a MEDIAN of nonnegative per-work FWCI ratios) can never
-    be negative, on all 3 collab tables. Null-rate check is DELIBERATELY
+    be negative, on both collab tables. Null-rate check is DELIBERATELY
     approximate: 'null when < 3 covered works' means covered-by-a-valid-FWCI-
     value, a DIFFERENT concept from the PP-threshold `n_covered` column
     tested elsewhere in this suite -- so this checks only that the null rate
     among clearly-qualifying rows (n_covered >= 10, safely above the <3
     floor) is small, not that it is exactly zero."""
-    for name in ("collab_pairs.parquet", "collab_pair_fields.parquet", "collab_pair_topics.parquet"):
+    for name in ("collab_pairs.parquet", "collab_pair_fields.parquet"):
         vol_col = "core_total" if name == "collab_pairs.parquet" else "vol"
         df = pd.read_parquet(DATA_DIR / name, columns=["n_covered", "fwci_median", vol_col])
         neg = df[df["fwci_median"].notna() & (df["fwci_median"] < -1e-9)]

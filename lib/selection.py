@@ -48,65 +48,6 @@ def parse_ids(value, known_ids) -> tuple[list[str], list[str]]:
     return kept, dropped
 
 
-def parse_query(params, known_ids) -> dict:
-    """`params` is anything with a `.get` (a plain dict in tests, or
-    `st.query_params` itself) that the CALLER has already obtained -- this
-    function touches no Streamlit API, only `read_query` below does.
-
-    Returns `{"compare": [.], "dropped": [.]}` -- `?compare=` is the ONE
-    deep-link param this app reads now (`?pair=` retired with the page that
-    used it)."""
-    compare_kept, compare_dropped = parse_ids(params.get("compare"), known_ids)
-    return {"compare": compare_kept, "dropped": compare_dropped}
-
-
-def read_query(known_ids) -> dict:
-    """The ONE Streamlit touchpoint in this module: reads `st.query_params`
-    live and hands it straight to `parse_query`. Local import so every other
-    function in this file stays free of a Streamlit dependency."""
-    import streamlit as st
-
-    return parse_query(st.query_params, known_ids)
-
-
-def compare_ids(shortlist, query, known_ids, cap: int) -> list[str]:
-    """The Compare id set on first load, from two candidate sources: `query`
-    wins (a shared link should show what it names), `shortlist` fills any
-    remaining slots; both are re-validated against `known_ids` and
-    de-duplicated across each other, in QUERY-then-`shortlist` order, capped
-    at `cap`. Each argument accepts either shape `parse_ids` accepts (comma
-    string or list)."""
-    q_kept, _ = parse_ids(query, known_ids)
-    s_kept, _ = parse_ids(shortlist, known_ids)
-    seen: set[str] = set()
-    out: list[str] = []
-    for iid in (*q_kept, *s_kept):
-        if iid in seen:
-            continue
-        seen.add(iid)
-        out.append(iid)
-        if len(out) >= cap:
-            break
-    return out
-
-
-def compare_ids_capped(shortlist, query, known_ids, cap: int) -> tuple[list[str], int]:
-    """SAME query-then-`shortlist`, deduplicated resolution as `compare_ids`,
-    but ALSO reports how many additional deduplicated, known ids existed
-    beyond `cap`. Returns `(ids, n_truncated)`: `ids` is capped at `cap`;
-    `n_truncated` is 0 when nothing was cut."""
-    q_kept, _ = parse_ids(query, known_ids)
-    s_kept, _ = parse_ids(shortlist, known_ids)
-    seen: set[str] = set()
-    combined: list[str] = []
-    for iid in (*q_kept, *s_kept):
-        if iid in seen:
-            continue
-        seen.add(iid)
-        combined.append(iid)
-    return combined[:cap], max(0, len(combined) - cap)
-
-
 def deeplink(kind: str, ids) -> str:
     """The query-string half of a shareable link: `deeplink("compare", [I1,
     I2])` -> `"?compare=I1,I2"`. The exact shape `parse_query` (via

@@ -2,9 +2,9 @@
 
 Covers: contract_check.check() clean (every declared file/column/dtype/key present, no
 undeclared drop); fields/subfields shares sum to 1; erc.share sums <= 1; sdg.share per-row
-bounds; the type-override set identity (count read from the CSV, not typed -- 34 as of the
-R2-T L28 scan, 2026-08-29); topics_dim exclusion reason-code coverage;
-impact_cells and index PP confidence-interval ordering; umbrella_supplement.csv shape.
+bounds; topics_dim exclusion reason-code coverage; index PP confidence-interval ordering;
+umbrella_supplement.csv shape. The type-override identity check moved with
+overrides/type_overrides.csv to the private pipeline tree, which the app no longer reads.
 """
 from __future__ import annotations
 
@@ -78,26 +78,6 @@ def test_sdg_share_bounds_per_row() -> None:
     print(f"sdg.share sum per institution (multi-label, NOT bounded by 1): max={per_inst_sum.max():.4f}")
 
 
-def test_type_override_id_set() -> None:
-    """Identity invariant: the set (and count) of index rows where type != type_openalex
-    must equal exactly the locked rows of overrides/type_overrides.csv -- read from the CSV
-    itself (never a typed literal count, L10 house rule), so this test stays correct as the
-    override file grows (16 rows at gate rev 6; 34 rows after the R2-T L28 scan, 2026-08-29)."""
-    index = _read("index.parquet")
-    overrides = _read("overrides/type_overrides.csv")
-    type_s = index["type"].astype(str)
-    type_openalex_s = index["type_openalex"].astype(str)
-    diff_ids = set(index.loc[type_s != type_openalex_s, "institution_id"])
-    locked = overrides.loc[overrides["locked"] == True]  # noqa: E712
-    locked_ids = set(locked["institution_id"])
-    print(f"type-patched institution_ids: {len(diff_ids)} (index) vs {len(locked_ids)} (overrides, locked=True)")
-    assert diff_ids == locked_ids
-    assert len(diff_ids) == len(locked)  # no duplicate institution_id among locked rows
-    assert "I4210153845" in diff_ids
-    funder_row = overrides.loc[overrides["institution_id"] == "I4210153845"].iloc[0]
-    assert funder_row["type_override"] == "funder"
-
-
 def test_topics_dim_exclusion_reason_codes() -> None:
     td = _read("topics_dim.parquet")
     excluded = td[td["is_excluded"] == True]  # noqa: E712
@@ -105,14 +85,6 @@ def test_topics_dim_exclusion_reason_codes() -> None:
     print(f"topics_dim: {len(excluded)} excluded (811-list), {len(non_excluded)} not excluded")
     assert excluded["exclusion_reason_code"].notna().all()
     assert non_excluded["exclusion_reason_code"].isna().all()
-
-
-def test_impact_cells_ci_ordering() -> None:
-    ic = _read("impact_cells.parquet")
-    ok_low = (ic["pp_ci_low"] <= ic["pp_top10_frac"] + 1e-6).all()
-    ok_high = (ic["pp_top10_frac"] <= ic["pp_ci_high"] + 1e-6).all()
-    print(f"impact_cells CI ordering over {len(ic)} rows: low<=pp {ok_low}, pp<=high {ok_high}")
-    assert ok_low and ok_high
 
 
 def test_index_ci_ordering() -> None:
@@ -185,7 +157,7 @@ def test_doctype_by_year_sum_matches_index_by_year() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Manager addition (2026-08-29) -- after an "ERC-classified share
+# After an "ERC-classified share
 # 109 %" defect: every coverage ratio the profile shows is
 # a ratio of two INDEX columns, so its 0..1 bound is a Class-1 invariant here,
 # not a UI courtesy. A share above 1 is a defect (mixed time windows or

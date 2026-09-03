@@ -9,7 +9,7 @@ Implements the A/B verdict (`design-system/ab/AB_VERDICT.md`,
   - A/B #2 winner: a k-of-n table with a hit-lens-chip text column, never a
     full rank matrix, for the concordance overview.
 
-Refinement R1: the
+the
 badge column is gone (badges now live on the seed profile header only
 L7/L17); every table carries two size columns (full, fractional); the
 evidence cell is the lens-specific text the engine computes
@@ -35,7 +35,6 @@ from lib.engine import RANK_VISIBLE_MAX
 from lib.palette import NA_MARK
 
 WINDOW_START, WINDOW_END = CFG["window"]
-NOT_IN_TOPN = "--"  # A/B #2 winner's matrix cell language is unused here (k-count
                      # table won); kept only as the "candidate outside a lens's
                      # visible rank" mark inside the rank_under text below.
 
@@ -49,7 +48,7 @@ NAME_LINK_MODE = "fragment"
 WORKS_LINK_FALLBACK_LABEL = "See works ↗"
 
 # The OpenAlex works deep link carries the harvest's own filters (L23) and lives
-# in ONE place, lib/links.py (R-B). Manager edit 2026-08-29: the R-F2 import-time
+# in ONE place, lib/links.py. The import-time
 # fallback was dropped once lib/links.py landed (progress/R1_F2.md NEEDS_CHANGE).
 from lib.links import works_url as _works_link
 
@@ -60,7 +59,7 @@ from lib.links import works_url as _works_link
 # printf spec applied directly to the raw 0-1 value does not fix this: it has
 # no scaling of its own, so "%.0f%%" on 0.76 prints "1%" (the value rounded to
 # the nearest whole FRACTION, not a percentage) -- the trap the retired
-# "manager fix 2026-08-29" comment on the old `score` config named correctly
+# an earlier comment on the old `score` config named correctly
 # but then still shipped the banned keyword as its workaround. The fix needs
 # BOTH halves in the right place: the caller's own dataframe column carries the
 # value already multiplied by 100 (`_pct100` below feeds `format_rows`'s own
@@ -167,13 +166,6 @@ def format_rows(rows: list[dict], *, lens: str, depth: int) -> pd.DataFrame:
     return df
 
 
-def depth_caption(shown: int, total_ranked: int, depth: int, n_tied_extra: int = 0) -> str:
-    """VIZ_SPEC.md S2.6, parametric ( -- no typed digit)."""
-    tied = f", +{n_tied_extra} tied" if n_tied_extra else ""
-    return (f"Showing the top {shown} of {total_ranked} ranked institutions "
-            f"(depth {depth}{tied}) -- search the tail below or download the full ranking.")
-
-
 def render_ranked_table(df: pd.DataFrame, *, key: str, score_form: str = "progress"):
     """`st.dataframe` per the A/B #1 winner: ProgressColumn score, LinkColumn
     institution, hidden id/country_code, NO badge column (R1/L22). Returns
@@ -210,7 +202,7 @@ def render_ranked_table(df: pd.DataFrame, *, key: str, score_form: str = "progre
     event = st.dataframe(
         df,
         hide_index=True,
-        width="stretch",  # manager fix 2026-08-29: use_container_width deprecated in 1.61 (warning flood)
+        width="stretch",  # use_container_width deprecated in 1.61 (warning flood)
         on_select="rerun",
         selection_mode="multi-row",
         key=key,
@@ -268,7 +260,7 @@ def format_concordance(rows: list[dict], *, lenses: list[str], N: int) -> pd.Dat
 
 def concordance_caption(n_defined: int, N: int, n_rows: int) -> str:
     """Parametric: states N and n per VIZ_SPEC.md S1.6/S2.3."""
-    # manager fix 2026-08-29: the engine's concordance returns the
+    # the engine's concordance returns the
     # tie-inclusive top-50 INCLUDING k=1 rows, so the caption must not assert a k floor.
     return (f"{n_rows} candidates, ranked by how many of the {n_defined} lenses defined "
             f"for this seed place them in their top-{N} (the k column).")
@@ -293,7 +285,7 @@ def render_concordance_table(df: pd.DataFrame, *, key: str):
     event = st.dataframe(
         df,
         hide_index=True,
-        width="stretch",  # manager fix 2026-08-29: use_container_width deprecated in 1.61 (warning flood)
+        width="stretch",  # use_container_width deprecated in 1.61 (warning flood)
         on_select="rerun",
         selection_mode="multi-row",
         key=key,
