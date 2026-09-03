@@ -1,0 +1,262 @@
+{
+ "created": "2026-08-28",
+ "rule": "education, in index, total_full>=1000, not in panel v1 (14) + 2 small-band HEIs (759/938 works) added to reach 16 (manager decision E2)",
+ "seeds": [
+  {
+   "institution_id": "I46176106",
+   "display_name": "Universidad de Burgos",
+   "target_key": "universidad de burgos",
+   "country_code": "ES",
+   "type": "education",
+   "total_full_2020_2024": 3288.0,
+   "band": "1k-5k",
+   "strata": [
+    "comprehensive-mid-small"
+   ],
+   "n_gold": 8,
+   "n_silver": 0,
+   "weighted_denominator": 8.0,
+   "small_band_addition": false
+  },
+  {
+   "institution_id": "I9360294",
+   "display_name": "University of Bologna",
+   "target_key": "university of bologna",
+   "country_code": "IT",
+   "type": "education",
+   "total_full_2020_2024": 41693.0,
+   "band": ">=20k",
+   "strata": [
+    "comprehensive-large"
+   ],
+   "n_gold": 4,
+   "n_silver": 7,
+   "weighted_denominator": 7.5,
+   "small_band_addition": false
+  },
+  {
+   "institution_id": "I48430043",
+   "display_name": "INSA Lyon",
+   "target_key": "insa lyon",
+   "country_code": "FR",
+   "type": "education",
+   "total_full_2020_2024": 4189.0,
+   "band": "1k-5k",
+   "strata": [
+    "engineering-technical"
+   ],
+   "n_gold": 3,
+   "n_silver": 7,
+   "weighted_denominator": 6.5,
+   "small_band_addition": false
+  },
+  {
+   "institution_id": "I110026055",
+   "display_name": "Iscte – Instituto Universitário de Lisboa",
+   "target_key": "iscte instituto universitario de lisboa",
+   "country_code": "PT",
+   "type": "education",
+   "total_full_2020_2024": 4500.0,
+   "band": "1k-5k",
+   "strata": [
+    "ssh-broader-arts"
+   ],
+   "n_gold": 5,
+   "n_silver": 3,
+   "weighted_denominator": 6.5,
+   "small_band_addition": false
+  },
+  {
+   "institution_id": "I4210127572",
+   "display_name": "IMT Atlantique",
+   "target_key": "imt atlantique",
+   "country_code": "FR",
+   "type": "education",
+   "total_full_2020_2024": 2334.0,
+   "band": "1k-5k",
+   "strata": [
+    "engineering-technical"
+   ],
+   "n_gold": 2,
+   "n_silver": 8,
+   "weighted_denominator": 6.0,
+   "small_band_addition": false
+  },
+  {
+   "institution_id": "I63634437",
+   "display_name": "Universidad Autonoma de Madrid",
+   "target_key": "universidad autonoma de madrid",
+   "country_code": "ES",
+   "type": "education",
+   "total_full_2020_2024": 24990.0,
+   "band": ">=20k",
+   "strata": [
+    "comprehensive-large"
+   ],
+   "n_gold": 4,
+   "n_silver": 4,
+   "weighted_denominator": 6.0,
+   "small_band_addition": false
+  },
+  {
+   "institution_id": "I144889574",
+   "display_name": "Universite de Pau et des Pays de l'Adour",
+   "target_key": "universite de pau et des pays de l adour",
+   "country_code": "FR",
+   "type": "education",
+   "total_full_2020_2024": 3184.0,
+   "band": "1k-5k",
+   "strata": [
+    "comprehensive-mid-small"
+   ],
+   "n_gold": 3,
+   "n_silver": 4,
+   "weighted_denominator": 5.0,
+   "small_band_addition": false
+  },
+  {
+   "institution_id": "I12356871",
+   "display_name": "Telecom Paris",
+   "target_key": "telecom paris",
+   "country_code": "FR",
+   "type": "education",
+   "total_full_2020_2024": 1101.0,
+   "band": "1k-5k",
+   "strata": [
+    "engineering-technical"
+   ],
+   "n_gold": 3,
+   "n_silver": 2,
+   "weighted_denominator": 4.0,
+   "small_band_addition": false
+  },
+  {
+   "institution_id": "I182712176",
+   "display_name": "Montanuniversitat Leoben",
+   "target_key": "montanuniversitat leoben",
+   "country_code": "AT",
+   "type": "education",
+   "total_full_2020_2024": 3122.0,
+   "band": "1k-5k",
+   "strata": [
+    "engineering-technical"
+   ],
+   "n_gold": 2,
+   "n_silver": 2,
+   "weighted_denominator": 3.0,
+   "small_band_addition": false
+  },
+  {
+   "institution_id": "I16835326",
+   "display_name": "University of St Andrews",
+   "target_key": "university of st andrews",
+   "country_code": "GB",
+   "type": "education",
+   "total_full_2020_2024": 10364.0,
+   "band": "5k-20k",
+   "strata": [
+    "comprehensive-large"
+   ],
+   "n_gold": 0,
+   "n_silver": 6,
+   "weighted_denominator": 3.0,
+   "small_band_addition": false
+  },
+  {
+   "institution_id": "I116152951",
+   "display_name": "Latvia University of Life Sciences and Technologies",
+   "target_key": "latvia university of life sciences and technologies",
+   "country_code": "LV",
+   "type": "education",
+   "total_full_2020_2024": 1098.0,
+   "band": "1k-5k",
+   "strata": [
+    "small-regional-applied-innovative-hei"
+   ],
+   "n_gold": 1,
+   "n_silver": 3,
+   "weighted_denominator": 2.5,
+   "small_band_addition": false
+  },
+  {
+   "institution_id": "I200284239",
+   "display_name": "Universidade de Santiago de Compostela",
+   "target_key": "universidade de santiago de compostela",
+   "country_code": "ES",
+   "type": "education",
+   "total_full_2020_2024": 15084.0,
+   "band": "5k-20k",
+   "strata": [
+    "comprehensive-large"
+   ],
+   "n_gold": 0,
+   "n_silver": 4,
+   "weighted_denominator": 2.0,
+   "small_band_addition": false
+  },
+  {
+   "institution_id": "I88467170",
+   "display_name": "Université Évry Paris-Saclay",
+   "target_key": "universite evry paris saclay",
+   "country_code": "FR",
+   "type": "education",
+   "total_full_2020_2024": 1158.0,
+   "band": "1k-5k",
+   "strata": [
+    "comprehensive-mid-small"
+   ],
+   "n_gold": 0,
+   "n_silver": 4,
+   "weighted_denominator": 2.0,
+   "small_band_addition": false
+  },
+  {
+   "institution_id": "I20431382",
+   "display_name": "University of Erfurt",
+   "target_key": "university of erfurt",
+   "country_code": "DE",
+   "type": "education",
+   "total_full_2020_2024": 1895.0,
+   "band": "1k-5k",
+   "strata": [
+    "ssh-broader-arts"
+   ],
+   "n_gold": 0,
+   "n_silver": 4,
+   "weighted_denominator": 2.0,
+   "small_band_addition": false
+  },
+  {
+   "institution_id": "I4210119063",
+   "display_name": "Universidade Autónoma de Lisboa Luís de Camões",
+   "target_key": "universidade autonoma de lisboa luis de camoes",
+   "country_code": "PT",
+   "type": "education",
+   "total_full_2020_2024": 759.0,
+   "band": "<1k",
+   "strata": [
+    "small-regional-applied-innovative-hei"
+   ],
+   "n_gold": 4,
+   "n_silver": 5,
+   "weighted_denominator": 6.5,
+   "small_band_addition": true
+  },
+  {
+   "institution_id": "I5085271",
+   "display_name": "Hanken School of Economics",
+   "target_key": "hanken school of economics",
+   "country_code": "FI",
+   "type": "education",
+   "total_full_2020_2024": 938.0,
+   "band": "<1k",
+   "strata": [
+    "ssh-economics-business"
+   ],
+   "n_gold": 0,
+   "n_silver": 4,
+   "weighted_denominator": 2.0,
+   "small_band_addition": true
+  }
+ ]
+}

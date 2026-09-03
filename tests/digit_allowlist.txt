@@ -1,0 +1,49 @@
+
+# BenchUp digit-ban allowlist.
+# One token per line; comment lines start with #. tests/test_narrative.py
+# strips every token below (and every `{...}` placeholder) from a scoped
+# string before checking for a leftover digit character.
+# Kept <=18 non-comment lines ON PURPOSE (a growing allowlist is the
+# historical failure mode this file's own discipline guards against) -- do not
+# add a token here to make a real violation disappear; fix the string or
+# get the manager to re-scope the rule instead (test_narrative.py's own
+# test_allowlist_has_required_tokens_and_stays_small enforces the cap).
+# The cap was raised from 15 to 18 for exactly three tokens, L2/L8/L9: the
+# DISPLAY codes assigned once the eight default lenses are
+# renumbered L0..L7 in TAB order (the topic lens, internal id L3, lands on
+# tab position two -> display "L2", a token distinct from the pre-existing
+# "L2f") plus the two OPTIONAL lens tabs (C1 -> L8, L7 -> L9) -- the same
+# kind of stable lens IDENTIFIER the other eight L-codes already carry, not a
+# new category of exemption. The OLD internal codes (L0/L1/L2f/L3/F1/L4/L5/
+# L6/L7/C1) stay allowlisted too: they are still typed verbatim in the
+# LENS_NAMES/LENS_GLOSS/LENS_CAVEAT/LENS_UNDEFINED_
+# REASON sentences the Methods page reads.
+# "PP10_WD" takes a freed slot: a suffix-naming
+# ruling renders that identifier on axes, hovers and captions project-wide
+# (FWCI_EU carries no digit and needs no entry).
+# "EU27" is the ruled perimeter phrase ("the European baseline (EU27 plus
+# the United Kingdom, Switzerland, Norway and Iceland)") typed verbatim,
+# on first mention, on every page that names the term (Find's own PP10_WD
+# tooltip is one such site); "27" is the EU's own stable member-state count,
+# the same kind of fixed identifier as a lens code, not a data value.
+# The app's old numbered-generation product name was REMOVED from every
+# rendered string this same trim; no rendered string needs that token any
+# more, so it does not stay on the list "just in case."
+L0
+L1
+L2
+L2f
+L3
+L4
+L5
+L6
+L7
+L8
+L9
+F1
+C1
+top10
+PP(top10%)
+PP10_WD
+EU27
+SDG

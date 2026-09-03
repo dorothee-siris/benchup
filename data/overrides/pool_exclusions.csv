@@ -1,0 +1,4 @@
+institution_id,canonical_id,reason,source
+I4210092262,,"funder/regulator surfacing as performer (Romanian Ministry of Education; appeared in aspirational candidate pools; type=funder but not caught by the umbrella/type filter)",GATE_2BR ruling 2026-08-30
+I4210164678,I7923278,"duplicate institution record -- Shell (United Kingdom) vs Shell (Netherlands); secondary/smaller-volume id excluded, canonical id kept (221 vs 1135 total_full_2020_2024)",GATE_2BR ruling 2026-08-30
+I4210125590,I121345201,"duplicate institution record -- Institute for Systems Engineering and Computers (INESC) vs Instituto de Engenharia de Sistemas e Computadores Investigacao e Desenvolvimento (INESC-ID); secondary/smaller-volume id excluded, canonical id kept (1057 vs 2365 total_full_2020_2024)",GATE_2BR ruling 2026-08-30

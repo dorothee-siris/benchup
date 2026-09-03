@@ -1,0 +1,1368 @@
+BenchUp — palette validation log
+Stream D0, 2026-08-29. Validator: dataviz skill scripts/validate_palette.js.
+House rule (SIRIS CLAUDE.md): --mode light ONLY, dark-mode pass skipped deliberately.
+Two runs. Run 1 is the one that SHIPS (lib/palette.py TYPE_COLORS + FOCAL).
+Run 2 documents, by design, why COMPARISON/NEUTRAL/INK are excluded from the
+categorical set (same finding class as Lorraine helpers.py hitting #333333 as
+chroma-0 text ink — see RULES.md §4 validator edit 2026-08-15).
+
+================================================================================
+RUN 1 (SHIPS) — institution-type identity set: FOCAL + the 4 non-education
+type-identity hues (education is deliberately uncoloured — see lib/palette.py
+TYPE_COLORS docstring for the one-line justification).
+
+$ node scripts/validate_palette.js "#0072B2,#D55E00,#009E73,#CC79A7,#6A3D9A" --mode light
+
+Palette (light, surface #fcfcfb, categorical): 5 slots
+  [PASS] Lightness band         all 5 inside L 0.43-0.77
+  [PASS] Chroma floor           all 5 >= 0.1
+  [WARN] CVD separation         worst adjacent #CC79A7<->#009E73 dE 7.6 (deutan) . tritan 23.5
+  [PASS] Normal-vision floor    worst adjacent #6A3D9A<->#CC79A7 dE 24.1 (normal)
+  [WARN] Contrast vs surface    below 3:1 - relief required (visible labels or table view): [["#CC79A7",2.98]]
+
+  -> ALL CHECKS PASS  (CVD in the 6-8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+Exit code: 0
+
+Disposition of the two WARN lines (both carried as BINDING rules, not dismissed):
+  - CVD separation WARN (#CC79A7<->#009E73, deutan dE 7.6, below the 8.0 comfortable
+    floor): legal only with secondary encoding. lib/badges.py (Stream F) never renders
+    a type badge as a bare colour fill — text + glyph always accompany it (DESIGN_TOKENS.md
+    badge grammar). Assignment order in TYPE_COLORS also keeps #009E73 and #CC79A7
+    non-adjacent per RULES.md §4's explicit instruction, so the two rarely sit side by
+    side in a legend or chip row in the first place.
+  - Contrast-vs-surface WARN (#CC79A7 = 2.98:1 on white, "binding relief"): #CC79A7
+    (government+funder) never ships as a bare fill/dot without its text label —
+    identical relief rule to Lorraine VIZ_SPEC.md §1.1's Social Sciences slot, same hex.
+
+================================================================================
+RUN 2 (documents an exclusion, expected FAIL) — COMPARISON grey (#8C9196),
+NEUTRAL background (#E6E8EB) and text INK (#333333), run together to confirm
+none of the three qualifies as a categorical identity colour. This is BY DESIGN:
+RULES.md §4 calls #8C9196/#E6E8EB "neutral, not an identity" and amends #333333
+as "TEXT ONLY... fails the palette validator as a series colour" — this run
+reproduces that finding for BenchUp's exact hexes before they are locked into
+lib/palette.py as FOCAL/COMPARISON/NEUTRAL/INK (never run through the categorical
+CVD check; COMPARISON and INK are checked for WCAG text/UI contrast only, which
+both already carry an established precedent in Lorraine's shipped app at the same
+hex values).
+
+$ node scripts/validate_palette.js "#8C9196,#E6E8EB,#333333" --mode light
+
+Palette (light, surface #fcfcfb, categorical): 3 slots
+  [FAIL] Lightness band         outside band: [["#E6E8EB",0.93],["#333333",0.321]]
+  [FAIL] Chroma floor           below floor (reads gray): [["#8C9196",0.009],["#E6E8EB",0.005],["#333333",0]]
+  [PASS] CVD separation         worst adjacent #E6E8EB<->#8C9196 dE 27.5 (protan) . tritan 27.7
+  [PASS] Normal-vision floor    worst adjacent #E6E8EB<->#8C9196 dE 27.6 (normal)
+  [WARN] Contrast vs surface    below 3:1 - relief required (visible labels or table view): [["#E6E8EB",1.2]]
+
+  -> FAILED - fix the marked checks  (CVD in the 6-8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+Exit code: 1
+
+Disposition: EXPECTED and CORRECT. #8C9196/#E6E8EB/#333333 are never assigned to
+lib/palette.py's TYPE_COLORS (the only categorical set in the app) — they are
+FOCAL's comparison grey, the page/table neutral background, and body text ink
+respectively. Their WCAG contrast is verified against their actual usage instead:
+  - INK #333333 on white background: 12.6:1 (well above the 4.5:1 body-text floor;
+    ui-ux-pro-max ux-guidelines.csv "Color Contrast" cites the identical pair as its
+    own Do-example, "#333 on white (7:1)" — BenchUp's #333333 clears it by a wider
+    margin).
+  - COMPARISON #8C9196 is never used for text, only for bars/rows/reference marks
+    already carrying a text label (RULES.md §6 "a legend names the measure... for
+    colour, show endpoints").
+  - NEUTRAL #E6E8EB is a fill only (table zebra stripe, empty-state panel, disabled
+    control), never a text colour — the 1.2:1 contrast-vs-surface WARN above is
+    irrelevant to that usage (it is not a mark that needs to stand out from #fcfcfb).
+
+################################################################################
+# R1 additions (2026-08-29) -- the four IDENTITY FAMILIES and the chrome
+# tokens. Same rule as runs 1-2: `--mode
+# light` ONLY (SIRIS house rule; the dark pass is skipped deliberately, not
+# forgotten). Every R1 run adds `--surface "#FFFFFF"` because that is the
+# surface the app actually paints (lib/palette.py SURFACE / Streamlit light
+# theme), not the skill's off-white default, and `--pairs all` because these
+# are bar panels and legends where any pair can end up adjacent after a sort
+# toggle -- `adjacent` would under-test them.
+#
+# Working directory for every command below:
+#   C:/Users/theod/AppData/Local/Temp/claude/bundled-skills/2.1.250/
+#     7d34fd5c5ca02f9d932830007398ac3e/dataviz
+# (the `dataviz` skill's own base directory; node v24.19.0)
+################################################################################
+
+================================================================================
+RUN 3 (DESCRIPTIVE, hexes are FIXED) -- OA_DOMAIN_COLORS, the four OpenAlex
+domains (BenchUp V2 / Lorraine DOMAIN_COLORS lineage; fields, subfields and
+topics inherit these). These hexes are inherited, not chosen: the FAIL and the
+WARNs below are carried as BINDING RELIEF RULES in lib/palette.py, never as a
+reason to change a value.
+
+$ node scripts/validate_palette.js "#0CA750,#FFCB3A,#8190FF,#F85C32" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 4 slots
+  [FAIL] Lightness band         outside band: [["#FFCB3A",0.865]]
+  [PASS] Chroma floor           all 4 >= 0.1
+  [WARN] CVD separation         worst all-pairs #F85C32↔#0CA750 ΔE 7.6 (deutan) · tritan 7.3
+  [PASS] Normal-vision floor    worst all-pairs #F85C32↔#FFCB3A ΔE 24.9 (normal)
+  [WARN] Contrast vs surface    below 3:1 — relief required (visible labels or table view): [["#FFCB3A",1.52],["#8190FF",2.85]]
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+Exit code: 0
+
+================================================================================
+RUN 4a -- ERC candidate SCREEN. Each candidate is paired with each of the
+four OA hues through the validator's own exported validate(); the table reports
+the WORST normal-vision and worst CVD distance against the OA quartet, and the
+WCAG contrast against the white surface. Requirement (R1 brief): normal-vision
+dE >= 12 from every OA hue. Script: design-system/ab/screen_erc.mjs (kept in the
+repo so the screen re-runs).
+
+$ node "design-system/ab/screen_erc.mjs" "#1F4E9C" "#00706B" "#A31A6E" "#8A5A00" "#B07A00" "#4B2E83" "#7D2E68" "#A10A4E" "#C24E00" "#3B4CA8" "#00566E" "#9B1B6B" "#5E5C00" "#8C4A1E" "#B5197C" "#1B4F91" "#8A2E62"
+#1F4E9C  vsOA minNormal=25.8 (Physical #8190FF)  minCVD=24.5 (Physical #8190FF)  contrast=7.99
+#00706B  vsOA minNormal=18.8 (Life #0CA750)  minCVD=11.6 (Health #F85C32)  contrast=5.95
+#A31A6E  vsOA minNormal=24.4 (Health #F85C32)  minCVD=17.6 (Life #0CA750)  contrast=7.17
+#8A5A00  vsOA minNormal=21.2 (Health #F85C32)  minCVD=10.0 (Health #F85C32)  contrast=5.93
+#B07A00  vsOA minNormal=14.6 (Health #F85C32)  minCVD=2.4 (Health #F85C32)  contrast=3.73
+#4B2E83  vsOA minNormal=31.2 (Physical #8190FF)  minCVD=29.8 (Health #F85C32)  contrast=10.41
+#7D2E68  vsOA minNormal=29.2 (Health #F85C32)  minCVD=23.1 (Life #0CA750)  contrast=8.53
+#A10A4E  vsOA minNormal=24.0 (Health #F85C32)  minCVD=17.5 (Life #0CA750)  contrast=7.87
+#C24E00  vsOA minNormal=11.4 (Health #F85C32)  minCVD=7.3 (Life #0CA750)  contrast=4.79
+#3B4CA8  vsOA minNormal=23.7 (Physical #8190FF)  minCVD=23.3 (Physical #8190FF)  contrast=7.54
+#00566E  vsOA minNormal=27.4 (Life #0CA750)  minCVD=19.5 (Health #F85C32)  contrast=8.22
+#9B1B6B  vsOA minNormal=25.7 (Health #F85C32)  minCVD=19.1 (Life #0CA750)  contrast=7.60
+#5E5C00  vsOA minNormal=21.2 (Life #0CA750)  minCVD=11.9 (Health #F85C32)  contrast=6.98
+#8C4A1E  vsOA minNormal=21.8 (Health #F85C32)  minCVD=14.1 (Health #F85C32)  contrast=6.75
+#B5197C  vsOA minNormal=22.3 (Health #F85C32)  minCVD=14.9 (Life #0CA750)  contrast=6.19
+#1B4F91  vsOA minNormal=26.8 (Physical #8190FF)  minCVD=24.3 (Health #F85C32)  contrast=8.16
+#8A2E62  vsOA minNormal=26.5 (Health #F85C32)  minCVD=20.3 (Life #0CA750)  contrast=7.93
+
+Exit code: 0
+
+================================================================================
+RUN 4 (SHIPS) -- ERC_DOMAIN_COLORS alone: PE #1F4E9C, LS #9B1B6B, SH #8A5A00.
+
+$ node scripts/validate_palette.js "#1F4E9C,#9B1B6B,#8A5A00" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 3 slots
+  [PASS] Lightness band         all 3 inside L 0.43–0.77
+  [PASS] Chroma floor           all 3 >= 0.1
+  [PASS] CVD separation         worst all-pairs #9B1B6B↔#1F4E9C ΔE 8.8 (protan) · tritan 9.3
+  [PASS] Normal-vision floor    worst all-pairs #8A5A00↔#9B1B6B ΔE 20.3 (normal)
+  [PASS] Contrast vs surface    all 3 >= 3:1
+
+  → ALL CHECKS PASS  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+Exit code: 0
+
+================================================================================
+RUN 4b -- the two runners-up, for the record (both rejected in lib/palette.py).
+
+$ node scripts/validate_palette.js "#1F4E9C,#A31A6E,#8A5A00" --mode light --surface "#FFFFFF" --pairs all; echo; node scripts/validate_palette.js "#1F4E9C,#B5197C,#8A5A00" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 3 slots
+  [PASS] Lightness band         all 3 inside L 0.43–0.77
+  [PASS] Chroma floor           all 3 >= 0.1
+  [PASS] CVD separation         worst all-pairs #A31A6E↔#1F4E9C ΔE 8.1 (protan) · tritan 9.6
+  [PASS] Normal-vision floor    worst all-pairs #8A5A00↔#A31A6E ΔE 20.5 (normal)
+  [PASS] Contrast vs surface    all 3 >= 3:1
+
+  → ALL CHECKS PASS  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+
+Palette (light, surface #FFFFFF, categorical): 3 slots
+  [PASS] Lightness band         all 3 inside L 0.43–0.77
+  [PASS] Chroma floor           all 3 >= 0.1
+  [FAIL] CVD separation         worst all-pairs #B5197C↔#1F4E9C ΔE 5.5 (protan) · tritan 11.1
+  [PASS] Normal-vision floor    worst all-pairs #8A5A00↔#B5197C ΔE 22.2 (normal)
+  [PASS] Contrast vs surface    all 3 >= 3:1
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+Exit code: 0
+
+================================================================================
+RUN 5 (SHIPS -- the co-occurrence the R1 brief requires) -- the four OA
+domain hues AND the three ERC hues, validated as ONE set of seven.
+
+$ node scripts/validate_palette.js "#0CA750,#FFCB3A,#8190FF,#F85C32,#1F4E9C,#9B1B6B,#8A5A00" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 7 slots
+  [FAIL] Lightness band         outside band: [["#FFCB3A",0.865]]
+  [PASS] Chroma floor           all 7 >= 0.1
+  [WARN] CVD separation         worst all-pairs #F85C32↔#0CA750 ΔE 7.6 (deutan) · tritan 7.3
+  [PASS] Normal-vision floor    worst all-pairs #8A5A00↔#9B1B6B ΔE 20.3 (normal)
+  [WARN] Contrast vs surface    below 3:1 — relief required (visible labels or table view): [["#FFCB3A",1.52],["#8190FF",2.85]]
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+Exit code: 0
+
+================================================================================
+RUN 6a (SHIPS) -- DOCTYPE_COLORS: Lorraine's four validated pass-6 hues plus
+the NEW hue for `letter` (#A10A4E, the slot Lorraine's own palette carried for
+conference papers; BenchUp's corpus has letters where Lorraine's had those).
+Rejected for `letter`, all measured: #C24E00 (CVD 4.0 vs #667900), #1F4E9C (CVD
+4.3 / normal 14.0 vs #7838B6, and it is the ERC PE hue), #8A5A00 (CVD 3.0 /
+normal 10.1 vs #667900 -- two ochres in one legend).
+
+$ node scripts/validate_palette.js "#22A2BD,#A55F8F,#667900,#7838B6,#A10A4E" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 5 slots
+  [PASS] Lightness band         all 5 inside L 0.43–0.77
+  [PASS] Chroma floor           all 5 >= 0.1
+  [PASS] CVD separation         worst all-pairs #A55F8F↔#22A2BD ΔE 8.2 (deutan) · tritan 9.4
+  [PASS] Normal-vision floor    worst all-pairs #A10A4E↔#A55F8F ΔE 15.0 (normal)
+  [PASS] Contrast vs surface    all 5 >= 3:1
+
+  → ALL CHECKS PASS  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+Exit code: 0
+
+================================================================================
+RUN 6b (DOCUMENTS A BOUNDED EXCLUSION, expected FAIL) -- the five document
+types AND the four OA domains as one nine-slot set. The two failing pairs both
+PRE-EXIST this stream and neither involves the new hue: #667900 (book) <->
+#0CA750 (Life) at normal-vision 13.1, and #667900 <-> #F85C32 (Health) at protan
+3.3. DISPOSITION: the COEXISTENCE RULE (lib/palette.py module docstring) -- the
+yearly-breakdown pair shows EITHER the domain series OR the document-type series,
+chosen by one segmented control, with the chip legend rebuilt on each swap, so
+the two families are never in one figure and never in one legend. Recorded rather
+than suppressed because the swap does put them in SEQUENTIAL memory; the fix if
+that ever becomes a real complaint is to re-hue `book`, not to give the doctype
+family a second chart-dependent palette.
+
+$ node scripts/validate_palette.js "#22A2BD,#A55F8F,#667900,#7838B6,#A10A4E,#0CA750,#FFCB3A,#8190FF,#F85C32" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 9 slots
+  [FAIL] Lightness band         outside band: [["#FFCB3A",0.865]]
+  [PASS] Chroma floor           all 9 >= 0.1
+  [FAIL] CVD separation         worst all-pairs #F85C32↔#667900 ΔE 3.3 (protan) · tritan 3.6
+  [FAIL] Normal-vision floor    worst all-pairs #0CA750↔#667900 ΔE 13.1 (normal) — below 15, hard to tell apart even with full color vision
+  [WARN] Contrast vs surface    below 3:1 — relief required (visible labels or table view): [["#FFCB3A",1.52],["#8190FF",2.85]]
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+Exit code: 0
+
+================================================================================
+RUN 7 (DESCRIPTIVE ONLY -- the UN fixes these) -- SDG_COLORS, all seventeen
+official goal colours. SOURCE: manager-supplied, matching the 2019 UN guidelines
+as commonly published. A live check of https://www.un.org/sustainabledevelopment/
+news/communications-material/ on 2026-08-29 CONFIRMS the governing document --
+'Sustainable Development Goals Guidelines for the use of the SDG logo including
+the colour wheel and 17 icons', the August 2019 edition (SDG_Guidelines_AUG_2019_
+Final.pdf), since revised September 2023 -- but that page publishes the
+downloadable assets, not the hex table, so the values are recorded with that
+provenance rather than quoted from the PDF.
+A FAIL here is NEVER a reason to change a hex. Relief is structural instead
+(VIZ_SPEC section 2.11): the SDG panel is a labelled bar chart in fixed goal
+order, every bar carrying its goal number and short label on the axis, so colour
+is brand recognition and identity is never colour-alone. Note in particular the
+worst pair, #FD9D24 (goal 11) <-> #DDA63A (goal 2) at normal-vision 5.3: the UN
+palette simply contains two near-identical ambers, and no chart of ours may rely
+on telling them apart by hue. Goal 17 (#19486A) is STORED BUT UNUSED -- the
+classifier does not cover it -- which is why the second run below, the sixteen
+the app actually draws, is the one that describes what a reader sees.
+
+$ node scripts/validate_palette.js "#E5243B,#DDA63A,#4C9F38,#C5192D,#FF3A21,#26BDE2,#FCC30B,#A21942,#FD6925,#DD1367,#FD9D24,#BF8B2E,#3F7E44,#0A97D9,#56C02B,#00689D,#19486A" --mode light --surface "#FFFFFF" --pairs all; echo; echo "--- the SIXTEEN actually drawn (goal 17 dropped), ADJACENT pairs = the fixed goal display order ---"; node scripts/validate_palette.js "#E5243B,#DDA63A,#4C9F38,#C5192D,#FF3A21,#26BDE2,#FCC30B,#A21942,#FD6925,#DD1367,#FD9D24,#BF8B2E,#3F7E44,#0A97D9,#56C02B,#00689D" --mode light --surface "#FFFFFF"
+
+Palette (light, surface #FFFFFF, categorical): 17 slots
+  [FAIL] Lightness band         outside band: [["#FCC30B",0.845],["#FD9D24",0.777],["#19486A",0.387]]
+  [FAIL] Chroma floor           below floor (reads gray): [["#19486A",0.077]]
+  [FAIL] CVD separation         worst all-pairs #FD9D24↔#DDA63A ΔE 1.3 (protan) · tritan 0.9
+  [FAIL] Normal-vision floor    worst all-pairs #FD9D24↔#DDA63A ΔE 5.3 (normal) — below 15, hard to tell apart even with full color vision
+  [WARN] Contrast vs surface    below 3:1 — relief required (visible labels or table view): [["#DDA63A",2.19],["#26BDE2",2.22],["#FCC30B",1.62],["#FD6925",2.91],["#FD9D24",2.09],["#56C02B",2.34]]
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+--- the SIXTEEN actually drawn (goal 17 dropped), ADJACENT pairs = the fixed goal display order ---
+
+Palette (light, surface #FFFFFF, categorical): 16 slots
+  [FAIL] Lightness band         outside band: [["#FCC30B",0.845],["#FD9D24",0.777]]
+  [PASS] Chroma floor           all 16 >= 0.1
+  [WARN] CVD separation         worst adjacent #4C9F38↔#DDA63A ΔE 7.3 (protan) · tritan 6.4
+  [FAIL] Normal-vision floor    worst adjacent #BF8B2E↔#FD9D24 ΔE 11.8 (normal) — below 15, hard to tell apart even with full color vision
+  [WARN] Contrast vs surface    below 3:1 — relief required (visible labels or table view): [["#DDA63A",2.19],["#26BDE2",2.22],["#FCC30B",1.62],["#FD6925",2.91],["#FD9D24",2.09],["#56C02B",2.34]]
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+Exit code: 0
+
+================================================================================
+RUN 8 (documents an exclusion, expected FAIL) -- the CHROME tokens
+INK_SECONDARY #5A5F66, BORDER #E3E6EA, GRID #D9DDE2, run together to confirm that
+none of the three qualifies as a categorical identity colour. Same class as run 2
+(COMPARISON / NEUTRAL / INK). DISPOSITION: EXPECTED AND CORRECT -- these are
+secondary text, a hairline and a gridline; they are checked against their real
+usage instead. INK_SECONDARY #5A5F66 on #FFFFFF measures 6.43:1 (see the contrast table
+printed after the run below), above the 4.5:1
+body-text floor, which is the only check that matters for the KPI-tile sublines,
+gutter numbers and chip labels it paints. BORDER and GRID are furniture that must
+RECEDE (dataviz: 'recessive grid/axes'), so a low contrast is the requirement,
+not the defect -- neither is ever a mark and neither ever carries text.
+
+$ node scripts/validate_palette.js "#5A5F66,#E3E6EA,#D9DDE2" --mode light --surface "#FFFFFF" --pairs all; echo; node -e "import(String.raw\`file:///C:/Users/theod/AppData/Local/Temp/claude/bundled-skills/2.1.250/7d34fd5c5ca02f9d932830007398ac3e/dataviz/scripts/validate_palette.js\`).then(m=>{for(const c of [\"#5A5F66\",\"#E3E6EA\",\"#D9DDE2\",\"#333333\",\"#8C9196\"]) console.log(c, \"contrast vs #FFFFFF =\", m.contrast(c,\"#FFFFFF\").toFixed(2)+\":1\")})"
+
+Palette (light, surface #FFFFFF, categorical): 3 slots
+  [FAIL] Lightness band         outside band: [["#E3E6EA",0.924],["#D9DDE2",0.896]]
+  [FAIL] Chroma floor           below floor (reads gray): [["#5A5F66",0.013],["#E3E6EA",0.006],["#D9DDE2",0.008]]
+  [FAIL] CVD separation         worst all-pairs #D9DDE2↔#E3E6EA ΔE 2.7 (protan) · tritan 2.8
+  [FAIL] Normal-vision floor    worst all-pairs #D9DDE2↔#E3E6EA ΔE 2.8 (normal) — below 15, hard to tell apart even with full color vision
+  [WARN] Contrast vs surface    below 3:1 — relief required (visible labels or table view): [["#E3E6EA",1.25],["#D9DDE2",1.36]]
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+#5A5F66 contrast vs #FFFFFF = 6.43:1
+#E3E6EA contrast vs #FFFFFF = 1.25:1
+#D9DDE2 contrast vs #FFFFFF = 1.36:1
+#333333 contrast vs #FFFFFF = 12.63:1
+#8C9196 contrast vs #FFFFFF = 3.18:1
+
+Exit code: 0
+
+================================================================================
+RUNS 9-12 (2026-08-29) -- the FIFTH identity family
+(INSTITUTION_COLORS, Compare only) and the ONE ordinal ramp
+(GREY_STATE_COLORS, the coverage strip). Same discipline as runs 1-8: every
+hex below was RUN, none was eyeballed, and a FAIL is recorded with its
+disposition rather than made to disappear by changing a colour.
+
+Two screening tools were written for this pass and are kept beside the runner
+scripts, `design-system/ab/screen_inst.mjs` (full pairwise matrix + distance to
+the FOCAL/COMPARISON chrome) and `design-system/ab/screen_ordinal.mjs` (the
+skill's own `validateOrdinal`, which is the applicable validator for a
+sequential ramp). Both import the dataviz skill's `validate_palette.js`
+directly, exactly as `screen_erc.mjs` did in R1.
+
+================================================================================
+RUN 9 -- INSTITUTION_COLORS, the six in SHIPPED SLOT ORDER, all pairs.
+RESULT: ALL CHECKS PASS. The two WARN lines are carried as BINDING RELIEF and
+are written into lib/palette.py and VIZ_SPEC section 2 ter:
+  * #CC79A7 <-> #009E73 deutan 7.6 is inside the 6-8 floor band -> "legal ONLY
+    with secondary encoding". Every Compare view supplies three: the category
+    name on the y axis, the institution chip legend above the figure, and the
+    per-mark hover that names the institution in words.
+  * #56B4E9 2.31:1 and #E69F00 2.25:1 vs SURFACE -> "relief required (visible
+    labels or table view)", not dismissable. Satisfied by the same labels plus
+    the CSV and xlsx export of every panel.
+
+$ node scripts/validate_palette.js "#D55E00,#009E73,#6A3D9A,#CC79A7,#56B4E9,#E69F00" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 6 slots
+  [PASS] Lightness band         all 6 inside L 0.43–0.77
+  [PASS] Chroma floor           all 6 >= 0.1
+  [WARN] CVD separation         worst all-pairs #CC79A7↔#009E73 ΔE 7.6 (deutan) · tritan 8.5
+  [PASS] Normal-vision floor    worst all-pairs #E69F00↔#D55E00 ΔE 15.6 (normal)
+  [WARN] Contrast vs surface    below 3:1 — relief required (visible labels or table view): [["#56B4E9",2.31],["#E69F00",2.25]]
+
+  → ALL CHECKS PASS  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+================================================================================
+RUN 9b -- the k = 2 / 3 / 4 / 5 PREFIXES, i.e. the palettes actually drawn
+when fewer than six institutions are compared. This is the run that
+justifies the SLOT ORDER: the two weakest pairs and the two sub-3:1 contrasts
+all sit in the last three slots, so k <= 3 draws a completely warning-free
+palette and the pair view (exactly two institutions) never sees a warning
+at all.
+
+# (the k=2, k=3, k=4, k=5 prefixes actually drawn when the compared set is smaller)
+$ node scripts/validate_palette.js "#D55E00,#009E73" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 2 slots
+  [PASS] Lightness band         all 2 inside L 0.43–0.77
+  [PASS] Chroma floor           all 2 >= 0.1
+  [PASS] CVD separation         worst all-pairs #009E73↔#D55E00 ΔE 11.0 (deutan) · tritan 31.4
+  [PASS] Normal-vision floor    worst all-pairs #009E73↔#D55E00 ΔE 25.8 (normal)
+  [PASS] Contrast vs surface    all 2 >= 3:1
+
+  → ALL CHECKS PASS  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+$ node scripts/validate_palette.js "#D55E00,#009E73,#6A3D9A" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 3 slots
+  [PASS] Lightness band         all 3 inside L 0.43–0.77
+  [PASS] Chroma floor           all 3 >= 0.1
+  [PASS] CVD separation         worst all-pairs #009E73↔#D55E00 ΔE 11.0 (deutan) · tritan 22.5
+  [PASS] Normal-vision floor    worst all-pairs #009E73↔#D55E00 ΔE 25.8 (normal)
+  [PASS] Contrast vs surface    all 3 >= 3:1
+
+  → ALL CHECKS PASS  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+$ node scripts/validate_palette.js "#D55E00,#009E73,#6A3D9A,#CC79A7" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 4 slots
+  [PASS] Lightness band         all 4 inside L 0.43–0.77
+  [PASS] Chroma floor           all 4 >= 0.1
+  [WARN] CVD separation         worst all-pairs #CC79A7↔#009E73 ΔE 7.6 (deutan) · tritan 10.7
+  [PASS] Normal-vision floor    worst all-pairs #CC79A7↔#D55E00 ΔE 16.4 (normal)
+  [PASS] Contrast vs surface    all 4 >= 3:1
+
+  → ALL CHECKS PASS  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+$ node scripts/validate_palette.js "#D55E00,#009E73,#6A3D9A,#CC79A7,#56B4E9" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 5 slots
+  [PASS] Lightness band         all 5 inside L 0.43–0.77
+  [PASS] Chroma floor           all 5 >= 0.1
+  [WARN] CVD separation         worst all-pairs #CC79A7↔#009E73 ΔE 7.6 (deutan) · tritan 10.7
+  [PASS] Normal-vision floor    worst all-pairs #CC79A7↔#D55E00 ΔE 16.4 (normal)
+  [WARN] Contrast vs surface    below 3:1 — relief required (visible labels or table view): [["#56B4E9",2.31]]
+
+  → ALL CHECKS PASS  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+================================================================================
+RUN 10 (DOCUMENTS A BOUNDED EXCLUSION, expected FAIL) -- the six institution
+hues AND the four OA domain hues as one ten-slot set. DISPOSITION: the
+COEXISTENCE RULE (lib/palette.py module docstring). A
+Compare chart is coloured by INSTITUTION and by nothing else --
+the categorical axis names the field / panel / goal / quadrant -- so the two
+families are never in one figure and never in one legend. Recorded rather than
+suppressed because the reader does scroll from domain-coloured Find panels to
+institution-coloured Compare panels, i.e. the two families share SEQUENTIAL
+memory; the fix if that ever becomes a real complaint is a different sixth
+hue, never a second chart-dependent palette.
+
+$ node scripts/validate_palette.js "#D55E00,#009E73,#6A3D9A,#CC79A7,#56B4E9,#E69F00,#0CA750,#FFCB3A,#8190FF,#F85C32" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 10 slots
+  [FAIL] Lightness band         outside band: [["#FFCB3A",0.865]]
+  [PASS] Chroma floor           all 10 >= 0.1
+  [FAIL] CVD separation         worst all-pairs #F85C32↔#D55E00 ΔE 3.5 (protan) · tritan 1.7
+  [FAIL] Normal-vision floor    worst all-pairs #0CA750↔#009E73 ΔE 6.0 (normal) — below 15, hard to tell apart even with full color vision
+  [WARN] Contrast vs surface    below 3:1 — relief required (visible labels or table view): [["#56B4E9",2.31],["#E69F00",2.25],["#FFCB3A",1.52],["#8190FF",2.85]]
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+================================================================================
+RUN 11 (documents the CHROME distance, expected FAIL) -- the six institution
+hues WITH FOCAL #0072B2 and COMPARISON #8C9196. The FAIL is entirely
+COMPARISON's: chroma 0.009, and #8C9196 <-> #CC79A7 normal 12.2 / deutan 3.0.
+That is the run-2 exclusion class restated (COMPARISON is a NEUTRAL, never an
+identity), not a new finding, and it is exactly why COMPARISON is what
+`institution_color` returns for an out-of-range slot -- an unassignable
+institution must read as "no identity", which is what a low-chroma grey does.
+FOCAL contributes NO failing pair. Its nearest institution hue is #6A3D9A at
+normal-vision 15.6 / CVD 6.9 (matrix below) -- above the 15 normal-vision floor
+and inside the 6-8 CVD band, which is legal here because FOCAL is never a MARK
+on a Compare page: it paints Streamlit chrome (buttons, links, ProgressColumn
+bars) and never appears in the same figure as an institution dot.
+
+$ node scripts/validate_palette.js "#D55E00,#009E73,#6A3D9A,#CC79A7,#56B4E9,#E69F00,#0072B2,#8C9196" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 8 slots
+  [PASS] Lightness band         all 8 inside L 0.43–0.77
+  [FAIL] Chroma floor           below floor (reads gray): [["#8C9196",0.009]]
+  [FAIL] CVD separation         worst all-pairs #8C9196↔#CC79A7 ΔE 3.0 (deutan) · tritan 8.5
+  [FAIL] Normal-vision floor    worst all-pairs #8C9196↔#CC79A7 ΔE 12.2 (normal) — below 15, hard to tell apart even with full color vision
+  [WARN] Contrast vs surface    below 3:1 — relief required (visible labels or table view): [["#56B4E9",2.31],["#E69F00",2.25]]
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+--- full pairwise matrix + distance to chrome (screen_inst.mjs) ---
+
+pairwise (normal / worst-CVD):
+  1-2  #D55E00 <-> #009E73   normal 25.8   cvd 11.0
+  1-3  #D55E00 <-> #6A3D9A   normal 29.9   cvd 26.5
+  1-4  #D55E00 <-> #CC79A7   normal 16.4   cvd 15.8
+  1-5  #D55E00 <-> #56B4E9   normal 30.9   cvd 25.1
+  1-6  #D55E00 <-> #E69F00   normal 15.6   cvd 13.1
+  2-3  #009E73 <-> #6A3D9A   normal 30.4   cvd 22.4
+  2-4  #009E73 <-> #CC79A7   normal 25.4   cvd 7.6
+  2-5  #009E73 <-> #56B4E9   normal 18.4   cvd 16.6
+  2-6  #009E73 <-> #E69F00   normal 24.2   cvd 11.4
+  3-4  #6A3D9A <-> #CC79A7   normal 24.1   cvd 21.4
+  3-5  #6A3D9A <-> #56B4E9   normal 31.2   cvd 27.5
+  3-6  #6A3D9A <-> #E69F00   normal 40.5   cvd 38.6
+  4-5  #CC79A7 <-> #56B4E9   normal 20.0   cvd 9.6
+  4-6  #CC79A7 <-> #E69F00   normal 21.1   cvd 19.3
+  5-6  #56B4E9 <-> #E69F00   normal 27.1   cvd 23.9
+worst normal 15.6 (#D55E00<->#E69F00) | worst cvd 7.6 (#009E73<->#CC79A7)
+contrast vs surface + distance to chrome:
+  #D55E00 contrast 3.87  vsFOCAL normal 31.2 cvd 21.9  vsCOMPARISON normal 18.2 cvd 14.2
+  #009E73 contrast 3.42  vsFOCAL normal 18.7 cvd 18.0  vsCOMPARISON normal 13.3 cvd 4.8
+  #6A3D9A contrast 7.64  vsFOCAL normal 15.6 cvd 6.9  vsCOMPARISON normal 24.1 cvd 23.4
+  #CC79A7 contrast 3.06  vsFOCAL normal 24.4 cvd 9.6  vsCOMPARISON normal 12.2 cvd 3.0
+  #56B4E9 contrast 2.31  vsFOCAL normal 20.4 cvd 20.6  vsCOMPARISON normal 13.5 cvd 11.9
+  #E69F00 contrast 2.25  vsFOCAL normal 36.2 cvd 29.2  vsCOMPARISON normal 19.4 cvd 16.5
+
+================================================================================
+RUN 12 -- GREY_STATE_COLORS, the five grey-accounting states of the coverage
+strip. TWO runs, because the CATEGORICAL validator is not the applicable one:
+these five steps are an ORDINAL severity scale (distance from usable text), so
+they take a one-hue sequential ramp, and the validator's own scope line says
+so -- "for a sequential ramp, lightness monotonicity". The categorical run is
+printed first and FAILS BY DESIGN (five neutrals below the chroma floor;
+adjacent normal-vision 7.8), the same exclusion class as runs 2 and 8. The
+ORDINAL run (`validateOrdinal` from the same module) is the one that governs,
+and it returns OK on all four of its checks.
+
+The sixth segment of the strip -- classified-eligible -- is deliberately NOT in
+this ramp: it is painted in the compared institution's own identity colour, so
+the strip reads as highlight-plus-mute (one coloured segment that answers the
+question, a muted ordered ramp accounting for the rest) and the only identity in
+the figure is still the institution.
+
+$ node scripts/validate_palette.js "#ACB2B9,#939AA2,#7B828A,#646B73,#4D535B" --mode light --surface "#FFFFFF" --pairs adjacent
+
+Palette (light, surface #FFFFFF, categorical): 5 slots
+  [PASS] Lightness band         all 5 inside L 0.43–0.77
+  [FAIL] Chroma floor           below floor (reads gray): [["#ACB2B9",0.012],["#939AA2",0.014],["#7B828A",0.015],["#646B73",0.015],["#4D535B",0.015]]
+  [WARN] CVD separation         worst adjacent #939AA2↔#ACB2B9 ΔE 7.7 (protan) · tritan 7.8
+  [FAIL] Normal-vision floor    worst adjacent #939AA2↔#ACB2B9 ΔE 7.8 (normal) — below 15, hard to tell apart even with full color vision
+  [WARN] Contrast vs surface    below 3:1 — relief required (visible labels or table view): [["#ACB2B9",2.14],["#939AA2",2.84]]
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+--- the APPLICABLE validator for a sequential ramp (screen_ordinal.mjs) ---
+
+=== #ACB2B9,#939AA2,#7B828A,#646B73,#4D535B  -> OK
+    Lightness monotone | true | steps read light→dark
+    Adjacent ΔL | true | all gaps >= 0.06
+    Light-end contrast | true | #ACB2B9 at 2.14:1 vs surface
+    Single hue | true | hue spread 4°
+    contrasts: #ACB2B9 2.14  #939AA2 2.84  #7B828A 3.89  #646B73 5.39  #4D535B 7.77
+
+
+===========================================================================
+RUNS 13-17 (2026-08-30)
+Validator: dataviz skill scripts/validate_palette.js, --mode light ONLY
+(SIRIS house rule: the app ships no dark palette, so no dark run exists).
+Every command and its VERBATIM output follows.
+===========================================================================
+
+--- RUN 13: the k = 3 COMPARE prefix alone (caps Compare at three)
+$ node scripts/validate_palette.js "#D55E00,#009E73,#6A3D9A" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 3 slots
+  [PASS] Lightness band         all 3 inside L 0.43–0.77
+  [PASS] Chroma floor           all 3 >= 0.1
+  [PASS] CVD separation         worst all-pairs #009E73↔#D55E00 ΔE 11.0 (deutan) · tritan 22.5
+  [PASS] Normal-vision floor    worst all-pairs #009E73↔#D55E00 ΔE 25.8 (normal)
+  [PASS] Contrast vs surface    all 3 >= 3:1
+
+  → ALL CHECKS PASS  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+--- RUN 14: SHARED-FRONTIER candidate screen.
+Each candidate validated as {k=3 institutions} + FOCAL + candidate, --pairs all,
+so any finding involving the candidate is the candidate's own. FOCAL's
+pre-existing deutan 6.9 / normal 15.6 vs #6A3D9A is the run-11 finding restated.
+
+$ node scripts/validate_palette.js "#D55E00,#009E73,#6A3D9A,#0072B2,#2E75B6" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 5 slots
+  [PASS] Lightness band         all 5 inside L 0.43–0.77
+  [PASS] Chroma floor           all 5 >= 0.1
+  [FAIL] CVD separation         worst all-pairs #2E75B6↔#0072B2 ΔE 1.3 (protan) · tritan 0.9
+  [FAIL] Normal-vision floor    worst all-pairs #2E75B6↔#0072B2 ΔE 2.3 (normal) — below 15, hard to tell apart even with full color vision
+  [PASS] Contrast vs surface    all 5 >= 3:1
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+$ node scripts/validate_palette.js "#D55E00,#009E73,#6A3D9A,#0072B2,#0E7C9E" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 5 slots
+  [PASS] Lightness band         all 5 inside L 0.43–0.77
+  [PASS] Chroma floor           all 5 >= 0.1
+  [FAIL] CVD separation         worst all-pairs #0E7C9E↔#0072B2 ΔE 4.8 (protan) · tritan 1.4
+  [FAIL] Normal-vision floor    worst all-pairs #0E7C9E↔#0072B2 ΔE 4.9 (normal) — below 15, hard to tell apart even with full color vision
+  [PASS] Contrast vs surface    all 5 >= 3:1
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+$ node scripts/validate_palette.js "#D55E00,#009E73,#6A3D9A,#0072B2,#386CB0" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 5 slots
+  [PASS] Lightness band         all 5 inside L 0.43–0.77
+  [PASS] Chroma floor           all 5 >= 0.1
+  [FAIL] CVD separation         worst all-pairs #386CB0↔#0072B2 ΔE 0.4 (deutan) · tritan 1.8
+  [FAIL] Normal-vision floor    worst all-pairs #386CB0↔#0072B2 ΔE 2.8 (normal) — below 15, hard to tell apart even with full color vision
+  [PASS] Contrast vs surface    all 5 >= 3:1
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+$ node scripts/validate_palette.js "#D55E00,#009E73,#6A3D9A,#0072B2,#A6761D" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 5 slots
+  [PASS] Lightness band         all 5 inside L 0.43–0.77
+  [PASS] Chroma floor           all 5 >= 0.1
+  [FAIL] CVD separation         worst all-pairs #A6761D↔#D55E00 ΔE 2.4 (protan) · tritan 8.6
+  [FAIL] Normal-vision floor    worst all-pairs #A6761D↔#D55E00 ΔE 9.4 (normal) — below 15, hard to tell apart even with full color vision
+  [PASS] Contrast vs surface    all 5 >= 3:1
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+$ node scripts/validate_palette.js "#D55E00,#009E73,#6A3D9A,#0072B2,#005F73" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 5 slots
+  [PASS] Lightness band         all 5 inside L 0.43–0.77
+  [FAIL] Chroma floor           below floor (reads gray): [["#005F73",0.081]]
+  [WARN] CVD separation         worst all-pairs #005F73↔#6A3D9A ΔE 6.8 (deutan) · tritan 8.6
+  [FAIL] Normal-vision floor    worst all-pairs #005F73↔#0072B2 ΔE 10.7 (normal) — below 15, hard to tell apart even with full color vision
+  [PASS] Contrast vs surface    all 5 >= 3:1
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+$ node scripts/validate_palette.js "#D55E00,#009E73,#6A3D9A,#0072B2,#00796B" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 5 slots
+  [PASS] Lightness band         all 5 inside L 0.43–0.77
+  [FAIL] Chroma floor           below floor (reads gray): [["#00796B",0.093]]
+  [WARN] CVD separation         worst all-pairs #0072B2↔#6A3D9A ΔE 6.9 (deutan) · tritan 3.4
+  [FAIL] Normal-vision floor    worst all-pairs #00796B↔#009E73 ΔE 11.3 (normal) — below 15, hard to tell apart even with full color vision
+  [PASS] Contrast vs surface    all 5 >= 3:1
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+$ node scripts/validate_palette.js "#D55E00,#009E73,#6A3D9A,#0072B2,#0B7285" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 5 slots
+  [PASS] Lightness band         all 5 inside L 0.43–0.77
+  [FAIL] Chroma floor           below floor (reads gray): [["#0B7285",0.087]]
+  [WARN] CVD separation         worst all-pairs #0072B2↔#6A3D9A ΔE 6.9 (deutan) · tritan 3.4
+  [FAIL] Normal-vision floor    worst all-pairs #0B7285↔#0072B2 ΔE 7.3 (normal) — below 15, hard to tell apart even with full color vision
+  [PASS] Contrast vs surface    all 5 >= 3:1
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+$ node scripts/validate_palette.js "#D55E00,#009E73,#6A3D9A,#0072B2,#00838F" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 5 slots
+  [PASS] Lightness band         all 5 inside L 0.43–0.77
+  [FAIL] Chroma floor           below floor (reads gray): [["#00838F",0.095]]
+  [WARN] CVD separation         worst all-pairs #0072B2↔#6A3D9A ΔE 6.9 (deutan) · tritan 2.6
+  [FAIL] Normal-vision floor    worst all-pairs #00838F↔#0072B2 ΔE 8.5 (normal) — below 15, hard to tell apart even with full color vision
+  [PASS] Contrast vs surface    all 5 >= 3:1
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+$ node scripts/validate_palette.js "#D55E00,#009E73,#6A3D9A,#0072B2,#2C6E49" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 5 slots
+  [PASS] Lightness band         all 5 inside L 0.43–0.77
+  [FAIL] Chroma floor           below floor (reads gray): [["#2C6E49",0.09]]
+  [WARN] CVD separation         worst all-pairs #0072B2↔#6A3D9A ΔE 6.9 (deutan) · tritan 7.4
+  [FAIL] Normal-vision floor    worst all-pairs #2C6E49↔#009E73 ΔE 14.1 (normal) — below 15, hard to tell apart even with full color vision
+  [PASS] Contrast vs surface    all 5 >= 3:1
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+$ node scripts/validate_palette.js "#D55E00,#009E73,#6A3D9A,#0072B2,#8A5A00" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 5 slots
+  [PASS] Lightness band         all 5 inside L 0.43–0.77
+  [PASS] Chroma floor           all 5 >= 0.1
+  [WARN] CVD separation         worst all-pairs #0072B2↔#6A3D9A ΔE 6.9 (deutan) · tritan 8.6
+  [FAIL] Normal-vision floor    worst all-pairs #8A5A00↔#D55E00 ΔE 14.3 (normal) — below 15, hard to tell apart even with full color vision
+  [PASS] Contrast vs surface    all 5 >= 3:1
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+$ node scripts/validate_palette.js "#D55E00,#009E73,#6A3D9A,#0072B2,#1F4E9C" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 5 slots
+  [PASS] Lightness band         all 5 inside L 0.43–0.77
+  [PASS] Chroma floor           all 5 >= 0.1
+  [FAIL] CVD separation         worst all-pairs #1F4E9C↔#6A3D9A ΔE 1.7 (protan) · tritan 8.6
+  [FAIL] Normal-vision floor    worst all-pairs #1F4E9C↔#0072B2 ΔE 10.1 (normal) — below 15, hard to tell apart even with full color vision
+  [PASS] Contrast vs surface    all 5 >= 3:1
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+$ node scripts/validate_palette.js "#D55E00,#009E73,#6A3D9A,#0072B2,#7A7A7A" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 5 slots
+  [PASS] Lightness band         all 5 inside L 0.43–0.77
+  [FAIL] Chroma floor           below floor (reads gray): [["#7A7A7A",0]]
+  [FAIL] CVD separation         worst all-pairs #7A7A7A↔#009E73 ΔE 4.6 (deutan) · tritan 8.6
+  [FAIL] Normal-vision floor    worst all-pairs #7A7A7A↔#009E73 ΔE 13.6 (normal) — below 15, hard to tell apart even with full color vision
+  [PASS] Contrast vs surface    all 5 >= 3:1
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+$ node scripts/validate_palette.js "#D55E00,#009E73,#6A3D9A,#0072B2,#6B8E00" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 5 slots
+  [PASS] Lightness band         all 5 inside L 0.43–0.77
+  [PASS] Chroma floor           all 5 >= 0.1
+  [FAIL] CVD separation         worst all-pairs #6B8E00↔#D55E00 ΔE 3.6 (deutan) · tritan 8.6
+  [FAIL] Normal-vision floor    worst all-pairs #6B8E00↔#009E73 ΔE 10.1 (normal) — below 15, hard to tell apart even with full color vision
+  [PASS] Contrast vs surface    all 5 >= 3:1
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+$ node scripts/validate_palette.js "#D55E00,#009E73,#6A3D9A,#0072B2,#B5197C" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 5 slots
+  [PASS] Lightness band         all 5 inside L 0.43–0.77
+  [PASS] Chroma floor           all 5 >= 0.1
+  [FAIL] CVD separation         worst all-pairs #B5197C↔#6A3D9A ΔE 5.7 (protan) · tritan 8.6
+  [PASS] Normal-vision floor    worst all-pairs #0072B2↔#6A3D9A ΔE 15.6 (normal)
+  [PASS] Contrast vs surface    all 5 >= 3:1
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+$ node scripts/validate_palette.js "#D55E00,#009E73,#6A3D9A,#0072B2,#C2185B" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 5 slots
+  [PASS] Lightness band         all 5 inside L 0.43–0.77
+  [PASS] Chroma floor           all 5 >= 0.1
+  [WARN] CVD separation         worst all-pairs #0072B2↔#6A3D9A ΔE 6.9 (deutan) · tritan 7.9
+  [PASS] Normal-vision floor    worst all-pairs #0072B2↔#6A3D9A ΔE 15.6 (normal)
+  [PASS] Contrast vs surface    all 5 >= 3:1
+
+  → ALL CHECKS PASS  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+$ node scripts/validate_palette.js "#D55E00,#009E73,#6A3D9A,#0072B2,#B03060" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 5 slots
+  [PASS] Lightness band         all 5 inside L 0.43–0.77
+  [PASS] Chroma floor           all 5 >= 0.1
+  [WARN] CVD separation         worst all-pairs #0072B2↔#6A3D9A ΔE 6.9 (deutan) · tritan 8.6
+  [PASS] Normal-vision floor    worst all-pairs #0072B2↔#6A3D9A ΔE 15.6 (normal)
+  [PASS] Contrast vs surface    all 5 >= 3:1
+
+  → ALL CHECKS PASS  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+$ node scripts/validate_palette.js "#D55E00,#009E73,#6A3D9A,#0072B2,#AD1457" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 5 slots
+  [PASS] Lightness band         all 5 inside L 0.43–0.77
+  [PASS] Chroma floor           all 5 >= 0.1
+  [WARN] CVD separation         worst all-pairs #0072B2↔#6A3D9A ΔE 6.9 (deutan) · tritan 8.6
+  [PASS] Normal-vision floor    worst all-pairs #0072B2↔#6A3D9A ΔE 15.6 (normal)
+  [PASS] Contrast vs surface    all 5 >= 3:1
+
+  → ALL CHECKS PASS  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+--- RUN 15: the WINNER #C2185B with the six institution slots + FOCAL
+$ node scripts/validate_palette.js "#D55E00,#009E73,#6A3D9A,#CC79A7,#56B4E9,#E69F00,#0072B2,#C2185B" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 8 slots
+  [PASS] Lightness band         all 8 inside L 0.43–0.77
+  [PASS] Chroma floor           all 8 >= 0.1
+  [WARN] CVD separation         worst all-pairs #0072B2↔#6A3D9A ΔE 6.9 (deutan) · tritan 7.9
+  [PASS] Normal-vision floor    worst all-pairs #E69F00↔#D55E00 ΔE 15.6 (normal)
+  [WARN] Contrast vs surface    below 3:1 — relief required (visible labels or table view): [["#56B4E9",2.31],["#E69F00",2.25]]
+
+  → ALL CHECKS PASS  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+--- RUN 16: #C2185B against the crimson neighbourhood (the deciding run).
+The same four pairs were run for the two other survivors, #B03060 and #AD1457;
+their numbers are in lib/palette.py run 16 and were produced by the same command.
+
+$ node scripts/validate_palette.js "#C2185B,#CC79A7" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 2 slots
+  [PASS] Lightness band         all 2 inside L 0.43–0.77
+  [PASS] Chroma floor           all 2 >= 0.1
+  [PASS] CVD separation         worst all-pairs #CC79A7↔#C2185B ΔE 14.9 (deutan) · tritan 16.9
+  [PASS] Normal-vision floor    worst all-pairs #CC79A7↔#C2185B ΔE 17.8 (normal)
+  [PASS] Contrast vs surface    all 2 >= 3:1
+
+  → ALL CHECKS PASS  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+$ node scripts/validate_palette.js "#C2185B,#6A3D9A" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 2 slots
+  [PASS] Lightness band         all 2 inside L 0.43–0.77
+  [PASS] Chroma floor           all 2 >= 0.1
+  [PASS] CVD separation         worst all-pairs #6A3D9A↔#C2185B ΔE 11.7 (protan) · tritan 22.5
+  [PASS] Normal-vision floor    worst all-pairs #6A3D9A↔#C2185B ΔE 19.9 (normal)
+  [PASS] Contrast vs surface    all 2 >= 3:1
+
+  → ALL CHECKS PASS  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+$ node scripts/validate_palette.js "#C2185B,#9B1B6B" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 2 slots
+  [PASS] Lightness band         all 2 inside L 0.43–0.77
+  [PASS] Chroma floor           all 2 >= 0.1
+  [WARN] CVD separation         worst all-pairs #9B1B6B↔#C2185B ΔE 6.1 (protan) · tritan 9.4
+  [FAIL] Normal-vision floor    worst all-pairs #9B1B6B↔#C2185B ΔE 8.8 (normal) — below 15, hard to tell apart even with full color vision
+  [PASS] Contrast vs surface    all 2 >= 3:1
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+$ node scripts/validate_palette.js "#C2185B,#A10A4E" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 2 slots
+  [PASS] Lightness band         all 2 inside L 0.43–0.77
+  [PASS] Chroma floor           all 2 >= 0.1
+  [FAIL] CVD separation         worst all-pairs #A10A4E↔#C2185B ΔE 6.0 (protan) · tritan 7.7
+  [FAIL] Normal-vision floor    worst all-pairs #A10A4E↔#C2185B ΔE 7.4 (normal) — below 15, hard to tell apart even with full color vision
+  [PASS] Contrast vs surface    all 2 >= 3:1
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+$ node scripts/validate_palette.js "#B03060,#9B1B6B" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 2 slots
+  [PASS] Lightness band         all 2 inside L 0.43–0.77
+  [PASS] Chroma floor           all 2 >= 0.1
+  [WARN] CVD separation         worst all-pairs #9B1B6B↔#B03060 ΔE 6.4 (protan) · tritan 5.5
+  [FAIL] Normal-vision floor    worst all-pairs #9B1B6B↔#B03060 ΔE 6.5 (normal) — below 15, hard to tell apart even with full color vision
+  [PASS] Contrast vs surface    all 2 >= 3:1
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+$ node scripts/validate_palette.js "#B03060,#A10A4E" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 2 slots
+  [PASS] Lightness band         all 2 inside L 0.43–0.77
+  [PASS] Chroma floor           all 2 >= 0.1
+  [FAIL] CVD separation         worst all-pairs #A10A4E↔#B03060 ΔE 5.6 (deutan) · tritan 4.5
+  [FAIL] Normal-vision floor    worst all-pairs #A10A4E↔#B03060 ΔE 5.8 (normal) — below 15, hard to tell apart even with full color vision
+  [PASS] Contrast vs surface    all 2 >= 3:1
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+$ node scripts/validate_palette.js "#AD1457,#9B1B6B" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 2 slots
+  [PASS] Lightness band         all 2 inside L 0.43–0.77
+  [PASS] Chroma floor           all 2 >= 0.1
+  [FAIL] CVD separation         worst all-pairs #9B1B6B↔#AD1457 ΔE 4.1 (protan) · tritan 4.8
+  [FAIL] Normal-vision floor    worst all-pairs #9B1B6B↔#AD1457 ΔE 5.1 (normal) — below 15, hard to tell apart even with full color vision
+  [PASS] Contrast vs surface    all 2 >= 3:1
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+$ node scripts/validate_palette.js "#AD1457,#A10A4E" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 2 slots
+  [PASS] Lightness band         all 2 inside L 0.43–0.77
+  [PASS] Chroma floor           all 2 >= 0.1
+  [FAIL] CVD separation         worst all-pairs #A10A4E↔#AD1457 ΔE 2.7 (protan) · tritan 2.8
+  [FAIL] Normal-vision floor    worst all-pairs #A10A4E↔#AD1457 ΔE 3.0 (normal) — below 15, hard to tell apart even with full color vision
+  [PASS] Contrast vs surface    all 2 >= 3:1
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+--- RUN 17: k = 3 institutions + the 3 ERC accent hues (the label-accent
+co-occurrence). DESCRIPTIVE: the ERC hue is a tick-label glyph, never a mark.
+$ node scripts/validate_palette.js "#D55E00,#009E73,#6A3D9A,#1F4E9C,#9B1B6B,#8A5A00" --mode light --surface "#FFFFFF" --pairs all
+
+Palette (light, surface #FFFFFF, categorical): 6 slots
+  [PASS] Lightness band         all 6 inside L 0.43–0.77
+  [PASS] Chroma floor           all 6 >= 0.1
+  [FAIL] CVD separation         worst all-pairs #1F4E9C↔#6A3D9A ΔE 1.7 (protan) · tritan 9.3
+  [FAIL] Normal-vision floor    worst all-pairs #1F4E9C↔#6A3D9A ΔE 10.8 (normal) — below 15, hard to tell apart even with full color vision
+  [PASS] Contrast vs surface    all 6 >= 3:1
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+
+=== RUNS 18-25 (2026-08-31): the colour rework ===
+Same tool, same flags, same surface as every run above:
+  node scripts/validate_palette.js "<hexes>" --mode light --surface "#FFFFFF" --pairs all
+(dataviz skill 2.1.251; byte-identical to the 2.1.250 copy runs 1-17 cite --
+verified separately.) SIRIS house rule: --mode light ONLY.
+
+--- RUN 18: the NEW institution trio (L = 0.77), alone.
+The lightest rung the validator's lightness band allows; the contrast WARN is the
+reason INSTITUTION_COLORS_DARK exists (see run 22).
+$ node scripts/validate_palette.js "#FF8BA6,#B4BF07,#8EB3FF" --mode light --surface "#FFFFFF" --pairs all
+
+
+Palette (light, surface #FFFFFF, categorical): 3 slots
+  [PASS] Lightness band         all 3 inside L 0.43–0.77
+  [PASS] Chroma floor           all 3 >= 0.1
+  [PASS] CVD separation         worst all-pairs #B4BF07↔#FF8BA6 ΔE 12.6 (deutan) · tritan 11.3
+  [PASS] Normal-vision floor    worst all-pairs #8EB3FF↔#FF8BA6 ΔE 20.2 (normal)
+  [WARN] Contrast vs surface    below 3:1 — relief required (visible labels or table view): [["#FF8BA6",2.21],["#B4BF07",2.02],["#8EB3FF",2.09]]
+
+  → ALL CHECKS PASS  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+--- RUN 19: the trio + FOCAL + SHARED_FRONTIER -- every hue that can be on a Compare
+screen at once (FOCAL paints Streamlit's buttons/links, SHARED_FRONTIER is a chip
+in the frontier map legend beside the institution chips).
+$ node scripts/validate_palette.js "#FF8BA6,#B4BF07,#8EB3FF,#0072B2,#C2185B" --mode light --surface "#FFFFFF" --pairs all
+
+
+Palette (light, surface #FFFFFF, categorical): 5 slots
+  [PASS] Lightness band         all 5 inside L 0.43–0.77
+  [PASS] Chroma floor           all 5 >= 0.1
+  [PASS] CVD separation         worst all-pairs #B4BF07↔#FF8BA6 ΔE 12.6 (deutan) · tritan 11.3
+  [PASS] Normal-vision floor    worst all-pairs #8EB3FF↔#FF8BA6 ΔE 20.2 (normal)
+  [WARN] Contrast vs surface    below 3:1 — relief required (visible labels or table view): [["#FF8BA6",2.21],["#B4BF07",2.02],["#8EB3FF",2.09]]
+
+  → ALL CHECKS PASS  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+--- RUN 20: the trio + the four OA domain hues. EXPECTED FAIL, disposed of by the
+COEXISTENCE EXCEPTION documented in lib/palette.py (an institution fill never
+shares a figure with an OA fill). Recorded, never suppressed.
+$ node scripts/validate_palette.js "#FF8BA6,#B4BF07,#8EB3FF,#0CA750,#FFCB3A,#8190FF,#F85C32" --mode light --surface "#FFFFFF" --pairs all
+
+
+Palette (light, surface #FFFFFF, categorical): 7 slots
+  [FAIL] Lightness band         outside band: [["#FFCB3A",0.865]]
+  [PASS] Chroma floor           all 7 >= 0.1
+  [WARN] CVD separation         worst all-pairs #FFCB3A↔#B4BF07 ΔE 6.4 (protan) · tritan 7.3
+  [FAIL] Normal-vision floor    worst all-pairs #8190FF↔#8EB3FF ΔE 9.4 (normal) — below 15, hard to tell apart even with full color vision
+  [WARN] Contrast vs surface    below 3:1 — relief required (visible labels or table view): [["#FF8BA6",2.21],["#B4BF07",2.02],["#8EB3FF",2.09],["#FFCB3A",1.52],["#8190FF",2.85]]
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+--- RUN 21: the trio + the 16 drawn SDG hues. EXPECTED FAIL; the worst pair is the UN
+palette's OWN amber collision (run 7), and the trio's own worst SDG pair is
+#B4BF07 <-> #DDA63A normal 9.6 / protan 1.3 (measured pairwise).
+Same coexistence exception.
+$ node scripts/validate_palette.js "#FF8BA6,#B4BF07,#8EB3FF,#E5243B,#DDA63A,#4C9F38,#C5192D,#FF3A21,#26BDE2,#FCC30B,#A21942,#FD6925,#DD1367,#FD9D24,#BF8B2E,#3F7E44,#0A97D9,#56C02B,#00689D" --mode light --surface "#FFFFFF" --pairs all
+
+
+Palette (light, surface #FFFFFF, categorical): 19 slots
+  [FAIL] Lightness band         outside band: [["#FCC30B",0.845],["#FD9D24",0.777]]
+  [PASS] Chroma floor           all 19 >= 0.1
+  [FAIL] CVD separation         worst all-pairs #FD9D24↔#DDA63A ΔE 1.3 (protan) · tritan 0.9
+  [FAIL] Normal-vision floor    worst all-pairs #FD9D24↔#DDA63A ΔE 5.3 (normal) — below 15, hard to tell apart even with full color vision
+  [WARN] Contrast vs surface    below 3:1 — relief required (visible labels or table view): [["#FF8BA6",2.21],["#B4BF07",2.02],["#8EB3FF",2.09],["#DDA63A",2.19],["#26BDE2",2.22],["#FCC30B",1.62],["#FD6925",2.91],["#FD9D24",2.09],["#56C02B",2.34]]
+
+  → FAILED — fix the marked checks  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+--- RUN 22: the three DARK TWINS, alone. They are TEXT, never fills: the applicable
+floor is WCAG 4.5:1 body text, measured 4.51 / 4.54 / 4.53:1 on white, and the
+categorical run passes as well.
+$ node scripts/validate_palette.js "#BF526F,#747C00,#5375BC" --mode light --surface "#FFFFFF" --pairs all
+
+
+Palette (light, surface #FFFFFF, categorical): 3 slots
+  [PASS] Lightness band         all 3 inside L 0.43–0.77
+  [PASS] Chroma floor           all 3 >= 0.1
+  [PASS] CVD separation         worst all-pairs #747C00↔#BF526F ΔE 8.9 (deutan) · tritan 10.8
+  [PASS] Normal-vision floor    worst all-pairs #5375BC↔#BF526F ΔE 20.3 (normal)
+  [PASS] Contrast vs surface    all 3 >= 3:1
+
+  → ALL CHECKS PASS  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+--- RUN 23: the NEW ERC trio (= run 13's set under a new owner). Legality was never
+open; only the assignment was, decided by a measured A/B.
+$ node scripts/validate_palette.js "#6A3D9A,#009E73,#D55E00" --mode light --surface "#FFFFFF" --pairs all
+
+
+Palette (light, surface #FFFFFF, categorical): 3 slots
+  [PASS] Lightness band         all 3 inside L 0.43–0.77
+  [PASS] Chroma floor           all 3 >= 0.1
+  [PASS] CVD separation         worst all-pairs #D55E00↔#009E73 ΔE 11.0 (deutan) · tritan 22.5
+  [PASS] Normal-vision floor    worst all-pairs #D55E00↔#009E73 ΔE 25.8 (normal)
+  [PASS] Contrast vs surface    all 3 >= 3:1
+
+  → ALL CHECKS PASS  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+--- RUN 24: the ERC trio + SHARED_FRONTIER. Replaces run 16's FAIL, which named
+#9B1B6B -- a hue this phase retires. One WARN in the 6-8 band, same relief.
+$ node scripts/validate_palette.js "#6A3D9A,#009E73,#D55E00,#C2185B" --mode light --surface "#FFFFFF" --pairs all
+
+
+Palette (light, surface #FFFFFF, categorical): 4 slots
+  [PASS] Lightness band         all 4 inside L 0.43–0.77
+  [PASS] Chroma floor           all 4 >= 0.1
+  [WARN] CVD separation         worst all-pairs #C2185B↔#009E73 ΔE 7.6 (deutan) · tritan 7.9
+  [PASS] Normal-vision floor    worst all-pairs #C2185B↔#D55E00 ΔE 16.3 (normal)
+  [PASS] Contrast vs surface    all 4 >= 3:1
+
+  → ALL CHECKS PASS  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+--- RUN 25: the institution trio + the ERC trio -- the fig_metric_bars(level='erc')
+co-occurrence that run 17 measured as a FAIL (#1F4E9C <-> #6A3D9A protan 1.7).
+Moving BOTH families turns it into ALL CHECKS PASS.
+$ node scripts/validate_palette.js "#FF8BA6,#B4BF07,#8EB3FF,#6A3D9A,#009E73,#D55E00" --mode light --surface "#FFFFFF" --pairs all
+
+
+Palette (light, surface #FFFFFF, categorical): 6 slots
+  [PASS] Lightness band         all 6 inside L 0.43–0.77
+  [PASS] Chroma floor           all 6 >= 0.1
+  [WARN] CVD separation         worst all-pairs #009E73↔#FF8BA6 ΔE 7.6 (protan) · tritan 11.3
+  [PASS] Normal-vision floor    worst all-pairs #D55E00↔#FF8BA6 ΔE 18.7 (normal)
+  [WARN] Contrast vs surface    below 3:1 — relief required (visible labels or table view): [["#FF8BA6",2.21],["#B4BF07",2.02],["#8EB3FF",2.09]]
+
+  → ALL CHECKS PASS  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+--- RUN 18c: an earlier candidate trio, the one 18b rejected. Recorded
+because lib/palette.py names these three hexes as the rejected alternative, and no
+hex may be quoted there without a run. It PASSES -- it loses on the margin, not on
+legality: worst in-trio CVD 6.1 (the 6-8 band, "legal ONLY with secondary
+encoding") against 12.6 for the shipped trio, at the same external distance.
+
+$ node scripts/validate_palette.js "#FC9095,#28CFB7,#90B3FC" --mode light --surface "#FFFFFF" --pairs all
+
+
+Palette (light, surface #FFFFFF, categorical): 3 slots
+  [PASS] Lightness band         all 3 inside L 0.43–0.77
+  [PASS] Chroma floor           all 3 >= 0.1
+  [WARN] CVD separation         worst all-pairs #28CFB7↔#FC9095 ΔE 6.1 (deutan) · tritan 6.1
+  [PASS] Normal-vision floor    worst all-pairs #90B3FC↔#28CFB7 ΔE 16.5 (normal)
+  [WARN] Contrast vs surface    below 3:1 — relief required (visible labels or table view): [["#FC9095",2.2],["#28CFB7",1.96],["#90B3FC",2.09]]
+
+  → ALL CHECKS PASS  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+
+
+
+--- RUN 26: the NEW navy institution trio, alone. Fails the
+lightness band on slots 1/3 and the chroma floor on all three BY DESIGN (a
+monochrome identity ramp): the NAMED validator exception
+`institution-monochrome-family` (lib/palette.py) waives those two checks for
+this tuple and asserts internal pairwise separation instead.
+$ node scripts/validate_palette.js "#192C41,#5A6883,#B5C0D4" --mode light --surface "#FFFFFF" --pairs all
+
+
+Palette (light, surface #FFFFFF, categorical): 3 slots
+  [FAIL] Lightness band         outside band: [["#192C41",0.288],["#B5C0D4",0.806]]
+  [FAIL] Chroma floor           below floor (reads gray): [["#192C41",0.046],["#5A6883",0.046],["#B5C0D4",0.031]]
+  [PASS] CVD separation         worst all-pairs #5A6883<->#192C41 dE 22.6 (protan) . tritan 22.9
+  [PASS] Normal-vision floor    worst all-pairs #5A6883<->#192C41 dE 22.9 (normal)
+  [WARN] Contrast vs surface    below 3:1 -- relief required (visible labels or table view): [["#B5C0D4",1.83]]
+
+  -> FAILED -- fix the marked checks  (CVD in the 6-8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+  DISPOSITION: institution-monochrome-family exception (lib/palette.py) -- lightness/chroma
+  waived for this tuple only; CVD 22.6 and normal-vision 22.9 (both PASS) are the checks
+  that actually govern it.
+
+--- RUN 27: navy trio + the NEW SHARED_FRONTIER #7A1600 (winner of the
+re-measurement below, run 30).
+$ node scripts/validate_palette.js "#192C41,#5A6883,#B5C0D4,#7A1600" --mode light --surface "#FFFFFF" --pairs all
+
+
+Palette (light, surface #FFFFFF, categorical): 4 slots
+  [FAIL] Lightness band         outside band: [["#192C41",0.288],["#B5C0D4",0.806],["#7A1600",0.377]]
+  [FAIL] Chroma floor           below floor (reads gray): [["#192C41",0.046],["#5A6883",0.046],["#B5C0D4",0.031]]
+  [PASS] CVD separation         worst all-pairs #7A1600<->#192C41 dE 10.3 (protan) . tritan 22.9
+  [PASS] Normal-vision floor    worst all-pairs #7A1600<->#192C41 dE 19.7 (normal)
+  [WARN] Contrast vs surface    below 3:1 -- relief required (visible labels or table view): [["#B5C0D4",1.83]]
+
+  -> FAILED -- fix the marked checks  (CVD in the 6-8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+  DISPOSITION: same exception as run 26; the navy-vs-red pair itself clears both floors.
+
+--- RUN 28: navy trio + the four OA domain hues (7 slots).
+$ node scripts/validate_palette.js "#192C41,#5A6883,#B5C0D4,#0CA750,#FFCB3A,#8190FF,#F85C32" --mode light --surface "#FFFFFF" --pairs all
+
+
+Palette (light, surface #FFFFFF, categorical): 7 slots
+  [FAIL] Lightness band         outside band: [["#192C41",0.288],["#B5C0D4",0.806],["#FFCB3A",0.865]]
+  [FAIL] Chroma floor           below floor (reads gray): [["#192C41",0.046],["#5A6883",0.046],["#B5C0D4",0.031]]
+  [WARN] CVD separation         worst all-pairs #F85C32<->#0CA750 dE 7.6 (deutan) . tritan 7.3
+  [PASS] Normal-vision floor    worst all-pairs #8190FF<->#B5C0D4 dE 17.5 (normal)
+  [WARN] Contrast vs surface    below 3:1 -- relief required (visible labels or table view): [["#B5C0D4",1.83],["#FFCB3A",1.52],["#8190FF",2.85]]
+
+  -> FAILED -- fix the marked checks  (CVD in the 6-8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+  DISPOSITION: institution-monochrome-family exception (lightness/chroma); coexistence
+  rule (navy vs OA never two MARKS in one figure) -- normal-vision floor PASSES anyway
+  (min 17.5, an improvement over the retired pastel trio's 9.4).
+
+--- RUN 29: navy trio + the 15 drawn SDG hues (18 slots, same set the earlier
+runs used for the SDG sweep). Min navy-vs-SDG normal dE 12.5 (#B5C0D4 vs SDG-6
+cyan #26BDE2, not both in this 18-slot all-pairs worst line but confirmed
+pairwise).
+$ node scripts/validate_palette.js "#192C41,#5A6883,#B5C0D4,#E5243B,#DDA63A,#4C9F38,#C5192D,#FF3A21,#26BDE2,#FCC30B,#A21942,#FD6925,#DD1367,#FD9D24,#BF8B2E,#3F7E44,#0A97D9,#56C02B" --mode light --surface "#FFFFFF" --pairs all
+
+
+Palette (light, surface #FFFFFF, categorical): 18 slots
+  [FAIL] Lightness band         outside band: [["#192C41",0.288],["#B5C0D4",0.806],["#FCC30B",0.845],["#FD9D24",0.777]]
+  [FAIL] Chroma floor           below floor (reads gray): [["#192C41",0.046],["#5A6883",0.046],["#B5C0D4",0.031]]
+  [FAIL] CVD separation         worst all-pairs #FD9D24<->#DDA63A dE 1.3 (protan) . tritan 0.9
+  [FAIL] Normal-vision floor    worst all-pairs #FD9D24<->#DDA63A dE 5.3 (normal) -- below 15, hard to tell apart even with full color vision
+  [WARN] Contrast vs surface    below 3:1 -- relief required (visible labels or table view): [["#B5C0D4",1.83],["#DDA63A",2.19],["#26BDE2",2.22],["#FCC30B",1.62],["#FD6925",2.91],["#FD9D24",2.09],["#56C02B",2.34]]
+
+  -> FAILED -- fix the marked checks  (CVD in the 6-8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+  DISPOSITION: the worst pair here is the UN palette's own pre-existing amber collision
+  (run 7), not a navy-vs-SDG pair. Coexistence exception applies to navy-vs-SDG
+  (min 12.5, below floor -- SDG reaches a Compare mark only as a label accent, never a fill).
+
+--- RUN 30: SHARED_FRONTIER re-measurement -- the two candidates the ratification
+named (#B62000 then #7A1600), each vs ERC-SH/momentum-down vermillion #D55E00,
+BOTH normal and deutan required >= 15.
+
+
+=== A. SHARED_FRONTIER candidates vs vermillion #D55E00 (need >=15 normal AND deutan) ===
+  #B62000: L=0.5008 C=0.1878 contrast-vs-white=6.57:1 | normal dE=13.05 deutan dE=12.10 -> FAIL
+  #7A1600: L=0.3771 C=0.1375 contrast-vs-white=10.81:1 | normal dE=24.93 deutan dE=25.20 -> PASS
+  WINNER: #7A1600
+
+  -> #B62000 FAILS both floors (13.05 / 12.10, both < 15); #7A1600 PASSES both (24.93 / 25.20).
+  #7A1600 is SHIPPED as SHARED_FRONTIER.
+
+--- RUN 31: #7A1600 vs OA / SDG / ERC / FOCAL / COMPARISON, isolated pairwise
+minimum normal-vision dE.
+
+
+=== D. #7A1600 vs OA, SDG, ERC, FOCAL, COMPARISON (isolated pairwise dE, normal) ===
+  vs OA: min normal dE 30.4 (#F85C32)
+  vs SDG: min normal dE 11.2 (#A21942)
+  vs ERC: min normal dE 21.8 (#6A3D9A)
+  vs FOCAL: min normal dE 30.2 (#0072B2)
+  vs COMPARISON: min normal dE 31.3 (#8C9196)
+
+  DISPOSITION: vs SDG FAILS the floor (11.2) -- same coexistence disposition as every
+  other cross-family pair in this file (SHARED_FRONTIER is a mark in its own two
+  figures only, never beside an SDG fill).
+
+--- RUN 32: dark twins alone -- navy slots 1-2 SELF-TWIN (== their own fill,
+already >= 4.5:1), slot 3 gets the one NEW computed hex #687284 (L 0.55).
+Confirms the readability note in lib/palette.py: twin3 sits close to slot 2's
+own FILL (dE 3.7, a text-vs-fill pair the categorical checks do not cover).
+$ node scripts/validate_palette.js "#192C41,#5A6883,#687284" --mode light --surface "#FFFFFF" --pairs all
+
+
+Palette (light, surface #FFFFFF, categorical): 3 slots
+  [FAIL] Lightness band         outside band: [["#192C41",0.288]]
+  [FAIL] Chroma floor           below floor (reads gray): [["#192C41",0.046],["#5A6883",0.046],["#687284",0.031]]
+  [FAIL] CVD separation         worst all-pairs #687284<->#5A6883 dE 3.5 (protan) . tritan 3.7
+  [FAIL] Normal-vision floor    worst all-pairs #687284<->#5A6883 dE 3.7 (normal) -- below 15, hard to tell apart even with full color vision
+  [PASS] Contrast vs surface    all 3 >= 3:1
+
+  -> FAILED -- fix the marked checks  (CVD in the 6-8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+  DISPOSITION: DESCRIPTIVE ONLY -- these three are TEXT (institution_ink), never three
+  fills competing in one figure; the dE 3.7 line is the readability note this file's
+  INSTITUTION_COLORS_DARK comment carries, not a categorical requirement.
+
+--- RUN 33: JOINT_COLOR + navy trio + SHARED_FRONTIER -- descriptive only, same
+class as run 2/8/11 (chrome/accent token mixed into a categorical run). JOINT_COLOR
+never shares a figure with an institution fill (lib/palette.py note) so this
+combination never actually renders.
+$ node scripts/validate_palette.js "#2F3B52,#192C41,#5A6883,#B5C0D4,#7A1600" --mode light --surface "#FFFFFF" --pairs all
+
+
+Palette (light, surface #FFFFFF, categorical): 5 slots
+  [FAIL] Lightness band         outside band: [["#2F3B52",0.352],["#192C41",0.288],["#B5C0D4",0.806],["#7A1600",0.377]]
+  [FAIL] Chroma floor           below floor (reads gray): [["#2F3B52",0.043],["#192C41",0.046],["#5A6883",0.046],["#B5C0D4",0.031]]
+  [WARN] CVD separation         worst all-pairs #192C41<->#2F3B52 dE 6.1 (protan) . tritan 6.6
+  [FAIL] Normal-vision floor    worst all-pairs #192C41<->#2F3B52 dE 6.5 (normal) -- below 15, hard to tell apart even with full color vision
+  [WARN] Contrast vs surface    below 3:1 -- relief required (visible labels or table view): [["#B5C0D4",1.83]]
+
+  -> FAILED -- fix the marked checks  (CVD in the 6-8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+  DISPOSITION: DESCRIPTIVE -- JOINT_COLOR (the pair-pulse chart) and SHARED_FRONTIER
+  (the Compare frontier map) are never on the same figure; institution-monochrome-family
+  covers the navy-only FAILs.
+
+--- RUN 34: MOMENTUM_COLORS alone -- chrome/text tokens, expected FAIL by design
+(same class as run 2/8/11: never a fill, TEXT + glyph only per lib/palette.py).
+Confirms `stable` #727272 (moved off the shipped #5A5F66)
+still sits close to navy slot 2 -- see run 35, the pair that matters.
+$ node scripts/validate_palette.js "#009E73,#D55E00,#727272,#8C9196" --mode light --surface "#FFFFFF" --pairs all
+
+
+Palette (light, surface #FFFFFF, categorical): 4 slots
+  [PASS] Lightness band         all 4 inside L 0.43-0.77
+  [FAIL] Chroma floor           below floor (reads gray): [["#727272",0],["#8C9196",0.009]]
+  [FAIL] CVD separation         worst all-pairs #8C9196<->#009E73 dE 4.8 (deutan) . tritan 10.2
+  [FAIL] Normal-vision floor    worst all-pairs #8C9196<->#727272 dE 10.2 (normal) -- below 15, hard to tell apart even with full color vision
+  [PASS] Contrast vs surface    all 4 >= 3:1
+
+  -> FAILED -- fix the marked checks  (CVD in the 6-8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+  DISPOSITION: DESCRIPTIVE -- same class as COMPARISON/INK_SECONDARY (run 2/8): these
+  are TEXT tokens, excluded from the categorical validator by this file's own
+  convention. #727272 and #8C9196 both clear >= 4.5:1 body-text contrast alone
+  (4.81:1 / 3.18:1 -- the latter is a WARN-band UI-chrome use, not body text).
+
+--- RUN 35: navy slot 2 vs momentum-stable NEW #727272 -- the pair the ratification
+claimed would kill the dE 4.7 slot-2 collision against the OLD #5A5F66.
+
+
+=== F. Sanity: navy slot2 #5A6883 vs momentum-stable NEW #727272 (was 4.7 vs OLD #5A5F66) ===
+  dE normal: 5.86
+
+  DISPOSITION: IMPROVED (4.7 -> 5.86) but still short of 15 -- same class as the
+  slot-3-twin-vs-slot-2-fill readability note (run 32): a TEXT-vs-FILL pair the
+  categorical validator does not check (chrome tokens are excluded from it by this
+  file's own convention). Carried in lib/palette.py as a readability note, not a
+  blocking fail: #727272 is TEXT + glyph only, never a fill, so it is never the
+  same MARK TYPE as the navy bar it might sit near.
+
+--- RUN 36: full plausible pair-view screen -- navy trio + SHARED_FRONTIER +
+ERC + FOCAL + COMPARISON + momentum-stable, pairs=all (10 slots). Descriptive:
+mixes marks (navy, SHARED_FRONTIER, ERC label accents) with chrome/text tokens
+(FOCAL, COMPARISON, momentum-stable) that never compete as two FILLS in one
+figure -- same convention as every full-screen run in this file.
+$ node scripts/validate_palette.js "#192C41,#5A6883,#B5C0D4,#7A1600,#6A3D9A,#009E73,#D55E00,#0072B2,#8C9196,#727272" --mode light --surface "#FFFFFF" --pairs all
+
+
+Palette (light, surface #FFFFFF, categorical): 10 slots
+  [FAIL] Lightness band         outside band: [["#192C41",0.288],["#B5C0D4",0.806],["#7A1600",0.377]]
+  [FAIL] Chroma floor           below floor (reads gray): [["#192C41",0.046],["#5A6883",0.046],["#B5C0D4",0.031],["#8C9196",0.009],["#727272",0]]
+  [FAIL] CVD separation         worst all-pairs #8C9196<->#009E73 dE 4.8 (deutan) . tritan 5.3
+  [FAIL] Normal-vision floor    worst all-pairs #727272<->#5A6883 dE 5.9 (normal) -- below 15, hard to tell apart even with full color vision
+  [WARN] Contrast vs surface    below 3:1 -- relief required (visible labels or table view): [["#B5C0D4",1.83]]
+
+  -> FAILED -- fix the marked checks  (CVD in the 6-8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
+  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
+  DISPOSITION: every FAIL/WARN above is dispositioned individually in runs 26/28/29/34/35;
+  none of it is new. institution-monochrome-family covers the navy self-pairs; the
+  COMPARISON/momentum-stable lines are chrome-vs-chrome, excluded by convention.
+
+--- RUN 37 SETUP (2026-09-01). D7 ratified: SHARED_FRONTIER moves from
+#7A1600 to #821D13 -- measurement of three candidates
+(#821D13/#801D06/#82182E) against vermillion + the navy trio and found all three
+pass, #821D13 preferred as the largest deutan-vs-navy margin with the smallest
+hue shift off the original (H 33.5 deg -> 30 deg). PAL re-derives the winner's
+full cross-family numbers below, against every hue it can share a screen with in
+the shipped app (this exceeds the original script, which only checked
+vermillion + navy + a compressed JOINT/SDGcyan/momentumGrey column).
+
+--- RUN 37: SHARED_FRONTIER NEW #821D13 -- full cross-family screen, one pair at
+a time (OKLab-Euclidean dE, Machado/Oliveira/Fernandes 2009 deutan simulation,
+identical method to runs 14-16). Floor >=15 both normal AND
+deutan, the convention runs 14-16 already established for this hue.
+SHARED_FRONTIER NEW #821D13 in OKLCH: L=0.4004 C=0.1377 H=29.9 deg
+(old #7A1600 was L=0.3771 C=0.1375 H=33.5 deg)
+
+=== SHARED_FRONTIER #821D13 vs every hue it can share a screen with (floor >=15 normal AND deutan) ===
+  vs vermillion (ERC-SH/momentum-down) #D55E00: normal  22.82  deutan  23.04  -> PASS
+  vs navy slot 1 (institution) #192C41: normal  20.79  deutan  17.88  -> PASS
+  vs navy slot 2 (institution) #5A6883: normal  20.51  deutan  16.02  -> PASS
+  vs navy slot 3 (institution) #B5C0D4: normal  43.50  deutan  40.60  -> PASS
+  vs JOINT_COLOR (pair-pulse chart) #2F3B52: normal  17.43  deutan  13.82  -> FAIL
+  vs SDG-6 cyan (label accent) #26BDE2: normal  43.07  deutan  36.04  -> PASS
+  vs momentum grey 'stable' #727272: normal  20.49  deutan  16.06  -> PASS
+  vs OA Life                #0CA750: normal  35.86  deutan  22.77  -> PASS
+  vs OA Social              #FFCB3A: normal  48.69  deutan  47.17  -> PASS
+  vs OA Physical            #8190FF: normal  38.58  deutan  35.83  -> PASS
+  vs OA Health              #F85C32: normal  28.18  deutan  28.43  -> PASS
+  vs ERC PE (label accent)  #6A3D9A: normal  20.47  deutan  20.17  -> PASS
+  vs ERC LS (label accent)  #009E73: normal  33.06  deutan  21.40  -> PASS
+  vs ERC SH (label accent)  #D55E00: normal  22.82  deutan  23.04  -> PASS
+  vs FOCAL                  #0072B2: normal  28.88  deutan  22.94  -> PASS
+  vs COMPARISON             #8C9196: normal  29.23  deutan  25.67  -> PASS
+
+=== contrast vs white #FFFFFF (bars/bubbles must read; floor ~3:1 for a filled mark) ===
+  NEW #821D13: 9.84:1
+  OLD #7A1600: 10.81:1  (for comparison)
+
+=== contrast vs navy dots specifically (the user's original complaint) ===
+  NEW vs slot 1 #192C41: 1.44:1   OLD vs slot 1: 1.31:1
+  NEW vs slot 2 #5A6883: 1.75:1   OLD vs slot 2: 1.93:1
+  NEW vs slot 3 #B5C0D4: 5.37:1   OLD vs slot 3: 5.90:1
+
+=== OVERALL: SOME CHECKS FAILED (one pair, dispositioned below) ===
+
+  DISPOSITION: the ONE FAIL (vs JOINT_COLOR, deutan 13.82, just below the 15
+  floor) is the SAME coexistence class run 33 already dispositioned for the OLD
+  red -- JOINT_COLOR paints ONLY the pair relationship-pulse chart and
+  SHARED_FRONTIER paints ONLY the Compare pooled-frontier map and "who holds the
+  shared frontier" bar chart (lib/palette.py's own JOINT_COLOR docstring: "the
+  pulse chart moved to JOINT_COLOR... so this hue [SHARED_FRONTIER]
+  and the vermillion ERC-SH/momentum-down hue are no longer both reachable from
+  the same figure"). The two hues are never two marks in one figure or
+  one page, so this is DESCRIPTIVE, not a blocking fail -- recorded rather than
+  suppressed per this file's own convention (runs 6b/10/16/33).
+  EVERY OTHER PAIR PASSES WITH MARGIN, including the two pairs D7 actually cared
+  about (navy trio: min normal 20.5 / min deutan 16.0; vermillion: 22.8/23.0),
+  matching WT_2C.md claim 5's reported numbers exactly. Contrast vs white
+  9.84:1 (floor ~3:1 for a filled mark, 4.5:1 body-text floor also cleared).
+
+RESIDUAL, disclosed per WT_2C.md claim 5 (binding, carried in lib/palette.py):
+luminance/contrast separation from navy slot 2 barely moves (1.75:1 new vs
+1.93:1 old, marginally WORSE) because #821D13's whole gain comes from a small
+lightness lift (L 0.377 -> 0.400) that a HARD deutan-vs-navy floor caps -- any
+candidate at L>=0.50 (a real fix for "two dark blobs read alike") fails the
+deutan-vs-navy-slot-2 floor outright (measured, WT_2C.md claim 5's trade-off
+curve). The compensating mechanism is NOT colour: `palette.FRONTIER_SHARED_HALO`,
+a white/SURFACE outline ring on every shared-frontier mark, so a reader tells a
+shared bubble from a same-lightness navy bubble by SHAPE (a ring) rather than by
+asking hue or luminance alone to do more work than either can.

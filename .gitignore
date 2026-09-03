@@ -1,0 +1,25 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+*.env
+.env*
+tests/ui/screenshots/
+.streamlit/secrets.toml
+.venv/
+
+# Defensive additions: nothing on disk currently violates these -- an audit found zero
+# secrets/logs/raw-data tracked -- added to close the gap before it happens, not to fix
+# an existing leak. Never add _TO_DELETE_*/ here: that folder is deliberately kept visible
+# in git for review until a human signs off on deleting it.
+*.log
+*.tmp
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+
+# Scratch renders and downloaded workbooks a local pytest run can leave behind (never
+# committed on purpose -- both are regenerable from the running app).
+tests/**/renders/
+tests/**/*.xlsx
+tests/**/downloads/

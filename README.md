@@ -1,0 +1,233 @@
+# BenchUp
+
+BenchUp compares European research institutions on their published output, read from OpenAlex
+the same way for every institution in its index. A strategy officer can check where a competitor
+or a prospective partner stands without asking them for their own numbers. Every list and every
+chart the tool produces is a set of candidates for review, not a verdict: a lens that places one
+institution close to another, or a chart that puts two institutions side by side, is a starting
+point for a conversation.
+
+## The three pages
+
+**Find** answers "which institutions have a research profile close to this one?" Pick a seed
+institution and read who resembles it across several independent lenses (shared fields, shared
+subfields, shared topics, shared frontier topics, shared specialisations, and more), with the
+agreement between lenses shown rather than averaged into one score. Each lens shows its top 50
+candidates, computed and searchable in full beneath that cut; the profile header carries the
+institution's own key figures, including its star papers and the topics it leads. A concordance
+count, alongside each candidate, states how many of the lenses defined for that seed place it in
+their own top 30, a measure of how many independent readings agree, never a score of its own. A
+further tab, aspirational, answers a different question: which of a seed's own subfield-lens
+candidates its own impact already exceeds. A 14-sheet workbook download carries every lens and
+every table on the page. Two toggles, taxonomy tree and counting basis, sit beside the search box
+and reshape every subfield and field figure on the page; a topic-grain figure, frontier scores,
+star papers and world leaders among them, is unaffected by either, since a topic is the
+taxonomy's base unit and a tree only decides which subfield it rolls up into.
+
+**Compare** answers "where do these institutions differ, and by how much?" Put two institutions
+side by side: key figures, thematic and SDG shape, frontier positioning and the shared frontier,
+and the relationship between the two, in that order. Thematic and SDG shape each carry a Profile
+tab (share of own output, against the European mean) and an Impact tab (PP10_WD against the world
+reference). The shared frontier reads as a mirror chart, one institution's own topics either side
+of what the two publish together, with a link from every topic name straight to the joint
+publications on OpenAlex. Compare pins every figure to the best-fit taxonomy and full counting,
+so the two institutions on the page are always read the same way; the fractional count sits in
+hover. A 7-sheet workbook and a shareable link (`?compare=<id>,<id>`) close the page; opening an
+institution on Find seeds the first Compare slot, so a reader moving from one page to the other
+never re-types a name.
+
+**How it is built** (the Methods page) answers "where does each number come from, and what does
+it leave out?" One section per question a reader is entitled to ask, every figure filled in at
+run time from the same snapshot the other two pages read.
+
+Ten lenses are defined, each reading resemblance a different way; eight show by default and two
+sit one click away, an experimental SDG-specialisation lens among them.
+
+| Lens | Reads | Shown by default |
+|---|---|---|
+| L0 · Field overlap | Shared field-level output shape | Yes |
+| L1 · Subfield overlap | Shared subfield-level output shape | Yes |
+| L2 · Topic overlap | Shared topics | Yes |
+| L3 · Frontier-topic overlap | Shared topics inside the global frontier pool | Yes |
+| L4 · Shared specialisations | Subfields both institutions specialise in, above a publication floor | Yes |
+| L5 · ERC panel overlap | Shared European Research Council panel profile | Yes |
+| L6 · ERC specialisation overlap | ERC panels both institutions specialise in | Yes |
+| L7 · SDG profile overlap | Shared Sustainable Development Goal tagging profile | Yes |
+| L8 · Core-shape overlap | Shared subfields again (L1), narrowed to the seed's own top subfields | One click away |
+| L9 · SDG specialisation (experimental) | SDG goals both institutions specialise in | One click away |
+
+## The indicators
+
+Every figure below is read the same way for every institution in the index, and every share
+names its own denominator. Full definitions, with their exact source columns, sit in `docs/
+METHODS_NOTE.md` and the Methods page; this table is the one-line version.
+
+| Indicator | What it measures | Window / basis |
+|---|---|---|
+| Publications | Full-counted publication count | 2020 to 2024 (fractional counting in hover) |
+| Change in mean annual volume | Mean annual publications, 2023 to 2024, against the same average, 2020 to 2022 | Same window pair, own counting basis |
+| FWCI_EU | Median field-weighted citation impact: an institution's own publications against the average publication of the same subfield, year and document type, over the European baseline (mean in hover) | Articles and reviews, 2020 to 2024 |
+| PP10_WD | Share of articles and reviews landing in the world top decile of citations for their own subfield, year and document type | Articles and reviews, 2020 to 2024, against the world |
+| Star papers, star share | Star papers: an institution's count of the world's most-cited works within their own topic and year (the world top 1% by citations). Star share: that count against the institution's own article-and-review output, a size-free reading | Articles and reviews, 2020 to 2024 |
+| Topics led | Topics where the institution ranks among the world top ten publishers, read against the pool that fits its own type (the university leaderboard for a university, the all-institution leaderboard for everyone else, since a single ranking across every type favours large multi-site research organisations) | Articles and reviews, 2020 to 2024, world top ten |
+| Frontier share and frontier scores | Frontier share: share of output sitting in the global top quarter of frontier-scored topics. Expansion and acceleration (the two scores behind the pool) read how fast world attention to a topic is moving: expansion is a standardised reading of the topic's world publication growth over the latest period, acceleration a standardised reading of whether that growth is speeding up or slowing down. Neither measures novelty or quality, only attention | Own institution's output against the global topic pool |
+| SDG-tagged share | Share of output carrying at least one Sustainable Development Goal tag | 2020 to 2024 |
+| International, company co-publication | Share of eligible works with at least one co-authoring institution outside the focal institution's own country (international) or typed as a company (company) | 2020 to 2024 |
+| Momentum | A pair's mean annual joint output, 2023 to 2024, against 2020 to 2022, recentred against the same ratio's median across every eligible pair, shown only once a significance test on the two windows clears the 5% level | Joint articles and reviews, 2020 to 2024 |
+| Reciprocity | One bar per institution per field: each bar is that field's share of the institution's own output, so the two sides of a field compare directly; the pair's joint output in that field sits once, in a gutter column between the two bars | By field, own share; joint articles and reviews in the gutter |
+| Joint star papers | Count of star papers naming both institutions directly, with a link to the OpenAlex list, most cited first | Articles and reviews, 2020 to 2024 |
+
+Two impact figures, FWCI_EU and PP10_WD, are never averaged into one score: they read two
+different things, a typical level (FWCI_EU, against Europe) and an excellence tail (PP10_WD,
+against the world). An institution can sit close to the European typical level on FWCI_EU and
+still stand out, or fail to, on the world's own top decile.
+
+Star share can run high on a very small article-and-review base, so the raw count always sits
+beside the share; a small institution with a handful of highly cited papers can post a very high
+share on a very small base (one elite specialist lab in this snapshot posts a star share above
+20% on a base of little more than 200 articles and reviews). Frontier share and frontier scores
+carry a related caveat in the other direction: a well-established, foundational topic can post a
+low frontier score simply because the world's attention to it has stopped growing, not because
+the topic itself has stopped mattering.
+
+## Data
+
+The snapshot behind every page is the 27 August 2026 OpenAlex harvest, covering 7,557
+institutions across 31 countries: the European Union together with the United Kingdom,
+Switzerland, Norway and Iceland. World leaders and star papers are pulled separately, live from
+OpenAlex, on 2026-09-03, a different moment from the harvest snapshot, so the two can drift a
+little apart; the Menu page states both dates.
+
+An institution enters the index once it holds at least 200 publications overall and at least 20
+in each of the two most recent years. An institution is credited with a publication when the
+publication's own record names it directly, never through OpenAlex's parent-child organisation
+graph, which would graft a partner's whole output onto a shared institution. Full counting
+credits the whole publication to every institution named on it; fractional counting splits it
+across institutions by each author's own declared share.
+
+OpenAlex files every publication under a topic, and every topic under a subfield and a field. A
+measurable share of those subfield placements is wrong, so the index ships three versions of the
+taxonomy: the original OpenAlex placement, a conservative repair that moves only the clearest
+cases, and a best-fit repair that moves a wider set. Find offers both counting bases and all
+three trees as toggles; Compare pins every figure to the best-fit tree and full counting, so the
+two institutions on the page are always read the same way, and the fractional count sits in hover
+wherever a figure needs it.
+
+`docs/data_contract.yaml` is the one schema authority for every file `data/` ships: grain, keys,
+columns, dtypes, and the denominator of every share or ratio column, checked by `ops/
+contract_check.py` on every deploy. `config.yaml` carries every threshold the app itself applies
+at run time (lens set, depth, the specialisation floor, the scale-guard bands, the type-override
+file), each with a one-line comment naming why the value is what it is.
+
+## Run locally
+
+Any Python 3.12 works; the pins below are what this app is verified against.
+
+```powershell
+git clone https://github.com/dorothee-siris/benchup.git
+cd benchup
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+pip install -r requirements-dev.txt   # only needed to run tests/smoke/probe, not to run the app
+streamlit run Menu.py
+```
+
+The clone already contains `data/`, ready to run: 27 declared tables plus the `data/scenarios/`
+folder (the ranking engine's precomputed substrates). There is no separate data download step.
+Check the data you have against the contract at any time:
+
+```powershell
+python ops/deploy.py --check-only
+```
+
+## Tests
+
+```powershell
+pytest tests -q --ignore=tests/test_ram_budget.py
+pytest tests/test_ram_budget.py -q -s   # RAM census, isolated -- run on its own, never inside a full-suite process
+python tests/ui/smoke.py --port 8611    # end-to-end proof against a live server
+python tests/ui/probe.py all            # every rendered value recomputed straight from the data layer
+python tests/stress/run_stress.py       # permanent RAM gate: deterministic crash-path replay,
+                                         # sustained concurrent sessions, a bare-process scenario
+                                         # cycle; peak server RSS must stay under 1,800 MB (half
+                                         # Streamlit Community Cloud's 2.7 GB container cap) and
+                                         # the server must stay alive throughout
+```
+
+Exact pytest, smoke and probe counts move as work lands; run the commands above for the live
+number rather than trusting a count typed into this file.
+
+`smoke.py` drives the live Streamlit server end to end: opening an institution, switching taxonomy
+and counting basis, moving to Compare, downloading a workbook, one pass/fail line per check and a
+summary count at the end. `probe.py` recomputes every rendered value straight from the data layer
+(`lib/compare_data.py`, `lib/collab_data.py`, `lib/leaders_data.py`), bypassing the page entirely,
+so a chart that renders without erroring but shows the wrong number is still caught. `ops/
+rss_probe.py` reads the running server's own resident memory (Windows `ctypes`, no dependency);
+the stress harness and `test_ram_budget.py` both build on it.
+
+## Configuration and schema
+
+- `config.yaml`: every threshold the app applies at run time, one key at a time, each commented.
+- `docs/data_contract.yaml`: the schema authority for every file `data/` ships, validated by
+  `ops/contract_check.py`, `ops/deploy.py --check-only`, and `tests/test_contract*.py`.
+- `docs/VENDORED.md`, `lib/engine/VENDORED_engine.md`: provenance for every piece of code copied
+  in from elsewhere rather than written for this project, with what changed on the way in.
+
+## Pipeline refresh
+
+Refreshing the analytical data (a new OpenAlex snapshot, a taxonomy change, a new derived table)
+is documented end to end in `../pipeline/README.md`, step by step, with credentials,
+checkpoint/resume behaviour and the exact run order:
+
+| Step | What it builds |
+|---|---|
+| 14 | Institution metadata for non-indexed institutions |
+| 16 | The SDG and impact-time cross tables, plus the corpus checkpoint later steps read |
+| 17 | FWCI reference table and per-work FWCI |
+| 18 | FWCI_EU by field, subfield, SDG and ERC panel |
+| 19 | PP10_WD by field, subfield, SDG and ERC panel |
+| 15 | Collaboration pass: pair tables, momentum, the pair-level FWCI join |
+| 21 | The ranking engine's precomputed per-scenario substrates (`data/scenarios/`) |
+| 22 | The pair x domain x year rollup behind the relationship chart |
+| 23 | World leaders, pulled live from OpenAlex |
+| 24 | Star papers, pulled live from OpenAlex |
+| 25 | Institution-level leader and star-paper figures, from steps 23 to 24 |
+| 26 | Institution-level FWCI_EU |
+| 20 | The final repack: every deployed table cast to its RAM-lean dtype, run last |
+
+**That link only resolves for a SIRIS operator with the full private project tree.** This repo
+(`app/`) is a subfolder of a larger private working copy; the pipeline, the raw corpus and the
+staging data directory all live one level up and are not part of this public repository. A clone
+of this repo gets the app and its already-baked data, never the pipeline that produced it.
+
+## Repository layout
+
+| Path | Holds |
+|---|---|
+| `Menu.py`, `pages/` | The three pages: Find, Compare, How it is built |
+| `lib/` | Data loaders, the ranking engine (`lib/engine/`), page logic, chart builders, workbook exports |
+| `data/` | The 27 declared tables plus `data/scenarios/`, validated against `docs/data_contract.yaml` |
+| `docs/` | The data contract, the design system's chrome contract and viz spec, the Methods source text |
+| `config.yaml` | Every run-time threshold, one key at a time |
+| `ops/` | The deploy and contract-check scripts, an RSS reader |
+| `tests/` | Pytest suite, the Playwright smoke and probe scripts (`tests/ui/`), the memory stress harness (`tests/stress/`), fixtures and golden files |
+
+## Deploy
+
+Public Streamlit Community Cloud app, built from this repository, branch `master`, main file
+`Menu.py`. Community Cloud builds directly from the repository's `data/`, already baked; there
+is no separate data upload. A single session's steady memory footprint measures under 1 GB.
+Before pushing a data refresh, run `ops/deploy.py --check-only` so a contract violation is caught
+here, not on the deploy platform.
+
+## Limits
+
+A lens places a candidate close to a seed by shared output shape, a resemblance signal a reader
+still has to judge for a true partnership case; an institution with a genuinely different output
+shape from the seed's own can go unfound by every lens at once. The taxonomy repair leaves gaps
+too: a measurable share of topics sit in the tree without a confident match. World leaders and
+star papers are pulled from OpenAlex on their own date, separate from the harvest snapshot behind
+every other figure, so the two can drift apart over time; a rerun on a later date, against a
+fresh OpenAlex pull, will not reproduce this snapshot's exact counts, even from the same code.
+The full account of every known limit lives on the Methods page.

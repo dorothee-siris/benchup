@@ -1,0 +1,16 @@
+# BenchUp is light-mode-only, full-width (SIRIS house rule, CLAUDE.md "HTML deliverables
+# and Artifacts" section applies to this app too). Wide layout is set per-page via
+# st.set_page_config(layout="wide").
+[theme]
+base = "light"
+# primaryColor = lib/palette.py FOCAL (#0072B2). The ONLY hex outside palette.py: Streamlit paints
+# ProgressColumn bars, links and buttons with the theme primary colour, and its default is an
+# off-palette red (seen in design-system/ab/ab1_a_1280.png). tests/test_palette.py checks this
+# value equals palette.FOCAL.
+primaryColor = "#0072B2"
+
+[server]
+headless = true
+
+[browser]
+gatherUsageStats = false

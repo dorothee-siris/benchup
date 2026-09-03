@@ -1,0 +1,18 @@
+{
+  "med": 1.0430507975155028,
+  "w1": [
+    2020,
+    2022
+  ],
+  "w2": [
+    2023,
+    2024
+  ],
+  "band": 0.25,
+  "alpha": 0.05,
+  "elig_min": 10,
+  "weak_base_max": 4,
+  "new_min_c2": 5,
+  "dormant_min_c1": 5,
+  "basis": "CORE-AR"
+}

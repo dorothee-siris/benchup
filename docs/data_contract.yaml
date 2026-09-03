@@ -1,0 +1,858 @@
+# data_contract.yaml -- BenchUp, THE ONE contract for every file `ops/deploy.py`
+# writes into `data/`. Machine-readable on purpose: deploy.py validates the source tables
+# against this file with ops/contract_check.py and FAILS NON-ZERO on any undeclared drop,
+# missing column, dtype mismatch, or duplicate key. Pattern adapted from the Lorraine
+# Phase-2 Explorer's `docs/data_contract.yaml` (see app/docs/VENDORED.md).
+#
+# Every dtype below is the pandas dtype `pd.read_parquet(...)[col].dtype` reports, VERIFIED
+# against the real files staged at app/data/*.parquet on 2026-08-29 -- never taken from
+# source_manifest.json's table_schemas block from memory. One divergence found and recorded:
+# index.parquet ships a `type_openalex` column that source_manifest.json's table_schemas.index
+# block does NOT list (the manifest is stale on this one column; the contract follows the file).
+#
+# Conventions
+#   grain      : one row per <grain description>
+#   keys       : primary key columns; uniqueness is a Class-1 invariant (fail_on_key_duplication)
+#   columns[]  : {name, dtype, meaning} -- dtype is the pandas dtype string; for every share/
+#                percentage/ratio column, `meaning` NAMES THE DENOMINATOR explicitly and states
+#                whether it is verified against the shipped columns or taken from spec/docs.
+#   `derived_views` (bottom): views the APP computes at query time, not files on disk -- listed
+#   here because they are still part of the contract between the shipped data and what the UI
+#   is allowed to claim.
+
+contract_version: "1.5"
+# v1.5 (2026-09-03): the trimmed rebuild -- five new tables (collab_pair_domain_year.parquet,
+# topic_leaders.parquet, topics_led.parquet, inst_stars.parquet, pair_stars.parquet), eight new
+# index.parquet columns (n_stars, star_share, n_topics_led_all/edu/fair, fwci_eu_median/mean/n),
+# and the new data/scenarios/ folder (the ranking engine's precomputed per-scenario substrates,
+# documented in `scenario_files` below rather than in `files` -- its members are not one-row-per-
+# key tables, so the column/key contract shape below does not fit them). `source_dir` moves from
+# `../data/artefacts_eu` to `../data/artefacts` (staging directory renamed); the file-count pin
+# rises from 22 to 27 (24 parquet + 3 override csv); the whole-folder deploy size cap rises from
+# 400 MB to 700 MB to make room for the scenarios folder (150.5 MB, per ops/deploy.py --check-only's
+# own size audit) alongside the 22 legacy
+# tables -- every INDIVIDUAL file still holds the 95 MB per-file cap unchanged. `impact_cells.
+# parquet` has no live UI caller today (only `lib/data_cache.py::impact_cells()` reads it, and
+# nothing calls that accessor) but stays in the contract: `lib/engine/__init__.py` still exports
+# `load_impact_cells`, and `tests/test_ram_budget.py`'s RAM census (owned by a different stream)
+# budgets this table's load cost explicitly -- flagged for a future stream to resolve, not acted
+# on here to avoid breaking an already-verified cross-stream test on a shared file.
+# v1.4 (2026-09-02): RAM-fit repack for Streamlit Community
+# Cloud (~2.7 GB cap) via `pipeline/20_repack_app_data.py`, the pipeline's FINAL step before
+# deploy -- representation-only, no value changes (verified: evals/gate_2E/verify_repack.py,
+# every table value-identical to its pre-repack original incl. the Ifremer I154202486 anchor).
+# Dtype policy (applies to every table below): every object-dtype ID/label column -> `category`
+# (topics_dim's three list<double> period-array columns are the sole exception -- unhashable
+# values, left as object); every float64 column -> float32; existing int/Int/bool/category
+# dtypes untouched. `impact_fields.parquet` DELETED (dead since 2D -- no code path read it;
+# removed from `files:` below, 23 -> 22 files). `impact_cells.parquet` trimmed to floor=30 ONLY
+# (floor=10 rows dropped; column itself kept) -- `IMPACT_CELL_FLOORS`/`IMPACT_FLOORS` are now
+# `(30,)`. The pre-repack pipeline artefacts copy is UNAFFECTED (keeps both floors,
+# keeps impact_fields.parquet) -- only the app/data/ deploy is trimmed.
+# v1.3 (2BR3, stream P7, 2026-08-31): CORE-AR rebuild of the Collaborate basis (ruling 3) +
+# distinct-tagged SDG field cross (ruling 2) + new FWCI reference (ruling 4) + momentum
+# (ruling 6). Schema changes: collab_pairs.parquet v2 (+core_total/c1/c2/n_top10/n_covered/
+# n_sdg/fwci_median/mom_class/mom_rr/mom_p; rank_in_a/rank_in_b RECOMPUTED on core_total;
+# copubs_2020..copubs_2025/copubs_total UNCHANGED and KEPT -- pulse() and any all-types/
+# 2020-2025 reader still resolve; erc_top_panel/_top_panel_n/_labelled_n carried forward
+# unchanged, closing the 2BR3 WT gap g), collab_pair_fields.parquet v2 and
+# collab_pair_topics.parquet v2 (vol_total->vol + rebasis to CORE-AR, vol_2025 DROPPED
+# entirely -- CORE-AR has no 2025 component by definition; mean_citations DROPPED,
+# superseded by fwci_median; sdg_tagged_n->n_sdg; ERC columns DROPPED from these two tables,
+# now pair-grain-only), NEW collab_topic_vols.parquet (uncapped gaps-fix table), NEW
+# collab_facts.json (momentum constants -- not contract-checked, see its note below),
+# sdg_fields.parquet v2 (BREAKING regrain: per-goal sdg_idx column REMOVED, mass->
+# mass_any_frac/mass_any_full, DISTINCT-tagged not per-goal-summed, window narrowed from
+# sdg_mass_window 2020-2025 to core_window 2020-2024 -- fixes the SDG-share-264.8%-over-100%
+# bug at its root), sdg_year.parquet v2 (mass RENAMED to mass_frac, +mass_full, grain/window
+# UNCHANGED), erc.parquet v2 (+mass_full, `mass` name UNCHANGED), index.parquet
+# (+total_ar_full_w1/total_ar_full_w2, the momentum denominators). NEW window_conventions
+# entry: core_ar_window. Pipeline-internal (NOT deployed, NOT in `files:` below):
+# data/interim/fwci/fwci_ref.parquet, data/interim/fwci/fwci_work.parquet.
+snapshot: august_2026                      # config.yaml `snapshot:` (R2.1)
+generated_at: "2026-08-27T13:41:28.350794+00:00"   # source_manifest.json generated_at (= data/artefacts_eu/manifest.json, byte-identical, verified 2026-08-29)
+source_dir: "../data/artefacts"            # default --source for ops/deploy.py, relative to app/ (v1.5: renamed from ../data/artefacts_eu)
+deploy_target: "data/"
+# v1.1 (Refinement R1, R-S5, 2026-08-29): +doctype_by_year.parquet --
+# 9 parquet tables + 2 override csv = 11 files declared below (was 10 at v1.0). breadth_subfields
+# and sdg.esi meanings corrected against the real data (see their entries); the 6 index.mass_*
+# grey-accounting rows' GAP wording resolved to a ruling (L25).
+# v1.2 (2026-08-30): +sdg_fields.parquet, +sdg_year.parquet, +impact_fields.parquet,
+# +collab_pairs.parquet, +collab_pair_topics.parquet, +overrides/pool_exclusions.csv (this file
+# added the index.pool_excluded COLUMN but never declared the CSV it points to as its own contract
+# file; closed here) -- 12 parquet + 5 override/lookup csv... corrected count: 14 parquet tables +
+# 3 override csv = 17 files declared below (was 11 at v1.1). index.parquet gains intl_share,
+# company_share and pool_excluded. Fixed STALE "34 rows"/"34
+# institution_ids"/"n_ids: 34" text (2026-08-30 override round brought the total to
+# 41 -- 34 + 7 gated-type resolutions CNR/TNO/VTT/DZHK/DZNE/DZL/DZIF) at every occurrence in this
+# file: index.type meaning, the `type_overrides:` block (reference/n_ids/institution_ids list),
+# and overrides/type_overrides.csv's own grain/locked meanings. Added `window_conventions` below
+# (ratio-window rule): the SDG mass-basis window (2020-2025, six-year) and the
+# analytical core window (2020-2024) are NAMED, VERBATIM, on both sides of every share/ratio
+# column that uses either -- guarded by tests/test_contract_collab_tables.py so a future edit
+# cannot drop the window name silently (this is the exact failure mode the "109% ERC share" defect
+# and the sdg.parquet-basis discovery both trace back to). Added derived_views.dynamics_2br:
+# pre-declares the two Dynamics-Δ windows and formula for CD, per level, before CD/CP are built.
+# Resolved the "two files claiming schema authority" defect: data/overrides/type_overrides_GATE.md
+# still reads "Disposition: none applied" for 4 institution_ids that a later ruling
+# subsequently locked into type_overrides.csv (predating this entry; a follow-up re-confirmed they
+# STAY gated, a decision not an oversight) -- flagged STALE in the `type_overrides:` block below;
+# this contract + type_overrides.csv are the only schema/decision authority, GATE.md is a
+# historical record only.
+
+# ------------------------------------------------------------------------------------------------
+# window_conventions -- the TWO ratio-window pairs this snapshot mixes. Every share/ratio column
+# in `files:` below that divides by one of these MUST name the matching string verbatim (tested).
+# ------------------------------------------------------------------------------------------------
+window_conventions:
+  core_window: "2020-2024 (core window)"
+  # index.total_full_2020_2024/total_frac_2020_2024, intl_share, company_share, and the
+  # impact/pp_denominator_frac family all use this 5-year analytical window.
+  sdg_mass_window: "2020-2025 (SDG mass basis, six-year)"
+  # sdg.parquet.share/esi, sdg_fields.parquet.mass, sdg_year.parquet.mass are ALL denominated
+  # on the WHOLE run window (2020-2025, incl. the 2025 bonus year) -- build_sdg_table/
+  # build_erc_table apply no year filter to the corpus they are handed (P3 finding, 2026-08-30).
+  # This is NOT core_window: summing sdg_year.parquet to 2020-2024 only recovers a median 84.96%
+  # of sdg.parquet's mass, not 100% -- the two windows must never be silently conflated (this is
+  # the generalised form of the ERC "109% share" R1 defect).
+  dynamics_window_1: "2020-2022 (dynamics window 1, mean annual)"
+  dynamics_window_2: "2023-2024 (dynamics window 2, mean annual)"
+  # Compare "Dynamics Δ" metric and collab_pair_topics.vol_w1/vol_w2; 2025 EXCLUDED from
+  # both (bonus-year composition skew, same rule as every other impact-adjacent window). See
+  # derived_views.dynamics_2br below for the full formula and the 0-safe guard.
+  core_ar_window: "articles+reviews, 2020-2024, full counting (CORE-AR basis)"
+  # 2BR3 ruling 3 (P7): the basis for every Collaborate TABLE number (collab_pairs.core_total/
+  # c1/c2/n_top10/n_covered/n_sdg/fwci_median/mom_*, collab_pair_fields.parquet,
+  # collab_pair_topics.parquet, collab_topic_vols.parquet, fwci_ref.parquet/fwci_work.parquet,
+  # index.total_ar_full_w1/w2) and sdg_fields.parquet v2's mass_any_frac/mass_any_full. NARROWER
+  # than core_window on TWO axes at once: type-restricted (article+review only, core_window is
+  # all doc types) AND it is core_window's own year span (2020-2024) with full counting only (no
+  # fractional variant shipped for the collab tables). Every OpenAlex deep-link for a CORE-AR
+  # number carries `type:article|review,publication_year:2020-2024` so link count == displayed
+  # count (WT gate condition, 2BR3 §2.1). c1/c2 (dynamics_window_1/2 further split WITHIN this
+  # basis) are the CORE-AR-basis analogue of vol_w1/vol_w2 at pair grain -- do not confuse with
+  # the ALL-TYPES vol_w1/vol_w2 that collab_pair_topics.parquet v1 shipped.
+
+policy:
+  fail_on_missing_column: true     # a declared column absent from the built table -> FAIL
+  fail_on_dtype_mismatch: true     # declared dtype != real column dtype -> FAIL
+  fail_on_key_duplication: true    # declared `keys` not unique in the built table -> FAIL
+  fail_on_undeclared_drop: true    # a column present in source_manifest.json's table_schemas
+                                    # for this table but absent from `columns` below -> FAIL
+  fail_on_extra_column: false      # a column in the built table not declared here -> logged only
+
+files:
+
+  # ============================================================================================
+  # index.parquet -- one row per index institution (the population, L14 population order)
+  # ============================================================================================
+  index.parquet:
+    grain: "one row per index institution (7,557 rows, population_rule: total>=200 works, >=20 in EACH of 2023/2024)"
+    keys: [institution_id]
+    columns:
+      - {name: institution_id, dtype: category, meaning: "OpenAlex institution id (I#########); primary key"}
+      - {name: inst_key, dtype: int32, meaning: "0-based row position, ascending; the canonical population order (L14) -- every derived matrix in the app engine is reindexed to this order, tie-breaks in ranking are stable by this position"}
+      - {name: ror_id, dtype: category, meaning: "ROR identifier"}
+      - {name: display_name, dtype: category, meaning: "OpenAlex display name; seed search primary key"}
+      - {name: display_name_acronyms, dtype: category, meaning: "pipe-delimited acronyms; seed search index"}
+      - {name: display_name_alternatives, dtype: category, meaning: "pipe-delimited alternative names; seed search index"}
+      - {name: type, dtype: category, meaning: "SIRIS-PATCHED institution type (education/facility/company/other/funder/government/healthcare/nonprofit/archive). Differs from type_openalex for exactly the 41 institution_ids in overrides/type_overrides.csv -- see 'Type overrides' below. This is the type the app ranks, filters and badges on (never type_openalex)."}
+      - {name: type_openalex, dtype: category, meaning: "the ORIGINAL, unpatched OpenAlex type, kept for audit and for the 'type corrected by SIRIS (was: {type_openalex})' badge text. Never changes ranking or inclusion (config.yaml proposal_r5.type_overrides.changes_ranking_or_inclusion: false). NOT listed in source_manifest.json table_schemas.index -- present in the real file, verified 2026-08-29; manifest is stale on this one column, contract follows the file."}
+      - {name: pool_excluded, dtype: bool, meaning: "ADDITIVE (2BR P4, R2-E, 2026-08-30): True for institution_ids listed in overrides/pool_exclusions.csv -- a funder/regulator surfacing as a performer (Romanian Ministry of Education) or the secondary id of a duplicate institution pair (Shell NL/UK, INESC/INESC-ID), False otherwise. Flags a row OUT of lens/aspirational CANDIDATE POOLS only (wired in lib/engine); never removes the row, never changes ranking, denominators or any other column -- excluded rows keep all their data (A6: row removal would shrink the population and move every SI value). See overrides/pool_exclusions.csv for institution_id/canonical_id/reason/source."}
+      - {name: country_code, dtype: category, meaning: "ISO 3166-1 alpha-2; perimeter = EU27 + GB/CH/NO/IS (config.yaml perimeter_countries, R2.3/D10)"}
+      - {name: city, dtype: category, meaning: null}
+      - {name: lat, dtype: float32, meaning: "latitude"}
+      - {name: lng, dtype: float32, meaning: "longitude"}
+      - {name: homepage_url, dtype: category, meaning: "38 nulls (of 7,557) -- unresolved homepage"}
+      - {name: total_full_2020_2024, dtype: float32, meaning: "full (unfractionalized) work count, analytical window 2020-2024 (config.yaml window_analytical). Denominator for the scale-guard band test (max(a,b)/min(a,b) <= 8 below 20k works, <= 4 at/above 20k -- recall_v2.py:722) and for the umbrella-badge size test (> 5x country x type median on this column, PATCHED type basis)."}
+      - {name: total_frac_2020_2024, dtype: float32, meaning: "fractional-counted work count, same window"}
+      - {name: full_2023, dtype: float32, meaning: "full work count, 2023 only; population_rule 'recent' floor requires >=20 in EACH of 2023 and 2024"}
+      - {name: full_2024, dtype: float32, meaning: "full work count, 2024 only"}
+      - {name: first_year, dtype: int64, meaning: "first year this institution appears in the corpus"}
+      - {name: newcomer_flag, dtype: bool, meaning: "0 True rows in the shipped 7,557 (verified 2026-08-29) -- no institution in this snapshot is flagged a corpus newcomer"}
+      - {name: hhi_subfield, dtype: float32, meaning: "Herfindahl-Hirschman index of the institution's subfield share_frac vector (bestfit tree); feeds hhi_class"}
+      - {name: breadth_subfields, dtype: int32, meaning: "count of subfields with vol_frac >= 30 (the G6 floor, config.yaml g6_impact_floor / pipeline/agg/trees_agg.G6_FLOOR) for this institution -- VERIFIED 2026-08-29: equals count(subfields.parquet.vol_frac >= 30) exactly on 7 spot-checked institutions (I100063501: 4, I34250744: 58, I4210155399: 1, I2802445252: 11, I4210128123: 3, I4210126694: 2, I2802833755: 1). NOT 'count of subfields with nonzero vol_frac' as an earlier reading of this contract said -- that reading was wrong (152/225 nonzero subfields on the first probe, vs the correct 4 at the G6 floor)."}
+      - {name: total_full_this_run, dtype: float32, meaning: "run-scoped bookkeeping total (r2 build internals); not a headline KPI"}
+      - {name: total_frac_this_run, dtype: float32, meaning: "run-scoped bookkeeping total; not a headline KPI"}
+      - {name: total_frac, dtype: float32, meaning: "fractional total across the FULL corpus window used by this run (superset of total_frac_2020_2024's window in some cases) -- verified equal to sum(topics_all.vol_frac) for a spot-checked institution; treat as the denominator when reconciling topics_all against index-level totals"}
+      - {name: mass_retracted_excluded, dtype: float32, meaning: "GREY ACCOUNTING (fractional mass units): mass excluded as retracted. Europe-wide total in source_manifest.json grey_totals_frac_mass.retracted_excluded. Shipped per-institution only, no country x field breakdown -- institution-level only by user ruling 2026-08-29; see ARTEFACT_GAP_AUDIT.md."}
+      - {name: mass_unusable, dtype: float32, meaning: "grey accounting: unusable mass (Europe total: grey_totals_frac_mass.unusable). Same institution-level-only ruling as above."}
+      - {name: mass_title_only, dtype: float32, meaning: "grey accounting: title-only (no abstract) mass (Europe total: grey_totals_frac_mass.title_only). Same ruling."}
+      - {name: mass_lang_uncertain, dtype: float32, meaning: "grey accounting: language-uncertain mass (Europe total: grey_totals_frac_mass.lang_uncertain). Same ruling."}
+      - {name: mass_untranslated_grey, dtype: float32, meaning: "grey accounting: untranslated-but-non-English mass (Europe total: grey_totals_frac_mass.untranslated_grey). Same ruling."}
+      - {name: mass_classified_eligible, dtype: float32, meaning: "grey accounting: mass that cleared every exclusion and is eligible for classification (Europe total: grey_totals_frac_mass.classified_eligible, 4,618,728.8). Same ruling."}
+      - {name: erc_eligible_mass_frac, dtype: float32, meaning: "fractional mass eligible for ERC classification"}
+      - {name: erc_classified_mass_frac, dtype: float32, meaning: "fractional mass actually assigned an ERC panel; DENOMINATOR of erc.parquet's `share` column (verified 2026-08-29: mass/share is constant per institution and equals this column exactly, e.g. 784.2579731515212). The 'ERC-classified share' coverage line (L4/L5) is erc_classified_mass_frac / total_frac -- BOTH on the whole-run mass basis (2020-2025). CORRECTED 2026-08-29 (R1, E2 finding): dividing by total_frac_2020_2024 mixed bases and printed 109.1 % for Universite de Strasbourg (5,147.74 / 4,716.26); on total_frac (5,590.98) it is 92.1 %, the remainder being grey mass (retracted, unusable, title-only, language-uncertain, untranslated)."}
+      - {name: sdg_eligible_mass_frac, dtype: float32, meaning: "fractional mass eligible for SDG classification"}
+      - {name: sdg_classified_mass_frac, dtype: float32, meaning: "fractional mass actually run through the SDG classifier (may include works that received ZERO keyword hits, i.e. classified-but-untagged -- see sdg_tagged_share)"}
+      - {name: sdg_tagged_share, dtype: float32, meaning: "fraction of sdg_eligible_mass_frac that received AT LEAST ONE SDG keyword hit. VERIFIED (2026-08-29): sdg_tagged_share * sdg_eligible_mass_frac == the exact DENOMINATOR of sdg.parquet's per-row `share` column (spot-checked to float32 precision) -- i.e. sdg.share's denominator is the institution's SDG-TAGGED mass, not its classified or eligible mass, matching DESIGN.md's 'any-keyword-hit => 0-N SDGs/doc' semantics (some classified works get 0 tags)."}
+      - {name: pp_top10_frac, dtype: float32, meaning: "PP(top10%): fraction of this institution's articles+reviews (2020-2024) that land in the world subfield x year x type top-10% citation threshold (DESIGN.md D6). Bootstrapped 95% CI in pp_ci_low/pp_ci_high. VERIFIED (2026-08-29): pp_ci_low <= pp_top10_frac <= pp_ci_high holds for all 7,557 rows with a non-null value."}
+      - {name: pp_eu_relative, dtype: float32, meaning: "secondary impact metric: EU-relative percentile (free, labeled per DESIGN.md S4; not a top10% flag)"}
+      - {name: pp_ci_low, dtype: float32, meaning: "bootstrap 95% CI lower bound on pp_top10_frac"}
+      - {name: pp_ci_high, dtype: float32, meaning: "bootstrap 95% CI upper bound on pp_top10_frac"}
+      - {name: frontier_top25_share, dtype: float32, meaning: "share of this institution's mass in topics scored in the global top-25% frontier_score (ACCORD, DESIGN D2); denominator = the institution's frontier-SCORABLE mass (excludes frontier_excluded_share and frontier_unscored_share)"}
+      - {name: frontier_quadrant_mix, dtype: category, meaning: "packed string 'quadrant:share|quadrant:share|...' over {accelerating_expansion, accelerating_contraction, decelerating_expansion, decelerating_contraction}; shares sum to ~1 over the institution's frontier-scored mass"}
+      - {name: frontier_excluded_share, dtype: float32, meaning: "share of mass in topics on the 811 catch-all exclusion list (no frontier score by construction); denominator = institution total_frac"}
+      - {name: frontier_unscored_share, dtype: float32, meaning: "share of mass in topics NOT on the exclusion list but still lacking a frontier score for another reason; denominator = institution total_frac"}
+      - {name: hhi_class, dtype: category, meaning: "{generalist, focused, specialised} -- discretisation of hhi_subfield"}
+      - {name: shape_field_original, dtype: category, meaning: "packed string 'field_id:share_frac|field_id:share_frac|...', ORIGINAL taxonomy tree, field-level shape"}
+      - {name: shape_field_conservative, dtype: category, meaning: "same packed format, CONSERVATIVE tree"}
+      - {name: shape_field_bestfit, dtype: category, meaning: "same packed format, BESTFIT tree (the shipped default scenario tree)"}
+      - {name: vol_full_by_year_this_run, dtype: category, meaning: "packed string 'YEAR:value|YEAR:value|...', full work counts per year, this run's window (2020-2025 incl. the 2025 bonus year)"}
+      - {name: vol_frac_by_year_this_run, dtype: category, meaning: "packed string 'YEAR:value|YEAR:value|...', fractional work counts per year"}
+      - {name: intl_share, dtype: float32, meaning: "ADDITIVE (2026-08-30): share of this institution's eligible works, WINDOW = 2020-2024 (core window) (window_conventions.core_window; full counting), with >=1 direct authorship institution whose country_code is non-null AND differs from this institution's own country_code. NOT the sdg_mass_window (2020-2025, six-year) that sdg.parquet/sdg_fields.parquet/sdg_year.parquet use -- the two windows differ (window_conventions), never conflate them. Denominator = the institution's eligible full-count works 2020-2024, VERIFIED equal to total_full_2020_2024 EXACTLY (invariant e, 6/6 institutions incl. 3 GB/CH/NO/IS journey seeds -- ETH Zurich, U. Basel, U. Oxford -- all EXACT). Computed by `pipeline/15_collab_pass.py` over the UNION `data/raw/openalex_eu27_aug/works_20{20..24}.parquet` + `data/raw/openalex_supplement/works_20{20..24}.parquet` (eu27_aug canonical on id overlap -- the same rule `agg.enriched_corpus.load_year_corpus(use_aug_harvest=True)` uses; corrected mid-stream from an eu27_aug-only first pass that undercounted GB/CH/NO/IS institutions, see COSTS.md 2026-08-30)."}
+      - {name: company_share, dtype: float32, meaning: "ADDITIVE (2026-08-30): share of this institution's eligible works, WINDOW = 2020-2024 (core window) (window_conventions.core_window; same denominator as intl_share, NOT the sdg_mass_window), with >=1 direct authorship institution (any, including the focal institution itself) typed 'company' -- type source: corrected index.type for indexed institutions, raw OpenAlex type from inst_meta_all.parquet for the rest."}
+      - {name: total_ar_full_w1, dtype: float32, meaning: "ADDITIVE (2BR3 P7, ruling 6, 2026-08-31): full-counted (weight_full=1 per appearing indexed institution) work count, WINDOW = 2020-2022 (dynamics window 1, mean annual) SLICE of window_conventions.core_ar_window (articles+reviews ONLY, NOT total_full_2020_2024's all-doc-types basis). The momentum d1 denominator for a pair (a,b): d1 = total_ar_full_w1[a] + total_ar_full_w1[b] (collab_pairs.mom_rr = (c2/d2)/(c1/d1), §2.3). Computed in the SAME per-year pass as collab_pairs.core_total/c1/c2 (pipeline/15_collab_pass.py stage_p7_phase1_year) -- not derivable from any other shipped index column (total_full_2020_2024 has no type restriction and no window split)."}
+      - {name: total_ar_full_w2, dtype: float32, meaning: "ADDITIVE (2BR3 P7, ruling 6, 2026-08-31): same rule as total_ar_full_w1, WINDOW = 2023-2024 (dynamics window 2, mean annual). The momentum d2 denominator."}
+      - {name: n_stars, dtype: int32, meaning: "ADDITIVE (v1.5, pipeline/25): count of this institution's star papers (see inst_stars.parquet's build_note for the rule -- top 1% most-cited within their own topic x year, world, articles+reviews, 2020-2024), 0 when the institution holds none. Equals the sum of this institution's inst_stars.parquet rows exactly (Class-1 invariant)."}
+      - {name: star_share, dtype: float32, meaning: "ADDITIVE (v1.5): n_stars / (total_ar_full_w1 + total_ar_full_w2) -- a size-free share of the institution's own articles+reviews output, 2020-2024, that are star papers. NULL iff the denominator is 0. Checked range in practice: [0, 0.21] -- one institution (a very small, elite AI lab) sits fractionally above the naive 0.2 sanity ceiling on a tiny denominator; a real ratio, not a computation error (Methods notes the tiny-denominator caveat)."}
+      - {name: n_topics_led_all, dtype: int16, meaning: "ADDITIVE (v1.5): count of topics_led.parquet rows for this institution, pool='all' -- topics where this institution ranks in the world top 10 by publication volume, 2020-2024, across every institution type."}
+      - {name: n_topics_led_edu, dtype: int16, meaning: "ADDITIVE (v1.5): same count, pool='education' -- the fair-comparison pool (education-type institutions only)."}
+      - {name: n_topics_led_fair, dtype: int16, meaning: "ADDITIVE (v1.5): n_topics_led_edu when this institution's own (patched) type is 'education', n_topics_led_all otherwise -- the ONE 'topics led' figure the app shows on a profile or a card (D6's fair-pool rule: a large, non-university research organisation is not compared against the narrower education-only leaderboard it was never a candidate for)."}
+      - {name: fwci_eu_median, dtype: float32, meaning: "ADDITIVE (v1.5, pipeline/26): median FWCI_EU (see fwci_taxa.parquet's own column for the full definition -- work-level citation count over the matching European subfield x year x type stratum mean) over this institution's own covered CORE-AR works, ALL subfields pooled -- the institution-level figure the Compare cards show. NULL iff fwci_eu_n is 0 (no covered works)."}
+      - {name: fwci_eu_mean, dtype: float32, meaning: "ADDITIVE (v1.5): mean of the same population as fwci_eu_median -- hover-only, never the headline figure (same bar=median/hover=mean convention as fwci_taxa.parquet)."}
+      - {name: fwci_eu_n, dtype: int32, meaning: "ADDITIVE (v1.5): count of this institution's own CORE-AR works with a valid FWCI_EU value -- the fwci_eu_median/fwci_eu_mean denominator. Can exceed the SUM of this institution's fwci_taxa.parquet field-grain n_covered rows (that table floors each field cell at n_covered>=3 and drops smaller cells; this institution-level total applies no such floor, so it is always >= the shipped per-field sum, never <)."}
+    denominator_notes:
+      - "scale_guard ratio uses total_full_2020_2024 (index.parquet), never total_frac_2020_2024 (SPEC/config.yaml scale_guard)."
+    type_overrides:
+      reference: "gate rev 6 ruling 3 (16 rows, 2026-08-28/29) + R2-T L28 scan (18 rows, 2026-08-29) + 2BR P4 gated-type resolution (7 rows, 2026-08-30, brainstorm Q3 'government/nonprofit' ruling); type_overrides.csv, all 41 rows locked=True"
+      n_ids: 41
+      stale_reference_note: "data/overrides/type_overrides_GATE.md lists 4 of these institution_ids -- NLDA I4210119716, MAL I4210138806, FUNIBER I4210153845, IMT I205703379 -- under 'Disposition: none applied, recommend a manual check'. That text is STALE: gate rev 6 ruling 3 (2026-08-28/29) subsequently locked all 4 into type_overrides.csv, predating this entry entirely; a follow-up re-confirmed they STAY gated as a deliberate decision, not an oversight (progress note, 2026-08-30). GATE.md is a historical decision-record only, never a second schema/override authority -- this contract's institution_ids list below + type_overrides.csv are the ONE source of truth for which ids carry a patched type."
+      institution_ids:
+        - I205092303   # Institut d'Etudes Politiques de Paris (Sciences Po) -- facility -> education
+        - I124261006   # ESSEC -- other -> education
+        - I171246369   # ISAE-ENSMA -- facility -> education
+        - I29607241    # ENS Paris (ENS-PSL) -- other -> education
+        - I90669466    # EHESS -- facility -> education
+        - I4387154617  # EOST (Strasbourg) -- facility -> education
+        - I230915877   # American College of Greece -- nonprofit -> education
+        - I4210096580  # Gdansk Academy of Fine Arts -- nonprofit -> education
+        - I4210100923  # Munster Technological University -- facility -> education
+        - I52066220    # Instituto Superior da Maia (ISMAI) -- facility -> education
+        - I7478328     # Waterford Institute of Technology -- nonprofit -> education
+        - I4210107720  # CentraleSupelec -- facility -> education (added E7 fix cycle)
+        - I4210119716  # Netherlands Defence Academy (NLDA) -- facility -> education (gate rev 6 ruling 3)
+        - I4210138806  # Gen. Jonas Zemaitis Military Academy of Lithuania -- government -> education (gate rev 6 ruling 3)
+        - I205703379   # Institut Mines-Telecom -- facility -> education (gate rev 6 ruling 3)
+        - I4210153845  # FUNIBER -- other -> funder (gate rev 6 ruling 3)
+        - I265217849   # IFP Energies nouvelles (IFPEN) -- facility -> government (R2-T, EPIC)
+        - I154202486   # Ifremer -- facility -> government (R2-T, EPIC)
+        - I4210101348  # Centre Inria de l'Universite Grenoble Alpes -- facility -> government (R2-T, Inria=EPST parent)
+        - I4210106545  # Centre Inria d'Universite Cote d'Azur -- facility -> government (R2-T, Inria=EPST parent)
+        - I4210126360  # Centre Inria de Saclay -- facility -> government (R2-T, Inria=EPST parent)
+        - I4210131512  # Centre Inria de l'universite de Bordeaux -- facility -> government (R2-T, Inria=EPST parent)
+        - I4210133778  # Centre Inria de l'Universite de Rennes -- facility -> government (R2-T, Inria=EPST parent)
+        - I4210138412  # Centre Inria de l'Universite de Lille -- facility -> government (R2-T, Inria=EPST parent)
+        - I2801658355  # ONERA -- facility -> government (R2-T, EPIC)
+        - I4210127141  # INERIS -- facility -> government (R2-T, EPIC)
+        - I205358943   # CSTB -- facility -> government (R2-T, EPIC; ROR parent = French ministry)
+        - I1293448361  # IRSN -- nonprofit -> government (R2-T, EPIC)
+        - I4210113730  # Meteo-France -- other -> government (R2-T, EPA)
+        - I4210092716  # Sante Publique France -- other -> government (R2-T, EPA)
+        - I110594554   # Ikerbasque -- other -> nonprofit (R2-T, Basque public foundation)
+        - I2898391981  # DLR -- facility -> nonprofit (R2-T, own name carries "e.V.")
+        - I173888879   # SINTEF -- facility -> nonprofit (R2-T, Norwegian research foundation/stiftelse)
+        - I70277191    # Institute of Technology Carlow -- government -> education (R2-T, same class as Waterford IT)
+        - I4210155236  # CNR -- nonprofit -> government (2BR P4, brainstorm Q3)
+        - I148297040   # TNO -- nonprofit -> government (2BR P4, brainstorm Q3)
+        - I87653560    # VTT -- nonprofit -> government (2BR P4, brainstorm Q3)
+        - I4210127591  # DZHK -- facility -> nonprofit (2BR P4, brainstorm Q3)
+        - I2801533059  # DZNE -- facility -> nonprofit (2BR P4, brainstorm Q3)
+        - I4210129183  # DZL -- facility -> nonprofit (2BR P4, brainstorm Q3)
+        - I4210115305  # DZIF -- facility -> nonprofit (2BR P4, brainstorm Q3)
+
+  # ============================================================================================
+  # fields.parquet -- institution x field, bestfit tree only (--ship-default-tree-only)
+  # ============================================================================================
+  fields.parquet:
+    grain: "institution x field (26 fields), tree=bestfit only (150,174 rows = 5,776 institutions with nonzero field mass x up to 26 fields; NOT all 7,557 institutions x 26 -- verified the shipped tree column is 100% 'bestfit', no other tree values present)"
+    keys: [institution_id, field_id, tree]
+    columns:
+      - {name: inst_key, dtype: int32, meaning: "join key to index.inst_key"}
+      - {name: institution_id, dtype: category, meaning: null}
+      - {name: field_id, dtype: int16, meaning: "OpenAlex field id (topics_dim.field_id)"}
+      - {name: tree, dtype: category, meaning: "taxonomy tree; shipped value is always 'bestfit' (config.yaml scenario.tree_default, R2.20; ship_default_tree_only in source_manifest.json). original/conservative are derivable in-app via pipeline/agg/derive.py, not shipped as files."}
+      - {name: vol_frac, dtype: float32, meaning: "fractional work-mass in this field"}
+      - {name: vol_full, dtype: int32, meaning: "full (unfractionalized) work count in this field"}
+      - {name: share_frac, dtype: float32, meaning: "vol_frac / SUM(vol_frac) over this institution's fields in this scenario (tree=bestfit, basis=frac). VERIFIED 2026-08-29: sums to 1 per institution, max|sum-1| = 1.19e-7 (float32 storage; compare in float64)."}
+      - {name: share_full, dtype: float32, meaning: "vol_full / SUM(vol_full) over this institution's fields in this scenario, full-count basis. VERIFIED: sums to 1 per institution, max|sum-1| = 1.19e-7."}
+      - {name: si, dtype: float32, meaning: "Specialisation Index = share_frac / mean(share_frac over institutions with nonzero vol_frac in that field, same tree). NO FLOOR on this table: VERIFIED 2026-08-29 that all 126,274 of 150,174 rows with vol_frac < 30 carry a DEFINED (non-null) si -- fields.si has 0 null values overall. This is the OPPOSITE of subfields.si below; both rows state this explicitly per the build brief because the asymmetry is easy to miss."}
+
+  # ============================================================================================
+  # subfields.parquet -- institution x subfield, bestfit tree only, G6 floor on si
+  # ============================================================================================
+  subfields.parquet:
+    grain: "institution x subfield (252 subfields), tree=bestfit only; by-year string columns dropped (derivable from topics_all)"
+    keys: [institution_id, subfield_id, tree]
+    columns:
+      - {name: inst_key, dtype: int32, meaning: null}
+      - {name: institution_id, dtype: category, meaning: null}
+      - {name: subfield_id, dtype: int16, meaning: "OpenAlex subfield id"}
+      - {name: field_id, dtype: int16, meaning: "parent field id; nesting is fixed, never re-derived per tree (derive.py)"}
+      - {name: tree, dtype: category, meaning: "always 'bestfit' in the shipped file (verified)"}
+      - {name: vol_frac, dtype: float32, meaning: "fractional work-mass in this subfield"}
+      - {name: vol_full, dtype: int32, meaning: "full work count in this subfield"}
+      - {name: share_frac, dtype: float32, meaning: "vol_frac / SUM(vol_frac) over this institution's subfields in this scenario. VERIFIED: sums to 1 per institution, max|sum-1| = 1.19e-7 (float32; compare float64)."}
+      - {name: share_full, dtype: float32, meaning: "vol_full / SUM(vol_full) over this institution's subfields in this scenario. VERIFIED: sums to 1 per institution, max|sum-1| = 1.19e-7."}
+      - {name: si, dtype: float32, meaning: "share_frac / mean(share_frac over institutions with nonzero vol_frac in that subfield, same tree) -- NaN when vol_frac < 30 (G6 floor, config.yaml g6_impact_floor lineage / l2_si_floor.value=30, pipeline/agg/trees_agg.G6_FLOOR). VERIFIED 2026-08-29: of 770,871 rows, 729,417 have vol_frac<30 and ALL 729,417 have si=NaN; the remaining 41,454 rows (vol_frac>=30) ALL have a defined si. The floor is on vol_frac (fractional mass, '~100 full works' per derive.py), applied REGARDLESS of which basis (frac/full) is displayed (derive.py 'BASIS GENERALIZATION' note). This IS the floored table -- contrast with fields.si above, which has no floor."}
+
+  # ============================================================================================
+  # topics_all.parquet -- institution x topic (topic-grain master, "all touched")
+  # ============================================================================================
+  topics_all.parquet:
+    grain: "institution x topic, every topic the institution has ANY mass in (sparse; 3,359,330 rows). This is the one topic-grain master pipeline/agg/derive.py derives every tree x basis scenario's fields/subfields shapes from."
+    keys: [institution_id, topic_id]
+    columns:
+      - {name: inst_key, dtype: int32, meaning: null}
+      - {name: institution_id, dtype: category, meaning: null}
+      - {name: topic_id, dtype: category, meaning: "OpenAlex topic id (topics_dim.topic_id); the taxonomy-repaired assignment already reflects assignment=primary (config.yaml)"}
+      - {name: share_frac, dtype: float32, meaning: "vol_frac / SUM(vol_frac) over ALL topics touched by this institution (topic grain, not subfield-grain). VERIFIED 2026-08-29: max abs diff between share_frac and a live recomputation from vol_frac = 9.3e-10 (float32 noise)."}
+      - {name: vol_frac, dtype: float32, meaning: "fractional work-mass on this topic. VERIFIED: SUM(vol_frac) over an institution's rows equals that institution's index.total_frac."}
+      - {name: vol_full, dtype: int32, meaning: "full work count on this topic, full corpus window"}
+      - {name: vol_full_2020, dtype: int16, meaning: "full work count, year 2020"}
+      - {name: vol_frac_2020, dtype: float32, meaning: "fractional work count, year 2020"}
+      - {name: vol_full_2021, dtype: int16, meaning: null}
+      - {name: vol_frac_2021, dtype: float32, meaning: null}
+      - {name: vol_full_2022, dtype: int16, meaning: null}
+      - {name: vol_frac_2022, dtype: float32, meaning: null}
+      - {name: vol_full_2023, dtype: int16, meaning: null}
+      - {name: vol_frac_2023, dtype: float32, meaning: null}
+      - {name: vol_full_2024, dtype: int16, meaning: null}
+      - {name: vol_frac_2024, dtype: float32, meaning: null}
+      - {name: vol_full_2025, dtype: int16, meaning: "2025 is the labeled BONUS year (config.yaml bonus_year): trends/volume only, excluded from impact indicators (R1.6 composition skew)"}
+      - {name: vol_frac_2025, dtype: float32, meaning: null}
+    trend_slices: "subfield x year and topic x year trend lines are DERIVABLE in-app by summing vol_full_<year>/vol_frac_<year> over topics_dim.subfield_id joined on topic_id -- see derived_views below and ARTEFACT_GAP_AUDIT.md (field-level trajectories are NOT derivable: fields.parquet and derive.py's fields_df never carry by-year columns)."
+
+  # ============================================================================================
+  # topics_dim.parquet -- topic dictionary (4,516 OpenAlex topics)
+  # ============================================================================================
+  topics_dim.parquet:
+    grain: "one row per OpenAlex topic (4,516)"
+    keys: [topic_id]
+    columns:
+      - {name: domain_id, dtype: int32, meaning: null}
+      - {name: domain_name, dtype: category, meaning: null}
+      - {name: field_id, dtype: int32, meaning: null}
+      - {name: field_name, dtype: category, meaning: null}
+      - {name: subfield_id, dtype: int32, meaning: null}
+      - {name: subfield_name, dtype: category, meaning: null}
+      - {name: topic_id, dtype: category, meaning: "primary key"}
+      - {name: topic_name, dtype: category, meaning: null}
+      - {name: keywords, dtype: category, meaning: null}
+      - {name: expansion_by_period, dtype: object, meaning: "list<double>; ACCORD per-period Expansion score series"}
+      - {name: acceleration_by_period, dtype: object, meaning: "list<double>; ACCORD per-period Acceleration score series"}
+      - {name: frontier_score_by_period, dtype: object, meaning: "list<double>; ACCORD per-period composite frontier score series"}
+      - {name: expansion_latest, dtype: float32, meaning: "most recent period's Expansion score"}
+      - {name: acceleration_latest, dtype: float32, meaning: "most recent period's Acceleration score"}
+      - {name: frontier_score_latest, dtype: float32, meaning: "most recent period's composite frontier score; null for topics with is_frontier_scored=false"}
+      - {name: quadrant, dtype: category, meaning: "{accelerating_expansion, accelerating_contraction, decelerating_expansion, decelerating_contraction}; null when not frontier-scored"}
+      - {name: top25pct_frontier, dtype: boolean, meaning: "true iff frontier_score_latest is in the global top 25%; NULLABLE (pandas 'boolean', 810 nulls of 4,516) for topics without a frontier score -- 'unscored', not 'false'."}
+      - {name: is_frontier_scored, dtype: bool, meaning: "non-nullable; false for the 811 excluded topics (frontier_excluded_share) and for any other topic lacking a score (frontier_unscored_share)"}
+      - {name: exclusion_reason_code, dtype: category, meaning: "single-letter code (T/K/V/E/X/B/H/M/P/Y observed); non-null iff is_excluded=true (VERIFIED 2026-08-29: 811/811 excluded rows have a code, 0/3,705 non-excluded rows have one)"}
+      - {name: exclusion_reason_label, dtype: category, meaning: "human-readable label for exclusion_reason_code"}
+      - {name: is_excluded, dtype: bool, meaning: "the 811 catch-all exclusion list (DESIGN.md 811 references); COMPUTED count, never a typed constant in app code (L10) -- read as topics_dim.is_excluded.sum()"}
+      - {name: exclusion_list_version, dtype: category, meaning: "single value shipped: '2026-08-21' (verified); the versioning DESIGN.md S4 requires for the 811 list"}
+      - {name: review_status, dtype: category, meaning: "single value shipped: 'unreviewed'"}
+      - {name: original_subfield_id, dtype: int16, meaning: "subfield assignment under the ORIGINAL taxonomy tree"}
+      - {name: conservative_subfield_id, dtype: int16, meaning: "subfield assignment under the CONSERVATIVE tree"}
+      - {name: bestfit_subfield_id, dtype: int16, meaning: "subfield assignment under the BESTFIT tree (shipped default)"}
+      - {name: change_level, dtype: category, meaning: "{none, domain, subfield, field} -- how far the taxonomy repair moved this topic from its original OpenAlex placement"}
+      - {name: fit_quality, dtype: category, meaning: "{no_fit, forced, fits}"}
+      - {name: repair_status, dtype: category, meaning: "16 distinct adjudication-provenance values observed (e.g. changed_by_escalation, unchanged_confirmed, reverted_by_audit); taxonomy_repair_v1.3 audit trail"}
+
+  # ============================================================================================
+  # erc.parquet -- institution x ERC panel (28 panels)
+  # ============================================================================================
+  erc.parquet:
+    grain: "institution x ERC panel (28 panels present, panel_idx 0..27); 211,596 rows (not all 7,557 x 28 -- sparse to nonzero-mass cells)"
+    keys: [institution_id, panel_idx]
+    columns:
+      - {name: inst_key, dtype: int32, meaning: null}
+      - {name: institution_id, dtype: category, meaning: null}
+      - {name: panel_idx, dtype: int16, meaning: "0-based ERC panel index, 28 panels (SIRIS-Lab/erc-classifiers id2label); erc_tau=0.5 global threshold (config.yaml)"}
+      - {name: share, dtype: float32, meaning: "mass / index.erc_classified_mass_frac for this institution. VERIFIED 2026-08-29: mass/share is a per-institution constant across all its panel rows and equals index.erc_classified_mass_frac exactly (e.g. 784.2579731515212). SINGLE-LABEL-DOMINANT: a work's ERC mass is fractional 1/n_panels across the panels it clears tau in (DESIGN.md S5), so Sigma(share) per institution is <= 1. VERIFIED: max Sigma(share) across all institutions = 1.0000001 (float32 rounding), min = 0.547."}
+      - {name: mass, dtype: float32, meaning: "fractional work-mass classified into this ERC panel"}
+      - {name: si, dtype: float32, meaning: "share / mean(share over institutions with nonzero mass in that panel). VERIFIED: 0 null values in the shipped 211,596 rows -- no floor observed on this column (contrast with subfields.si)."}
+      - {name: mass_full, dtype: float32, meaning: "ADDITIVE (2BR3 P7, 2026-08-31): full-counted (weight_full) analogue of `mass` -- SAME classified-mass rules (panel-hit share, tau=0.5, 1/n_panels_hit split across hit panels), same population, computed via `weight_full` instead of `weight_frac` in the SAME attribution_long join. NOT a share (has no `mass` role reversal -- `share`/`si` stay frac-basis only, no _full variant shipped for those two). Basis note: `mass`/`mass_full` are whole-run-window (2020-2025, SDG-mass-basis-parallel; ERC applies no year filter either, same as sdg.parquet.mass) -- NOT the core_ar_window collab_pairs.parquet v2 uses. VERIFIED 2026-08-31: mass_full >= mass on all 211,596 rows (weight_full=1 per appearing institution is always >= weight_frac's 0-1 split for the identical work population, 0 exceptions)."}
+
+  # ============================================================================================
+  # sdg.parquet -- institution x SDG (16 SDGs; dense, all 7,557 x 16)
+  # ============================================================================================
+  sdg.parquet:
+    grain: "institution x SDG (16 SDGs); DENSE -- 120,912 rows = 7,557 institutions x 16, every institution has a row for every SDG even when share=0"
+    keys: [institution_id, sdg_idx]
+    columns:
+      - {name: inst_key, dtype: int32, meaning: null}
+      - {name: institution_id, dtype: category, meaning: null}
+      - {name: sdg_idx, dtype: int16, meaning: "0-based SDG index, 16 values (SDG 17 not covered, DESIGN.md S5)"}
+      - {name: share, dtype: float32, meaning: "MULTI-LABEL: mass / (index.sdg_tagged_share * index.sdg_eligible_mass_frac) for this institution -- denominator is the institution's SDG-TAGGED fractional mass, WINDOW = 2020-2025 (SDG mass basis, six-year) (window_conventions.sdg_mass_window -- build_sdg_table applies no year filter to the corpus it is handed, confirmed by sdg_year.parquet's own Sigma-over-6-years invariant below; NOT the 2020-2024 (core window) that intl_share/company_share use), VERIFIED exact 2026-08-29 (a work may carry several SDGs via 'any-keyword-hit', DESIGN.md S5). Invariant is 0 <= share <= 1 PER ROW (verified: range [0.0, 1.0] over all 120,912 rows), NOT Sigma<=1 -- Sigma per institution was observed up to 3.522568941116333 (verified max, 2026-08-29)."}
+      - {name: esi, dtype: float32, meaning: "SDG specialisation index = institution SDG-tagged share / the Europe-wide average SDG-tagged share for that SDG, i.e. esi = share / europe_avg_tagged where europe_avg_tagged = SUM_index(sdg.mass) / SUM_index(sdg_tagged_share * sdg_eligible_mass_frac) -- the SDG-TAGGED-mass basis, per pipeline/agg/erc_sdg_long.py::build_sdg_long's own `europe_avg` line (mass.sum(axis=0) / tagged_mass.sum()). METHODS FLAG RESOLVED (2026-08-29, R-S5): source_manifest.json's esi_europe_avg_sdg_share_classified_mass_basis vector is a DIFFERENT, CLASSIFIED-mass-basis reference (SUM(sdg.mass) / SUM(index.sdg_classified_mass_frac)) -- naming this the esi denominator and dividing share by it understates the true divisor, overstating a naively-recomputed esi by a constant factor. VERIFIED NUMERICALLY: SUM_index(sdg_classified_mass_frac) / SUM_index(sdg_tagged_share * sdg_eligible_mass_frac) = 4.2046 (to 4 decimals; num=4,609,424.9308, den=1,096,285.9619, app/data/index.parquet, 2026-08-29) -- matches the ~4.2046x offset flagged at gate 2A exactly. The shipped esi column is unaffected (it was always computed on the tagged-mass basis by build_sdg_long, correctly); this entry now names esi's TRUE denominator instead of the manifest's classified-mass vector, closing the methods flag opened at gate 2A. esi/share is a constant, deterministic rescaling within each sdg_idx -- esi and share rank institutions identically within one SDG."}
+      - {name: mass, dtype: float32, meaning: "fractional work-mass tagged with this SDG, WINDOW = 2020-2025 (SDG mass basis, six-year) (window_conventions.sdg_mass_window; a work's mass is NOT divided across its SDG tags -- it counts in full toward every SDG it is tagged with, which is why Sigma(mass) over an institution's 16 rows can exceed its tagged mass)"}
+
+  # ============================================================================================
+  # impact_cells.parquet -- institution x subfield x tree x floor (bootstrap PP cells)
+  # ============================================================================================
+  impact_cells.parquet:
+    grain: "institution x subfield x tree x floor; 90,208 rows (trimmed from 328,978 -- floor=10 rows DROPPED; VERIFIED 2026-09-03: both data/artefacts/impact_cells.parquet and app/data/impact_cells.parquet ship floor=30 only, 90,208 rows each, byte-identical row count). Unlike fields/subfields, this table ships ALL THREE trees (verified: {bestfit, conservative, original} all present); floor is now a SINGLE value, {30} (config.yaml g6_impact_floor default), the column is kept for the join key/history but carries one uniform value."
+    keys: [institution_id, subfield_id, tree, floor]
+    columns:
+      - {name: inst_key, dtype: int32, meaning: null}
+      - {name: institution_id, dtype: category, meaning: null}
+      - {name: subfield_id, dtype: int16, meaning: null}
+      - {name: tree, dtype: category, meaning: "{bestfit, conservative, original} -- impact_cohort_tree in config.yaml is 'original' for the top-10% FLAG COMPUTATION regardless of selected tree (D6/R2.11); rolled up by the SELECTED tree's subfield for display. This table carries all 3 for that rollup."}
+      - {name: floor, dtype: int16, meaning: "bootstrap-CI mass floor variant: ONLY 30 ships in app/data since 2E (config.yaml g6_impact_floor; the floor=10 information-only variant, g6_impact_floor_alt, was dropped from the deploy -- pipeline artefacts keep both)"}
+      - {name: pp_top10_frac, dtype: float32, meaning: "PP(top10%) for this institution x subfield x tree x floor cell"}
+      - {name: pp_ci_low, dtype: float32, meaning: "bootstrap 95% CI lower bound"}
+      - {name: pp_ci_high, dtype: float32, meaning: "bootstrap 95% CI upper bound. VERIFIED 2026-08-29: pp_ci_low <= pp_top10_frac <= pp_ci_high holds for ALL 328,978 rows."}
+      - {name: pp_denominator_frac, dtype: float32, meaning: "fractional-mass denominator (articles+reviews, 2020-2024) the pp_top10_frac cell was computed over"}
+      - {name: n_works_full, dtype: int32, meaning: "full work count denominator for the same cell"}
+
+  # ============================================================================================
+  # sdg_fields.parquet -- institution x field x tree, DISTINCT-tagged (v2, 2BR3 P7, 2026-08-31 --
+  # BREAKING regrain, supersedes the per-goal earlier build)
+  # ============================================================================================
+  sdg_fields.parquet:
+    grain: "institution x field_id x tree (per-goal sdg_idx grain REMOVED -- v1's grain was institution x sdg x field x tree); 284,673 rows, sparse to nonzero cells. A work now counts AT MOST ONCE per (institution, field, tree) regardless of how many SDGs it carries -- this is the STRUCTURAL fix for the SDG-share bug found live in compare_data._sdg_share_field_frame (l.934-938 groups by (institution_id, field_id) WITHOUT sdg_idx, so v1's per-goal `mass` summed across up to 16 rows, producing shares > 100% e.g. 264.8%). field_id=-1 'untopiced' residual row KEPT, same convention as v1 (manager ruling, 2026-08-31): 6 such rows shipped (a distinct-tagged work with no primary_topic_id still needs a mass home)."
+    keys: [institution_id, field_id, tree]
+    columns:
+      - {name: inst_key, dtype: int32, meaning: "join key to index.inst_key"}
+      - {name: institution_id, dtype: category, meaning: null}
+      - {name: field_id, dtype: int16, meaning: "OpenAlex field id (topics_dim.field_id), OR the sentinel -1 for the 'untopiced' residual (only 6 rows shipped, institution x tree combos with any untopiced distinct-tagged mass -- far rarer than v1's per-goal residual since this table no longer fans out x16 goals)."}
+      - {name: tree, dtype: category, meaning: "{bestfit, conservative, original} -- all 3 shipped (impact_cells.parquet precedent), since a work's field bucket can move between trees (its DISTINCT-tagged status never does)"}
+      - {name: mass_any_frac, dtype: float32, meaning: "fractional work-mass DISTINCT->=1-goal-tagged (a work counts ONCE regardless of how many SDGs it carries), attributed to this institution in this field (or the -1 residual). WINDOW = articles+reviews... NO -- all doc types, 2020-2024 (core window) (window_conventions.core_window) -- a DELIBERATE NARROWING from v1's WINDOW = 2020-2025 (SDG mass basis, six-year) (window_conventions.sdg_mass_window): the field cross must share Compare's own analytical window so mass_any_frac / fields.vol_frac (SAME window, SAME basis) is provably a bounded 0-1 share (§2.5 CD4 assert), which summing across the six-year sdg_mass_window against a five-year field-vol denominator could never guarantee. THE FIELD-CROSS NUMERATOR (Compare's SDG-share metric denominator is fields.parquet's vol_frac/vol_full, same core_window). VERIFIED 2026-08-31: Sigma_field(mass_any_frac) INCLUDING the -1 residual <= sdg_year.parquet's per-goal mass_frac summed over the SAME 2020-2024 window, SAME institution (distinct-tagged can only be <= per-goal-summed, since per-goal counts a multi-SDG work once per goal) -- 0 violations on 20 random institutions x 3 trees (60 cells checked)."}
+      - {name: mass_any_full, dtype: float32, meaning: "ADDITIVE (2BR3 P7): full-counted (weight_full) analogue of mass_any_frac, same distinct-tagged population/window/residual convention. VERIFIED 2026-08-31: mass_any_full >= mass_any_frac on all 284,673 rows (weight_full=1 per appearing institution is always >= weight_frac's 0-1 split, 0 exceptions -- a plain arithmetic fact, not a sampled reconciliation)."}
+    build_note: "pipeline/16_crosses.py --stage sdg-erc-full (NEW 2BR3 stage, reuses the SAME cached corpus_slim/attribution_long checkpoint stage_sdg/stage_corpus already built -- no corpus rebuild); topic->field lookup per tree via trees_agg.topic_to_taxon_maps (unchanged from v1); distinct-tagged work list = corpus_slim rows that are sdg_eligible AND sdg_classified AND have >=1 non-empty sdg_hits entry (the SAME row-producing condition v1's per-goal _work_sdg_long uses, collapsed to one boolean per work instead of exploded per-SDG), filtered to publication_year in [2020,2024] BEFORE aggregation."
+
+  # ============================================================================================
+  # sdg_year.parquet -- institution x sdg x year (v2, 2BR3 P7, 2026-08-31 -- grain/window
+  # UNCHANGED from the earlier build; adds mass_full, RENAMES mass -> mass_frac)
+  # ============================================================================================
+  sdg_year.parquet:
+    grain: "institution x sdg x year (2020-2025, the FULL run window incl. the 2025 bonus year) -- UNCHANGED grain/window from v1 (only the field cross had the double-counting bug this phase fixes; dynamics/volume-by-year never summed across the hidden sdg_idx dimension the way the field groupby did, so no regrain needed here); 427,687 rows, sparse to nonzero cells. Tree-independent (SDG tagging has no tree dependency at all -- only sdg_fields's field bucket does)."
+    keys: [institution_id, sdg_idx, year]
+    columns:
+      - {name: inst_key, dtype: int32, meaning: "join key to index.inst_key"}
+      - {name: institution_id, dtype: category, meaning: null}
+      - {name: sdg_idx, dtype: int16, meaning: "0-based SDG index, 16 values -- same convention as sdg.parquet.sdg_idx"}
+      - {name: year, dtype: int16, meaning: "publication year, 2020-2025. 2025 is the labelled BONUS year (config.yaml bonus_year, same convention as topics_all.vol_full_2025/doctype_by_year) -- trends/volume only, no impact-indicator meaning here (SDG tagging carries no impact-window restriction to begin with)."}
+      - {name: mass_frac, dtype: float32, meaning: "RENAMED from v1's `mass` (2BR3 P7, BREAKING -- any consumer reading the old column name breaks; compare_data.py's SDG dynamics/volume readers are CD4's fence, flagged to that stream). Same fractional work-mass, same tagging rule as sdg.parquet.mass; summed over ALL its years this table's mass basis is WINDOW = 2020-2025 (SDG mass basis, six-year) (window_conventions.sdg_mass_window) -- UNCHANGED from v1. VERIFIED (carries forward unmodified from the earlier build): Sigma_year over all 6 years == sdg.parquet.mass for the SAME (institution_id, sdg_idx), max rel diff 1.192e-07."}
+      - {name: mass_full, dtype: float32, meaning: "ADDITIVE (2BR3 P7): full-counted (weight_full) analogue of mass_frac, same tagging rule/grain/window. VERIFIED 2026-08-31: mass_full >= mass_frac on all 427,687 rows (weight_full>=weight_frac by construction, 0 exceptions)."}
+    build_note: "pipeline/16_crosses.py --stage sdg-erc-full; same work_id -> sdg_idx tagging explode as v1 (eu_enriched.py::build_sdg_table's rule, unchanged), grouped by publication_year instead of field, now also summing weight_full alongside weight_frac from the same attribution_long merge."
+
+  # ============================================================================================
+  # impact_fields.parquet -- DELETED (v1.4, 2026-09-02): dead since 2D, no code
+  # path read it (only a contract pin + fixtures referenced it). Was: institution x field x tree
+  # x floor, 164,477 rows. Superseded by impact_taxa.parquet (field grain
+  # among its four) for anything the app actually displays.
+  # ============================================================================================
+
+  # ============================================================================================
+  # doctype_by_year.parquet -- institution x year x document type (NEW, R1 R-S5, 2026-08-29)
+  # ============================================================================================
+  doctype_by_year.parquet:
+    grain: "institution x year x document type, sparse to nonzero cells (institution population x 6 years {2020..2025} x up to 5 doc types; 141,182 rows, 1.0 MB, VERIFIED 2026-08-29). 2025 is the labelled BONUS year (config.yaml bonus_year, same convention as topics_all.vol_full_2025/vol_frac_2025): trends/volume only, excluded from impact indicators (R1.6 composition skew)."
+    keys: [institution_id, year, doc_type]
+    columns:
+      - {name: inst_key, dtype: int32, meaning: "join key to index.inst_key (L14 population order)"}
+      - {name: institution_id, dtype: category, meaning: "OpenAlex institution id; restricted to the 7,557 index institutions (app/data/index.parquet)"}
+      - {name: year, dtype: int16, meaning: "publication year, 2020-2025"}
+      - {name: doc_type, dtype: category, meaning: "OpenAlex `type_effective` (pipeline/agg/enriched_corpus.py) -- the harvest's own server-side type filter restricts this to {article, review, book, book-chapter, letter} (pipeline/01b_harvest_eu27_aug.py / 01_harvest_supplement.py `type:` filter, L23); VERIFIED 2026-08-29: exactly these 5 values observed across all 6 years, 0 other values."}
+      - {name: vol_full, dtype: int32, meaning: "full (unfractionalized, head-count) work count in this institution x year x doc_type cell. Denominator note: SUM(vol_full) over doc_type for a given (institution, year) EQUALS index.vol_full_by_year_this_run's packed value for that year, EXACTLY (Class-1 invariant, verified on all 7,557 x 6 = 45,342 institution x year cells, `pipeline/09c_doctype_by_year.py --check`)."}
+      - {name: vol_frac, dtype: float32, meaning: "D5 fractional-counted work count (pipeline/agg/attribution.explode_fractional_weights) in this cell. Denominator note: SUM(vol_frac) over doc_type for a given (institution, year) equals index.vol_frac_by_year_this_run's packed value for that year within 1e-6 relative (1e-3 absolute for near-zero cells) -- verified on all 45,342 cells."}
+    build_note: "pipeline/09c_doctype_by_year.py; SAME corpus loader (pipeline/agg/enriched_corpus.load_year_corpus, use_aug_harvest=True) and SAME attribution explode (pipeline/agg/attribution.explode_fractional_weights) as 09b_aggregate_eu.py's own year_vol/by_year block that produced index.vol_full_by_year_this_run/vol_frac_by_year_this_run -- this table is that same computation with one extra groupby key (type_effective), never a new opinion about what counts. Per-year checkpoints under data/artefacts_eu/_ckpt_doctype/ (resumable; the GLOBAL cross-year work_id dedup ~50 rows corpus-wide, keep-later-year -- is applied ONCE at final concatenation, matching 09b_aggregate_eu.py's own load_enriched_corpus_years, not per year)."
+
+  # ============================================================================================
+  # overrides/type_overrides.csv -- locked, append-only patch list (Annuaire pattern)
+  # ============================================================================================
+  overrides/type_overrides.csv:
+    grain: "one row per institution whose displayed `type` differs from type_openalex; 41 rows, all locked=True (16 from gate rev 6 ruling 3 + 18 from the R2-T L28 scan, 2026-08-29 + 7 from the 2BR P4 gated-type resolution, 2026-08-30; 0 gated rows remain from any round -- see the `type_overrides:` block's stale_reference_note above for GATE.md's own now-superseded 'none applied' text)"
+    keys: [institution_id]
+    columns:
+      - {name: institution_id, dtype: object, meaning: "must equal the index.institution_id values where type != type_openalex (str-cast), one-to-one; Class-1 identity invariant, test_contract.py reads the count from this file, not a typed literal"}
+      - {name: display_name, dtype: object, meaning: null}
+      - {name: country_code, dtype: object, meaning: null}
+      - {name: type_openalex, dtype: object, meaning: "original OpenAlex type at the time of the override decision"}
+      - {name: type_override, dtype: object, meaning: "the patched type applied to index.type"}
+      - {name: evidence, dtype: object, meaning: "free-text evidence for the override decision"}
+      - {name: source_url, dtype: object, meaning: null}
+      - {name: decided_by, dtype: object, meaning: null}
+      - {name: date, dtype: object, meaning: null}
+      - {name: locked, dtype: bool, meaning: "true for all 41 shipped rows -- the file is append-only per the Annuaire pattern; a locked row is never edited in place"}
+
+  # ============================================================================================
+  # overrides/pool_exclusions.csv -- aspirational/lens CANDIDATE-POOL exclusion flags (NEW,
+  # 2026-08-30) -- feeds index.pool_excluded, never removes an index row
+  # ============================================================================================
+  overrides/pool_exclusions.csv:
+    grain: "one row per institution_id flagged OUT of lens/aspirational candidate pools (wired in app/lib/engine); 3 rows. This file is the ONE thing index.pool_excluded means -- adding/removing a row here is the only way that column changes (Annuaire-pattern override list, same append-only convention as type_overrides.csv, though not yet marked locked=True per-row since R2-E is this stream's own first pass)."
+    keys: [institution_id]
+    columns:
+      - {name: institution_id, dtype: object, meaning: "OpenAlex institution id flagged out of candidate pools; the 3 shipped values are I4210092262 (Romanian Ministry of Education), I4210164678 (Shell UK), I4210125590 (INESC) -- EXACTLY the institution_ids where index.pool_excluded is True (identity invariant, tests/test_contract_2br.py)"}
+      - {name: canonical_id, dtype: object, meaning: "for a DUPLICATE-institution exclusion (Shell UK->I7923278 Shell NL, INESC->I121345201 INESC-ID), the surviving institution_id that keeps all the pair's mass under the A6 no-re-aggregation ruling; blank/NaN for the Romanian Ministry row (a funder-surfacing-as-performer case, not a duplicate -- it has no canonical counterpart, its row is excluded outright with nothing to redirect to)"}
+      - {name: reason, dtype: object, meaning: "free-text justification, incl. the total_full_2020_2024 figures the canonical-id choice was made on (e.g. Shell UK 221 vs Shell NL 1135 -- the larger-volume id is always kept as canonical)"}
+      - {name: source, dtype: object, meaning: "provenance stamp, e.g. 'GATE_2BR ruling 2026-08-30'"}
+
+  # ============================================================================================
+  # overrides/umbrella_supplement.csv -- named-umbrella supplement, ASCII-safe (created this stream)
+  # ============================================================================================
+  overrides/umbrella_supplement.csv:
+    grain: "one row per named umbrella/aggregate institution resolved by badge_calibration.md's known-umbrella search; 24 rows"
+    keys: [institution_id]
+    columns:
+      - {name: display_name, dtype: object, meaning: "well-known short/official name; NOT always identical to index.display_name (ASCII-transliterated -- accents stripped -- since this file is shipped ASCII-safe, not UTF-8; see app/docs/VENDORED.md for the choice)"}
+      - {name: institution_id, dtype: object, meaning: "OpenAlex institution id; all 24 resolved (0 blank -- badge_calibration.json's known_umbrellas_found covers all 24, only Helmholtz Association, the 25th named umbrella, has no institution row and is omitted entirely, not shipped with a blank id)"}
+      - {name: note, dtype: object, meaning: "empty for 18 rows; carries 'structurally unflaggable -- output attributed to child institutions' for the 3 structurally unflaggable names (Fraunhofer Society, Portuguese FCT, UKRI) per this stream's brief; carries a type-outside-automatic-gate note for AP-HP/Romanian Academy/Hungarian Research Network (their patched `type` is outside {government,funder,facility,nonprofit}, so only this supplement flags them); carries the 'debatable' caveat for Institut Pasteur (badge_calibration.md)."}
+
+  # ============================================================================================
+  # collab_pairs.parquet -- ALL a<b indexed institution pairs (v2, 2BR3 P7, 2026-08-31 --
+  # ADDS CORE-AR columns, KEEPS every v1 column unchanged, grain UNCHANGED)
+  # ============================================================================================
+  collab_pairs.parquet:
+    grain: "one row per unordered pair (a,b), a<b by institution_id string, BOTH indexed institutions with >=1 co-published work anywhere 2020-2025 -- UNCHANGED from v1, NO FLOOR, NO ROW CHANGE (3,581,332 rows, 57.9 MB, zstd; the extra width is the 13 new CORE-AR columns, not new rows). Universe = `openalex_eu27_aug` UNION `openalex_supplement` per year, eu27_aug canonical on id overlap, same rule as v1."
+    keys: [a, b]
+    columns:
+      - {name: a, dtype: category, meaning: "institution_id, the lexicographically SMALLER of the pair's two ids (string compare, not ROR/numeric)"}
+      - {name: b, dtype: category, meaning: "institution_id, the lexicographically LARGER of the pair's two ids"}
+      - {name: copubs_2020, dtype: int32, meaning: "UNCHANGED from v1: co-published works in 2020, ALL DOC TYPES, full counting (a work with N indexed co-authoring institutions contributes 1 to EVERY pair among them, not fractionally split). Feeds ONLY the Collaborate pulse (relationship year-by-year) chart, which stays all-types/2020-2025 by design (§2.1) -- every other Collaborate TABLE number reads the CORE-AR columns below instead."}
+      - {name: copubs_2021, dtype: int32, meaning: null}
+      - {name: copubs_2022, dtype: int32, meaning: null}
+      - {name: copubs_2023, dtype: int32, meaning: null}
+      - {name: copubs_2024, dtype: int32, meaning: null}
+      - {name: copubs_2025, dtype: int32, meaning: "2025 bonus year (config.yaml bonus_year) -- included in copubs_total, not excluded the way impact indicators exclude it"}
+      - {name: copubs_total, dtype: int32, meaning: "UNCHANGED from v1, KEPT (manager ruling 2026-08-31 -- lib/collab_data.py's pulse() reads this column by name; §2.2's prose only listed copubs_2020..2025 but never asked for its removal): SUM(copubs_2020..copubs_2025), all doc types. NOT the CORE-AR basis -- see core_total."}
+      - {name: core_total, dtype: int32, meaning: "NEW (2BR3 P7, ruling 3): joint works on window_conventions.core_ar_window (articles+reviews, 2020-2024, full counting) -- c1+c2 exactly. THE denominator basis for every Collaborate TABLE number (replaces copubs_total for anything but the pulse chart). VERIFIED 2026-08-31: an INDEPENDENT from-scratch recompute (pipeline/15_collab_pass.py's own phase-1 pass) matches a second, session-scratchpad probe script byte-for-byte on ALL 3,153,049 CORE-AR pairs (0 mismatches) before this table was written -- see progress/2BR3_P7.md. Strict subset of copubs_total-basis qualifying (WT task 3: CORE-AR floor-5 set is 913,513 pairs, 0 added / 164,927 dropped vs the old all-types floor-5 set)."}
+      - {name: c1, dtype: int32, meaning: "NEW: core_total's WINDOW = 2020-2022 (dynamics window 1, mean annual) slice (window_conventions.core_ar_window x dynamics_window_1) -- momentum's numerator-1/denominator-1 raw count."}
+      - {name: c2, dtype: int32, meaning: "NEW: core_total's WINDOW = 2023-2024 (dynamics window 2, mean annual) slice -- momentum's numerator-2/denominator-2 raw count."}
+      - {name: n_top10, dtype: int32, meaning: "NEW: PAIR-GRAIN rollup (Sigma over the pair's UNCAPPED CORE-AR topic rows, NOT the shipped top-100-capped collab_pair_topics.parquet -- avoids the exact 'gaps on capped topics' undercount pattern named for a different table at WT task 5.7) of works with cited_by_count >= the world subfield x year x type top-10% threshold T, among n_covered. Same >=, not >, convention as agg/impact.py::join_thresholds."}
+      - {name: n_covered, dtype: int32, meaning: "NEW: PAIR-GRAIN rollup of CORE-AR joint works landing in a (bestfit_subfield_id, year, type) cell that HAS a world threshold T (world_thresholds.parquet is null on ~24% of cells) AND is not retracted. ALWAYS divide n_top10 by n_covered, never by core_total (mixes windows/undercounts, same WT #7 rule collab_pair_topics.n_covered already documents). Undercounts core_total by the same ~0.07% of works with no primary topic that every topic-grain rollup in this pipeline excludes (topics_dim has no 'no primary topic' bucket) -- disclosed, not silently absorbed."}
+      - {name: n_sdg, dtype: int32, meaning: "NEW (RENAMED from collab_pair_topics.parquet v1's sdg_tagged_n, now shipped at PAIR grain instead): PAIR-GRAIN rollup of CORE-AR joint works with >=1 SDG keyword hit (any-hit tagging rule, same lightweight source as v1: ALL data/interim/sdg/sdg_shard_*.parquet, tagged = sdg_hits != '' on ANY shard row for that work_id). Same ~0.07% topicless-work undercount as n_covered/n_top10 above."}
+      - {name: fwci_median, dtype: float32, meaning: "NEW (ruling 4, §2.4): MEDIAN FWCI over the pair's CORE-AR joint works with a valid FWCI value (subfield mapped -- ~99.93% of CORE-AR works, WT task 4/17_fwci.py measured), NULL when < 3 such works (§2.4's 'nullable when < 3 covered works', read as 'covered by a valid FWCI value', not the PP-threshold n_covered above -- a DIFFERENT 'covered' concept, disclosed here to head off confusion between the two). FWCI(work) = cited_by_count / mean_cited(subfield x year x type stratum), reference = fwci_ref.parquet (pipeline-internal, NOT deployed -- see its note at the bottom of this file), European reference corpus (this harvest), NOT world. 913,506 / 913,513 CORE-AR floor-5 qualifying pairs have a non-null value (the 7-pair gap: pairs whose few joint works all fall on the topicless/unmapped-subfield edge case)."}
+      - {name: rank_in_a, dtype: Int32, meaning: "RECOMPUTED on core_total (was copubs_total in v1, ruling 3): dense rank (1=highest) of `b` among ALL of `a`'s CORE-AR partners, computed BEFORE any floor. NULLABLE (Int32, was non-nullable int32 in v1): a pair present in this table only because it has a copubs_total>=1 (v1's grain) but core_total==0 (no CORE-AR joint work at all) never enters the ranking population -- null, not a fabricated worst-rank tie."}
+      - {name: rank_in_b, dtype: Int32, meaning: "same rule, `b`'s own perspective, RECOMPUTED on core_total"}
+      - {name: mom_class, dtype: category, meaning: "NEW (ruling 6, §2.3): {up, down, stable, ns, new, dormant, weak} -- momentum classification. Decision tree (see pipeline/15_collab_pass.py::_classify_rr docstring for the full, DISCLOSED priority order the plan text does not fully spell out): new = c1==0 & c2>=5; dormant = c2==0 & c1>=5; weak = 0<c1<5 (thin W1 base, ratio not trusted, no % shown); ns = every other c1==0 case (insufficient signal either window) OR an up/down candidate DEMOTED by the pooled two-proportion z-test (p>=0.05, alpha in collab_facts.json); up = rr>=1.25; down = rr<=0.80; stable = the remaining c1>=5 & c2>=1 rows. The ~428,283 pairs with core_total==0 (present only because copubs_total>=1, v1's grain) are filled 'ns' (no CORE-AR signal at all). Colours/glyphs: MOMENTUM_COLORS (lib/palette.py, PAL stream) -- never a fill alone, always paired with the glyph/text (up-arrow/down-arrow/right-arrow)."}
+      - {name: mom_rr, dtype: float32, meaning: "NEW: recentred ratio rr = r/MED where r = (c2/d2)/(c1/d1) (d1/d2 = index.total_ar_full_w1/w2[a]+[b]), MED = median(r) over the ELIGIBLE population (c1>0, c2>0, c1+c2>=10, collab_facts.json elig_min) -- MED=1.0431 this run (VERIFIED in [0.8,1.3], the momentum-sanity HALT band, §3-P7 invariant). NULL whenever c1==0 or d1==0 or d2==0 (r undefined) -- includes new/dormant/most-ns rows by construction, but IS populated for 'weak' rows when computable (a real value, just not display-trusted per the weak-base rule)."}
+      - {name: mom_p, dtype: float32, meaning: "NEW: two-sided p-value of the pooled two-proportion z-test on (c1/d1) vs (c2/d2), computed ONLY for rows that were an up/down CANDIDATE before the z-test demotion (rr past the +-25% band) -- NULL for every other row (new/dormant/weak/ns/stable never get a p-value at all, not just an insignificant one). p>=alpha (0.05) demotes the row's mom_class to 'ns' but mom_p itself is never overwritten -- the demoted row's own p-value stays readable as the reason for the demotion."}
+      - {name: erc_top_panel, dtype: category, meaning: "CARRIED FORWARD UNCHANGED from collab_pair_topics.parquet v1 (2BR3 §0 ratification, closes WT gap g -- moved from topic-grain to PAIR-grain, still descriptive-header-only, basis unchanged and disclosed): the ERC panel_idx (app/lib/engine/resources/erc_panels.csv) most frequently the work-level argmax(probs) among ALL the pair's joint works on the OLD, ALL-TYPES/2020-2025 basis (NOT recomputed on CORE-AR) -- 'current basis, disclosed' per the ratification's own wording."}
+      - {name: erc_top_panel_n, dtype: int32, meaning: "CARRIED FORWARD UNCHANGED, same old (all-types/2020-2025) basis: count of the pair's labelled joint works landing on erc_top_panel."}
+      - {name: erc_labelled_n, dtype: int32, meaning: "CARRIED FORWARD UNCHANGED, same old basis: labelled-denominator (works with an erc_probs row at all) -- erc_top_panel_n/erc_labelled_n is 'of the labelled works', never divide by copubs_total or core_total."}
+    build_note: "pipeline/15_collab_pass.py --stage p7-phase1 (per-year pair counts + institution CORE-AR full-counted totals, one pass, same dual-accumulation pattern as v1's stage1_year) -> --stage p7-phase2 (topic/field assignment + FWCI join, restricted to the core_total>=5 qualifying set) -> --stage p7-write (assembles + writes all 4 v2 collab_* tables + collab_facts.json + index.parquet's total_ar_full_w1/w2, in that order). Per-year checkpoints under data/interim/collab_p7/ (isolated from v1's collab/ and collab_p6/ checkpoint dirs). v1 columns (a,b,copubs_*,rank_in_a/b as they existed) computed the SAME way as before via the UNCHANGED combine_pairs()/stage1_year functions; only rank_in_a/rank_in_b are overwritten with the CORE-AR recompute."
+
+  # ============================================================================================
+  # collab_pair_topics.parquet -- top-100 joint topics per pair >= floor 5, + impact columns
+  # (REGENERATED, 2026-08-31 -- supersedes the earlier floor-3/top-20 build)
+  # ============================================================================================
+  collab_pair_topics.parquet:
+    grain: "v2, ruling 3, 2026-08-31 -- BREAKING rebasis + rename, supersedes the earlier all-types/2020-2025 build. One row per (a, b, topic_id) for pairs with core_total >= 5 (the CORE-AR qualifying-pair floor, read from collab_pairs.parquet -- SAME floor NUMBER as v1 but a NARROWER, strictly-subset population: WT task 3 measured 913,513 CORE-AR floor-5 pairs vs v1's 1,078,440 all-types floor-5 pairs, 0 pairs added / 164,927 dropped), TOP-100 topics per pair by vol (CORE-AR). 15,392,404 rows, 65.7 MB, zstd (rung1 of the size ladder -- fits without falling back to rung2/top-50, smaller than v1's 78.7 MB as WT predicted since the basis itself shrank). topic_id is the work's PRIMARY topic only (config.yaml assignment=primary, R2.18); topic->subfield for the impact join is the BESTFIT tree ONLY (unchanged from v1, WT #8). Same eu27_aug+supplement UNION universe as collab_pairs, now filtered to type in {article,review}, 2020-2024 (window_conventions.core_ar_window) BEFORE any row enters this table."
+    keys: [a, b, topic_id]
+    columns:
+      - {name: a, dtype: category, meaning: "institution_id, smaller of the pair (same a<b convention as collab_pairs)"}
+      - {name: b, dtype: category, meaning: "institution_id, larger of the pair"}
+      - {name: topic_id, dtype: category, meaning: "OpenAlex topic id (topics_dim.parquet); PRIMARY topic of the joint work only"}
+      - {name: vol, dtype: int16, meaning: "RENAMED from v1's vol_total (2BR3 P7, BREAKING -- lib/collab_data.py's module constants JOINT_TOPICS_COLS/FIELD_BREAKDOWN_COLS hard-code the OLD names, flagged to CD4's fence): joint CORE-AR works with this primary topic = vol_w1+vol_w2 (NO vol_2025 term -- CORE-AR has no 2025 component by definition, that column is DROPPED entirely, not just renamed). VERIFIED: this is the exact fix for the '1,882 vs 1,642' basis mismatch named at the plan's own root-cause audit (WT task 6, row 9) -- vol is now type/window-restricted the SAME way n_covered/n_top10 always were."}
+      - {name: vol_w1, dtype: int16, meaning: "joint CORE-AR works with this primary topic, WINDOW = 2020-2022 (dynamics window 1, mean annual) (window_conventions.core_ar_window x dynamics_window_1), full counting"}
+      - {name: vol_w2, dtype: int16, meaning: "joint CORE-AR works with this primary topic, WINDOW = 2023-2024 (dynamics window 2, mean annual)"}
+      - {name: n_sdg, dtype: int16, meaning: "RENAMED from v1's sdg_tagged_n: of vol joint works with this primary topic, how many carry >=1 SDG keyword hit. Same lightweight tagging source as v1 (ALL data/interim/sdg/sdg_shard_*.parquet, tagged = sdg_hits != '' on any shard row)."}
+      - {name: n_covered, dtype: int16, meaning: "UNCHANGED convention from v1, now naturally on the CORE-AR population (the type/window restriction is applied at the SOURCE now, not just at the coverage-flag step): of this row's joint works, non-retracted, falling in a (bestfit_subfield_id, year, type) cell that HAS a world threshold T. ALWAYS divide n_top10 by n_covered, never by vol. VERIFIED: n_top10 <= n_covered <= vol on every shipped row, 0 violations (invariants_p7.py)."}
+      - {name: n_top10, dtype: int16, meaning: "UNCHANGED convention from v1: of n_covered, how many have cited_by_count >= T (world subfield x year x type top-10% cutoff), same >= convention as agg/impact.py::join_thresholds."}
+      - {name: fwci_median, dtype: float32, meaning: "NEW (ruling 4, §2.4, supersedes mean_citations -- see dropped_column note): MEDIAN FWCI over this row's CORE-AR joint works with a valid FWCI value, NULL when < 3 such works. Same reference/method as collab_pairs.fwci_median (fwci_ref.parquet, pipeline-internal)."}
+      - {name: mom_class, dtype: category, meaning: "NEW (ruling 6, §2.3): {up, down, stable, ns, new, dormant, weak}, computed from THIS ROW'S c1=vol_w1/c2=vol_w2 against the PARENT PAIR'S d1/d2 (index.total_ar_full_w1/w2[a]+[b]) and the SAME globally-computed MED collab_pairs.parquet uses ('one drift correction per run', §2.3) -- NO z-test at this grain (class only, no mom_rr/mom_p columns here; the UI shows the momentum chip only when this row's vol_w1+vol_w2 >= 10, a DISPLAY rule, not encoded in this column)."}
+    dropped_column: "erc_top_panel/erc_top_panel_n/erc_labelled_n (v1's pair-level-but-topic-repeated ERC columns) MOVED to collab_pairs.parquet v2 (their natural pair grain -- WT gap g, closed) and are NO LONGER on this table. mean_citations (v1's impact-proxy column) is SUPERSEDED by fwci_median and dropped entirely, not carried forward."
+    build_note: "pipeline/15_collab_pass.py --stage p7-phase2 (`stage_p7_year`, per-work loop restricted to core_total>=5 qualifying pairs, type in {article,review}/2020-2024 applied at the raw-corpus read) -> --stage p7-write (`combine_p7_topics`/`write_p7_topics`, top-100-per-pair truncation by vol, THEN sorted (a,b,topic_id)). Per-year checkpoints under data/interim/collab_p7/ (topics_YYYY.parquet aggregated + fwci_raw_YYYY.parquet raw, isolated from v1's collab_p6/ dir)."
+
+  # ============================================================================================
+  # collab_pair_fields.parquet -- pair x field, uncapped, BESTFIT tree only
+  # (NEW, 2026-08-31)
+  # ============================================================================================
+  collab_pair_fields.parquet:
+    grain: "v2, ruling 3, 2026-08-31 -- BREAKING rebasis + rename, supersedes the earlier build. One row per (a, b, field_id) for pairs with core_total >= 5 (same CORE-AR floor and qualifying-pair set as collab_pair_topics.parquet v2), UNCAPPED (every field the pair has any joint CORE-AR mass in). 3,571,800 rows, 26.6 MB, zstd. Same eu27_aug+supplement UNION universe, filtered to type in {article,review}, 2020-2024 (window_conventions.core_ar_window) before any row enters this table."
+    keys: [a, b, field_id]
+    columns:
+      - {name: a, dtype: category, meaning: "institution_id, smaller of the pair (same a<b convention as collab_pairs)"}
+      - {name: b, dtype: category, meaning: "institution_id, larger of the pair"}
+      - {name: field_id, dtype: int16, meaning: "OpenAlex field id (topics_dim.field_id), reached via each joint work's PRIMARY topic -> BESTFIT subfield -> field (tree-independent nesting, unchanged from v1)"}
+      - {name: vol, dtype: int16, meaning: "RENAMED from v1's vol_total (BREAKING, same disposition as collab_pair_topics.vol -- CD4's JOINT_ROLLUP_VALUE_COLS/FIELD_BREAKDOWN_COLS constants hard-code the old name, flagged): joint CORE-AR works with primary topic in this field = vol_w1+vol_w2, NO vol_2025 term (dropped, CORE-AR has none)."}
+      - {name: vol_w1, dtype: int16, meaning: "joint CORE-AR works with primary topic in this field, WINDOW = 2020-2022 (dynamics window 1, mean annual)"}
+      - {name: vol_w2, dtype: int16, meaning: "joint CORE-AR works with primary topic in this field, WINDOW = 2023-2024 (dynamics window 2, mean annual)"}
+      - {name: n_top10, dtype: int16, meaning: "same convention as collab_pair_topics.n_top10, rolled up to field grain, now on the CORE-AR population natively (no basis mismatch with vol above -- the exact WT task 6 row-9 fix)."}
+      - {name: n_covered, dtype: int16, meaning: "same convention as collab_pair_topics.n_covered, rolled up to field grain. VERIFIED: n_top10 <= n_covered <= vol on all 3,571,800 shipped rows, 0 violations (invariants_p7.py)."}
+      - {name: n_sdg, dtype: int16, meaning: "NEW at field grain (2BR3 P7): field-grain rollup of joint CORE-AR works with >=1 SDG keyword hit, same tagging source as collab_pairs.n_sdg / collab_pair_topics.n_sdg."}
+      - {name: fwci_median, dtype: float32, meaning: "NEW (ruling 4): MEDIAN FWCI over this row's CORE-AR joint works with a valid FWCI value, NULL when < 3 such works."}
+      - {name: mom_class, dtype: category, meaning: "NEW (ruling 6): same rule as collab_pair_topics.mom_class, computed from this row's vol_w1/vol_w2 against the parent pair's d1/d2/MED."}
+    dropped_column: "mean_citations (v1's uncapped-table impact proxy, the ONE table that could still afford it after collab_pair_topics dropped it for size) is SUPERSEDED by fwci_median and dropped."
+    build_note: "pipeline/15_collab_pass.py --stage p7-phase2 (field-level accumulation runs in the SAME per-work loop as the topic-level one, `stage_p7_year`) -> --stage p7-write (`combine_p7_fields`/`write_p7_fields`); per-year checkpoints under data/interim/collab_p7/fields_YYYY.parquet."
+
+  # ============================================================================================
+  # collab_topic_vols.parquet -- pair x topic, UNCAPPED, slim (NEW, 2BR3 P7, ruling 3, §2.2 --
+  # the "gaps on capped topics" fix)
+  # ============================================================================================
+  collab_topic_vols.parquet:
+    grain: "one row per (a, b, topic_id) for the SAME core_total>=5 qualifying-pair set as collab_pair_topics.parquet v2, but UNCAPPED (every topic the pair has ANY joint CORE-AR mass in, not just its top-100) -- built for exactly one consumer: lib/collab_data.py's untapped() gaps table, which previously read the top-100-capped collab_pair_topics.parquet and silently read a false 0 (joint_observed) for any shared topic outside a pair's top-100, inflating gap = joint_expected - joint_observed (WT task 5.7). 15,392,404 rows, 36.6 MB, zstd -- WT sized the OLD all-types/2020-2025 basis at 19,234,095 rows/45.57 MB and predicted the CORE-AR basis would be smaller (strict subset); CONFIRMED (WT task 3 basis-delta prediction verified live)."
+    keys: [a, b, topic_id]
+    columns:
+      - {name: a, dtype: category, meaning: "institution_id, smaller of the pair"}
+      - {name: b, dtype: category, meaning: "institution_id, larger of the pair"}
+      - {name: topic_id, dtype: category, meaning: "OpenAlex topic id; PRIMARY topic of the joint work only, same rule as collab_pair_topics.parquet"}
+      - {name: vol, dtype: int32, meaning: "joint CORE-AR works with this primary topic = vol_w1+vol_w2, UNCAPPED (WT recommendation, ratified §0: CORE-AR for consistency with every other 2BR3 Collaborate number -- NOT all-types). Wider dtype than collab_pair_topics.vol (int32 not int16) since a few uncapped cells exceed int16 range on the largest pairs."}
+    build_note: "pipeline/15_collab_pass.py --stage p7-write (`write_collab_topic_vols`, sourced from the SAME uncapped `combine_p7_topics()` frame collab_pair_topics.parquet's top-100 truncation reads from -- one shared uncapped intermediate, two different write functions, never two separate aggregation passes). PAIR SET is exactly collab_pairs.parquet's core_total>=5 rows -- VERIFIED as a scripted invariant (invariants_p7.py): set(collab_topic_vols[[a,b]].distinct) == set(collab_pairs[collab_pairs.core_total>=5][[a,b]])."
+
+  # ============================================================================================
+  # fwci_taxa.parquet -- institution x grain x taxon (NEW, 2C, stream P8, D2/D3/D14) --
+  # per-taxon FWCI aggregates across all FOUR grains D2 asks for, superseding NOTHING (this is
+  # the first FWCI table at grain other than pair/field/topic -- collab_pairs.fwci_median etc.
+  # are pair-grain, unrelated to this institution-grain table)
+  # ============================================================================================
+  fwci_taxa.parquet:
+    grain: "institution x grain x taxon_id, sparse to n_covered>=3 cells; 703,571 rows, 6.85 MB zstd (field 104,714 / subfield 384,212 / sdg 75,046 / erc 139,599 -- VERIFIED 2026-09-01, matches evals/wind_tunnel_2C/WT_2C.md claim 2's measured magnitudes within the shipped invariants script's +/-10% band; erc came in well under WT's 211,596 upper-bound proxy since that proxy carried no n_covered floor)."
+    keys: [institution_id, grain, taxon_id]
+    columns:
+      - {name: institution_id, dtype: category, meaning: null}
+      - {name: grain, dtype: category, meaning: "{field, subfield, sdg, erc} -- four categories, fixed order. field/subfield are BESTFIT-TREE ONLY (pipeline/17_fwci.py derives subfield_id from topics_dim.bestfit_subfield_id, never original/conservative -- WT_2C.md claim 2 adjustment #1): FWCI at these two grains does NOT vary with Compare's tree toggle, and the UI caption/basis chip MUST disclose this (CD5/VC fence, not this table's). sdg taxon_id is the SAME 0-based sdg_idx sdg.parquet/sdg_year.parquet already use (code 'SDG03' -> index 2, SDG17 not covered). erc taxon_id is the SAME 0-based panel_idx erc.parquet already uses (28 panels, erc_tau=0.5 global threshold, config.yaml) -- ERC-grain n_covered has a real, permanent ~7.3% coverage ceiling below field/subfield/sdg (only 92.7% of CORE-AR works have a matching erc_probs.parquet row, WT_2C.md claim 2 adjustment #2), on top of the n_covered<3 floor."}
+      - {name: taxon_id, dtype: int32, meaning: "OpenAlex field_id / subfield_id (grain=field/subfield), 0-based sdg_idx (grain=sdg), or 0-based panel_idx (grain=erc) -- interpret ONLY together with `grain`, the same taxon_id integer range is reused across grains (e.g. field_id and sdg_idx both start near 0-30)."}
+      - {name: fwci_median, dtype: float32, meaning: "MEDIAN FWCI over this institution's CORE-AR works (articles+reviews, 2020-2024, FULL/binary attribution -- window_conventions.core_ar_window, decisions log 2026-09-01: a work counts ONCE per institution present regardless of collaboration weight) covered by this taxon, floored at n_covered>=3. THE BAR VALUE (D2 ruling: bar=median, hover=mean+n_covered). Compare against fwci_taxa_ref.eu_median_work_fwci for the SAME (grain, taxon_id) -- the two are the SAME statistic (median) over the SAME unit (works), one institution-scoped, one corpus-wide (D3)."}
+      - {name: fwci_mean, dtype: float32, meaning: "MEAN FWCI over the SAME population as fwci_median -- hover-only (D2), never the bar. NOT pinned near 1.0 at institution grain the way a full-stratum corpus mean is (WT_2C.md claim 1) -- an institution's own covered-works mean can sit well above or below 1 depending on which subset of the corpus it publishes into. VERIFIED 2026-09-01: computed via an explicit float64 upcast before the groupby mean (numpy float32 sequential-sum vs pairwise-sum divergence -- memory [[numpy-float32-sum-memory-order]] -- closed a real 1-ULP golden mismatch found on the first build)."}
+      - {name: n_covered, dtype: int32, meaning: "count of this institution's CORE-AR works (SAME population as fwci_median/fwci_mean) that have a valid FWCI AND fall in this taxon -- the hover denominator (D2) and the D6 hatch-trigger column for FWCI charts (RATIO_HATCH_FLOOR=50 on THIS column, per decisions log 2026-09-01 D6 amendment -- FWCI behaves like PP's n_works_full, genuinely per-row, not like Share's institution-constant denom_value). Floored at >=3 by construction (every shipped row has n_covered>=3); heavy hatching at floor 50 on subfield grain (WT measured ~83% population-wide) is ACCEPTED as honest disclosure, not a bug."}
+    build_note: "pipeline/18_fwci_taxa.py --stage field|subfield|sdg|erc then --stage combine (checkpointed per grain under data/interim/fwci/taxa_ckpt/, resume tested 2026-09-01: --stage sdg killed mid-computation before any checkpoint write, confirmed no partial/corrupt file, re-run completed and wrote the checkpoint, a THIRD run logged 'checkpoint present, skip' with a byte-identical sha256). Base joins: fwci_work.parquet (17_fwci.py output, UNTOUCHED -- D14) x topics_dim.parquet (field roll-up) x attribution_long.pkl (institution attribution, weight columns dropped) x corpus_slim.pkl (sdg_hits, exploded via the SAME code->index rule agg/eu_enriched.py:219 uses) x erc_probs.parquet (28-vector probs, deduped preferring the abstract-basis row per agg/enriched_corpus.py:369-371, thresholded via the SAME rule 16_crosses.py:703-706 uses). GOLDEN-VERIFIED 2026-09-01: institution I154202486 (Ifremer) x field_id=11, independently recomputed straight from fwci_work.parquet x attribution_long.pkl (not via this script's own functions) -- byte-identical float32 median (0.8149413466453552), mean (1.3476839065551758) and n_covered (1700). Full invariants + golden script: evals/invariants_fwci_taxa.py (exits non-zero on failure)."
+
+  # ============================================================================================
+  # fwci_taxa_ref.parquet -- grain x taxon (NEW, 2C, stream P8, D3) -- the FWCI chart reference
+  # line: European corpus-level MEDIAN work-FWCI per grain x taxon, NOT institution-filtered
+  # ============================================================================================
+  fwci_taxa_ref.parquet:
+    grain: "grain x taxon_id, ALL taxa that appear at least once in the CORE-AR corpus (no floor -- contrast with fwci_taxa.parquet's n_covered>=3); 317 rows (field 26, subfield 247, sdg 16, erc 28), 0.01 MB zstd. Dense within each grain's known taxon range (every field/subfield/sdg/erc taxon that exists in this snapshot has a row here)."
+    keys: [grain, taxon_id]
+    columns:
+      - {name: grain, dtype: category, meaning: "{field, subfield, sdg, erc} -- SAME categories/taxon_id convention as fwci_taxa.parquet.grain (read that column's meaning first)."}
+      - {name: taxon_id, dtype: int32, meaning: "SAME convention as fwci_taxa.parquet.taxon_id -- interpret only together with `grain`."}
+      - {name: eu_median_work_fwci, dtype: float32, meaning: "D3's chart reference: the MEDIAN FWCI over ALL CORE-AR works (articles+reviews, 2020-2024, window_conventions.core_ar_window) mapped to this (grain, taxon_id), across the WHOLE European reference corpus (the local EU27+GB/CH/NO/IS harvest union, same population 17_fwci.py's own fwci_ref.parquet uses -- NEVER world OpenAlex) -- NOT institution-filtered, no attribution_long join at all for this table. Drawn as a per-row varying dashed reference line (D3, same mechanism as REF_METRICS' existing per-row references, charts_compare.py:1791-1817) -- hover/caption copy MUST read 'European median work in this [grain]', NEVER 'average' (the corpus MEAN is pinned to ~1.000 by construction and would misrepresent the skewed distribution as neutral, WT_2C.md claim 1). CAN BE EXACTLY 0.0 on a well-populated taxon -- VERIFIED 2026-09-01: field_id=12 'Arts and Humanities' has eu_median_work_fwci=0.0 on 270,268 works because 62.9% of them have zero citations (a genuine, well-known humanities citation-practice fact, not a defect -- this IS the WT claim 1 finding the D3 ruling itself is built on). 27 (grain, taxon_id) rows total have eu_median_work_fwci==0.0 with n_works>=50 (field: 1; subfield: 23, mostly History/Arts/Literature/Philosophy/Religion subfields; erc: 3, mostly SH panels) -- see evals/invariants_fwci_taxa.py's FYI line for the full list."}
+      - {name: n_works, dtype: int64, meaning: "count of CORE-AR works this eu_median_work_fwci was computed over (the corpus-wide denominator, unrelated to any single institution's n_covered)."}
+    build_note: "pipeline/18_fwci_taxa.py --stage ref then --stage combine -- SAME four join tables as fwci_taxa.parquet MINUS attribution_long.pkl (no institution split). GOLDEN/invariant-checked alongside fwci_taxa.parquet by evals/invariants_fwci_taxa.py (check #6, softened from the brief's literal '>0' floor to 'finite and >=0' -- see that script's own docstring for the disclosed reason)."
+
+  # ============================================================================================
+  # impact_taxa.parquet -- institution x grain x taxon (NEW, 2D, stream P9, E2/E4) --
+  # PP10_WD: doc-level top-10%-of-world impact, FULL/BINARY attribution, ALL FOUR grains
+  # ============================================================================================
+  impact_taxa.parquet:
+    grain: "institution x grain x taxon_id, floored at n_covered_pp>=1 (E4: NO display floor lives in the data -- the below-floor CAUTION channel is a UI-layer rendering rule over this same unfloored table, not a second, filtered file). 1,100,275 rows (field 141,654 / 26 distinct fields, subfield 687,618 / 247 distinct subfields, sdg 100,400 / 16 distinct goals, erc 170,603 / 28 distinct panels), 3.28 MB zstd."
+    keys: [institution_id, grain, taxon_id]
+    columns:
+      - {name: institution_id, dtype: category, meaning: null}
+      - {name: grain, dtype: category, meaning: "{field, subfield, sdg, erc} -- SAME four categories/fixed order as fwci_taxa.parquet.grain. field/subfield taxon_id is the BESTFIT-TREE subfield/field (topics_dim.bestfit_subfield_id -> field_id) -- SAME tree fwci_taxa.parquet uses at these two grains (18_fwci_taxa.py's own scope decision #2), so the two impact-matrix cells (FWCI_EU, PP10_WD) sit on the identical taxonomic grain and are directly crossable (E2). This is a DELIBERATE CHOICE, found empirically this session (19_impact_taxa.py's own 'TREE NOTE'), not automatic: the per-work top-10% FLAG itself is always decided in the work's ORIGINAL-tree subfield x year x type cohort (D6, unchanged by this note, world_thresholds.parquet's own basis) -- only the GRAIN ROLLUP (which field/subfield cell a flagged work's mass lands in) uses bestfit. sdg taxon_id is the SAME 0-based sdg_idx sdg.parquet/fwci_taxa.parquet already use (SDG17 not covered). erc taxon_id is the SAME 0-based panel_idx erc.parquet/fwci_taxa.parquet already uses (28 panels, erc_tau=0.5 global threshold)."}
+      - {name: taxon_id, dtype: int32, meaning: "SAME convention as fwci_taxa.parquet.taxon_id at each grain -- interpret only together with `grain`."}
+      - {name: pp10_wd, dtype: float32, meaning: "PP(top10% of WORLD): the fraction of this institution's CORE-AR works (articles+reviews, 2020-2024, window_conventions.core_ar_window), mapped to this (grain, taxon_id) AND covered by a world threshold (see n_covered_pp below), whose cited_by_count_eff is >= the Aug-2026 world_thresholds.parquet threshold T of the work's OWN ORIGINAL subfield x year x type cohort (pipeline/agg/impact.py::join_thresholds, imported not reimplemented -- impact_cells.py L4-8's 'decided exactly once' rule). FULL/BINARY attribution (decisions log 2026-09-01, SAME convention as fwci_taxa.fwci_median/fwci_mean): a work counts ONCE per institution present, regardless of collaboration weight -- a DELIBERATE, DISCLOSED DEPARTURE from the shipped impact_fields.parquet/impact_cells.parquet's pp_top10_frac (FRACTIONAL weight_frac attribution); PP10_WD is a NEW metric name precisely because it is built to cross with FWCI_EU at any grain (E2), not a rename of the existing frac-basis PP. GOLDEN-VERIFIED 2026-09-02 (evals/invariants_impact_taxa.py, three-way): institution I154202486 (Ifremer) x field_id=11 -- n_covered_pp (1699) equals the shipped impact_fields.parquet cell's n_works_full EXACTLY (tree=bestfit, floor=30: same population/tree/flag), while pp10_wd (0.167746, FULL/binary) differs from the shipped pp_top10_frac (0.109063, FRACTIONAL) by a disclosed, expected, attribution-basis-only gap (+0.058683) -- named, not a defect. Also reconciled against ONE live OpenAlex probe (2 filter= calls, funded key, $0.0002): a (subfield, year, type) cohort slice inside this same field cell (Ifremer x subfield 1104 'Aquatic Science' x 2024 x article, T=11) reproduces BOTH the cohort's total covered-work count (34) and its >=threshold count (2) EXACTLY."}
+      - {name: n_covered_pp, dtype: int32, meaning: "count of this institution's CORE-AR works, mapped to this (grain, taxon_id), that HAVE a world threshold for their own (ORIGINAL subfield, year, type) cohort -- the pp10_wd DENOMINATOR. A work with no world threshold (0.113% of CORE-AR works are uncovered, WT_2D.md claim 4: 6,389 of 5,652,387) is excluded from BOTH the pp10_wd numerator and this denominator (impact.py's own module-docstring rule), never silently folded into either. Floored at >=1 only (E4) -- NO 10/30 mass-floor gate lives in this table: the shipped impact_fields.parquet/impact_cells.parquet's 10/30-floor variants are a display convention on a DIFFERENT, fractional-mass-attribution table, and a floor stated in fractional-mass units does not translate 1:1 to this column's FULL/binary head-count -- CD6/CH2's below-floor CAUTION channel (E4/E5) reads this raw, unfloored column directly, per-row, rather than reusing impact_fields' own floor variants."}
+    build_note: "pipeline/19_impact_taxa.py --stage work (per-CORE-AR-work substrate, data/interim/impact/impact_work.parquet, NOT deployed) then --stage field|subfield|sdg|erc then --stage combine (checkpointed per stage under data/interim/impact/ckpt/, resume tested 2026-09-02: --stage field killed mid-join before any checkpoint write, confirmed no partial/corrupt file on disk, re-run completed and wrote the checkpoint, sha256 byte-identical to a from-scratch build, a THIRD run logged 'checkpoint present, skip'). Base joins IDENTICAL to fwci_taxa.parquet's (pipeline/18_fwci_taxa.py): attribution_long.pkl (FULL/binary, weight columns dropped), corpus_slim.pkl's sdg_hits (same eu_enriched.py:219 code->index rule), erc_probs.parquet (same 16_crosses.py:703-706 tau=0.5 threshold + enriched_corpus.py:369-371 dedup rule) -- PLUS pipeline/agg/impact.py::flag_impact_population/join_thresholds/load_world_thresholds (UNTOUCHED, imported not reimplemented) for the world-threshold flag itself, which fwci_taxa.parquet has no equivalent of. Full invariants + three-way golden: evals/invariants_impact_taxa.py (exits non-zero on failure)."
+
+  # ============================================================================================
+  # share_refs.parquet -- grain x taxon x basis (NEW, 2D, stream P9, E8) -- the European
+  # mean-of-ratios SHARE reference Compare's Share tab (and SI tabs) read at ALL FOUR grains
+  # ============================================================================================
+  share_refs.parquet:
+    grain: "grain x taxon_id x basis (frac|full), dense within each grain's known taxon range x both bases. 634 rows (field 52 = 26 x 2, subfield 494 = 247 x 2, sdg 32 = 16 x 2, erc 56 = 28 x 2), 0.01 MB zstd."
+    keys: [grain, taxon_id, basis]
+    columns:
+      - {name: grain, dtype: category, meaning: "{field, subfield, sdg, erc} -- SAME taxon_id convention as impact_taxa.parquet/fwci_taxa.parquet at each grain (field/subfield: BESTFIT tree)."}
+      - {name: taxon_id, dtype: int32, meaning: "SAME convention as impact_taxa.parquet.taxon_id at each grain."}
+      - {name: basis, dtype: category, meaning: "{frac, full} -- the SAME full/frac toggle Compare's basis chip already applies. field/subfield: eu_mean_share genuinely differs by basis (computed independently off fields.parquet/subfields.parquet's own share_frac/share_full columns). sdg/erc: sdg.parquet/erc.parquet ship a SINGLE, non-basis-toggled `share` column (Compare's own Share tab does not basis-toggle these two grains' share value either, profile_data.py's sdg_table/erc_table) -- the IDENTICAL eu_mean_share value is shipped under BOTH basis rows here, disclosed rather than silently duplicated, so a consumer can always join on (grain, taxon_id, basis) without a grain-specific special case."}
+      - {name: eu_mean_share, dtype: float32, meaning: "the UNWEIGHTED MEAN-OF-RATIOS European reference: average, across institutions with nonzero mass in this (grain, taxon_id), of each institution's OWN share -- the SAME statistic/population `pipeline/agg/global_layer.py` line 26's SI formula, `profile_data._unfloored_si` (subfield grain) and `compare_data._sdg_share_field_ref_means` (field-grain SDG-share reference) already use, three independent implementations of one convention (WT_2D.md claim 5). field: groupby(field_id).share_frac/share_full.mean() over fields.parquet's own rows (no floor at this grain, matches fields.si's own no-floor population exactly). subfield: SAME over subfields.parquet's rows (UNFLOORED -- matches profile_data._unfloored_si's population, NOT the G6-floored subfields.si column). sdg: MANAGER-RATIFIED 2026-09-02 (WT_2D.md claim 5) to use this SAME mean-of-ratios statistic, filtered to sdg.parquet rows with mass>0 (the dense table's own zero-share rows excluded) -- DELIBERATELY NOT the shipped sdg.esi (a DIFFERENT ratio-of-sums statistic, 'Europe as one pooled institution', per erc_sdg_long.py::build_sdg_long's own `europe_avg` line -- silently reusing esi here would mix two incompatible reference conventions under one 'European mean share' label, WT_2D.md claim 5's own trap). erc: groupby(panel_idx).share.mean() over erc.parquet's own rows (already sparse to nonzero-mass, no extra filter needed, matches erc.si's own no-floor population)."}
+    build_note: "pipeline/19_impact_taxa.py --stage refs then --stage combine. Reads fields.parquet/subfields.parquet/erc.parquet/sdg.parquet DIRECTLY (no attribution_long/corpus_slim join -- this table is a pure population statistic over the ALREADY-SHIPPED per-institution share columns, not a per-work rebuild). Invariant-checked by evals/invariants_impact_taxa.py (eu_mean_share in (0,1) on every row; both bases present per grain)."
+
+  # ============================================================================================
+  # collab_pair_domain_year.parquet -- pair x OpenAlex domain x year (NEW v1.5, pipeline/22)
+  # ============================================================================================
+  collab_pair_domain_year.parquet:
+    grain: "one row per (a, b, domain_id, year) for pairs with core_total >= 5 (the same CORE-AR qualifying-pair floor as the other pair-grain collab tables), articles+reviews, 2020-2024 (window_conventions.core_ar_window). 6,084,150 rows, 12.35 MB, zstd. Feeds the Relationship block's yearly stacked-by-domain chart."
+    keys: [a, b, domain_id, year]
+    columns:
+      - {name: a, dtype: category, meaning: "institution_id, smaller of the pair (same a<b convention as collab_pairs)"}
+      - {name: b, dtype: category, meaning: "institution_id, larger of the pair"}
+      - {name: domain_id, dtype: int8, meaning: "OpenAlex domain id (1 Life Sciences, 2 Social Sciences, 3 Physical Sciences, 4 Health Sciences), reached via each joint work's PRIMARY topic -> bestfit field -> domain (topics_dim.parquet, 1:1 map, every field maps to exactly one domain, asserted at build time)"}
+      - {name: year, dtype: int16, meaning: "publication year, 2020-2024"}
+      - {name: vol, dtype: int32, meaning: "joint CORE-AR works with a primary topic in this domain, this year, full counting. Sums to the pair's collab_pairs.core_total to within a disclosed, expected residual (~0.0099% of total volume across all qualifying pairs): a joint work with NO primary topic contributes to core_total (topic-blind) but not to any topic-grain rollup, including this one -- the same gap collab_pair_fields.parquet and collab_pair_topics.parquet already carry."}
+    build_note: "pipeline/22_pair_domain_year.py, rolling data/interim/collab_p7/fields_{2020..2024}.parquet (P7's per-year pair x field checkpoints) up to domain via topics_dim's field->domain map. Written to data/artefacts/ and app/data/."
+
+  # ============================================================================================
+  # topic_leaders.parquet -- topic x pool x rank, the world's top publishers per topic (NEW
+  # v1.5, pipeline/23, live-pulled from OpenAlex on the run date -- see Methods)
+  # ============================================================================================
+  topic_leaders.parquet:
+    grain: "topic x pool x rank, rank 1..n (n<=200, the OpenAlex group_by page cap) per (topic_id, pool); 1,778,024 rows, 3.93 MB, zstd. Covers all 4,516 topics x 2 pools."
+    keys: [topic_id, pool, rank]
+    columns:
+      - {name: topic_id, dtype: category, meaning: "OpenAlex topic id (topics_dim.topic_id)"}
+      - {name: pool, dtype: category, meaning: "{all, education} -- world publisher ranking population for this topic. 'all' = every institution type; 'education' = authorships.institutions.type:education only (the fair-comparison pool, since the 'all' pool is dominated by a handful of very large national research organisations -- see Methods)."}
+      - {name: rank, dtype: int16, meaning: "1-based rank by n_works within (topic_id, pool), dense, contiguous, no gaps, capped at 200"}
+      - {name: institution_id, dtype: category, meaning: "OpenAlex institution id of the ranked publisher (NOT restricted to this app's 7,557-institution index -- world publishers include non-indexed institutions, e.g. large non-European research organisations)"}
+      - {name: display_name, dtype: string, meaning: "OpenAlex display name; populated for rank<=10 only (null beyond, since only the top-10 names are ever shown in the app), and can be null even at rank<=10 on the rare topic where OpenAlex returned no name for that institution id (9 such rows shipped -- the app falls back to the institution id, or this app's own index display_name when the id happens to be an indexed institution)"}
+      - {name: n_works, dtype: int32, meaning: "world publication count (articles+reviews, 2020-2024) this rank was computed on; non-increasing with rank within (topic_id, pool)"}
+    build_note: "pipeline/23_world_leaders.py, a live OpenAlex sweep (Bearer key + mailto from ~/.siris/.env) over `works?filter=primary_topic.id:{T},publication_year:2020-2024,type:article|review[,authorships.institutions.type:education]&group_by=authorships.institutions.id`. Checkpointed per topic under data/interim/leaders/{topic_id}.json (not deployed). Pulled on 2026-09-03 -- report this vintage in any Methods text alongside the OpenAlex harvest snapshot, they are NOT the same date."
+
+  # ============================================================================================
+  # topics_led.parquet -- indexed institution x topic x pool, top-10 world rank only (NEW v1.5,
+  # pipeline/25, derived from topic_leaders.parquet, no new API calls)
+  # ============================================================================================
+  topics_led.parquet:
+    grain: "one row per (institution_id, topic_id, pool) where an INDEXED institution (app/data/index.parquet's 7,557) holds rank<=10 in topic_leaders.parquet for that pool; 24,895 rows, 0.07 MB, zstd."
+    keys: [institution_id, topic_id, pool]
+    columns:
+      - {name: institution_id, dtype: category, meaning: "restricted to indexed institutions only (topic_leaders.parquet's own institution_id is unrestricted; this table is the indexed-population slice)"}
+      - {name: topic_id, dtype: category, meaning: "OpenAlex topic id"}
+      - {name: pool, dtype: category, meaning: "{all, education} -- same convention as topic_leaders.parquet.pool"}
+      - {name: rank, dtype: int16, meaning: "1..10 (this table's own floor -- topic_leaders.parquet carries ranks up to 200, this table keeps only the top-10 cut every 'topics led' figure in the app uses)"}
+    build_note: "pipeline/25_leader_star_kpis.py, a pure filter of topic_leaders.parquet against index.parquet's institution_id set, rank<=10. 'Topics led' (D6): a topic counts toward n_topics_led_fair using the education pool when the institution's own type is education, the all pool otherwise -- see index.parquet's n_topics_led_fair column and Methods."
+
+  # ============================================================================================
+  # inst_stars.parquet -- indexed institution x topic, star-paper counts (NEW v1.5, pipeline/25,
+  # derived from the star_papers pull, no new API calls)
+  # ============================================================================================
+  inst_stars.parquet:
+    grain: "one row per (institution_id, topic_id) with n_stars>=1, indexed institutions only; 260,903 rows, 0.58 MB, zstd."
+    keys: [institution_id, topic_id]
+    columns:
+      - {name: institution_id, dtype: category, meaning: null}
+      - {name: topic_id, dtype: category, meaning: "the star work's primary topic"}
+      - {name: n_stars, dtype: int16, meaning: "count of this institution's star papers (see the star-paper rule below) with this primary topic, articles+reviews, 2020-2024"}
+    build_note: "pipeline/25_leader_star_kpis.py, from V4/data/interim/stars/star_works.parquet (not deployed -- pipeline/24_star_papers.py's own output), exploding each star work's '|'-joined direct institution ids and restricting to indexed institutions. Star-paper rule: per (topic_id, year), k = max(1, ceil(0.01 x count)); the k most-cited articles/reviews that year (world, sort=cited_by_count:desc) are the topic x year's star papers -- the top 1% by citation count within that topic and year, ties beyond k cut. Pulled 2026-09-03."
+
+  # ============================================================================================
+  # pair_stars.parquet -- indexed institution pair, JOINT star-paper counts (NEW v1.5, pipeline/25)
+  # ============================================================================================
+  pair_stars.parquet:
+    grain: "one row per unordered indexed pair (a, b), a<b, with >=1 JOINT star paper (both institutions among the work's direct institution ids); 834,488 rows, 1.81 MB, zstd. Largest pair: (I154526488, I4210097159), n_stars=1249."
+    keys: [a, b]
+    columns:
+      - {name: a, dtype: category, meaning: "institution_id, smaller of the pair (same a<b convention as collab_pairs)"}
+      - {name: b, dtype: category, meaning: "institution_id, larger of the pair"}
+      - {name: n_stars, dtype: int16, meaning: "count of star papers (see inst_stars.parquet's build_note for the rule) that carry BOTH a and b among their direct institution ids, articles+reviews, 2020-2024"}
+    build_note: "pipeline/25_leader_star_kpis.py, from star_works.parquet's per-work '|'-joined institution id list, restricted to indexed a<b pairs. Feeds the Relationship block's joint star-paper count and its OpenAlex link (sort=cited_by_count:desc on the joint-authorship filter -- see window_conventions / links below, 'most cited first' rather than a stored top-1% filter OpenAlex itself cannot express)."
+
+  # ============================================================================================
+  # collab_facts.json -- momentum constants (NEW, 2BR3 P7, §2.2, §2.3). NOT contract-checked
+  # (ops/contract_check.py validates parquet + declared .csv only, no JSON support) -- documented
+  # here for discoverability, copied to app/data/ alongside the parquet tables by the SAME
+  # pipeline stage, but NOT part of the `files:` machinery's automated validation.
+  # ============================================================================================
+  # Schema: {med: float (the computed MED = median(r) over the eligible pair population, this
+  # run: 1.0430507975155028), w1: [2020,2022], w2: [2023,2024], band: 0.25, alpha: 0.05,
+  # elig_min: 10, weak_base_max: 4, new_min_c2: 5, dormant_min_c1: 5, basis: "CORE-AR"}. Every
+  # momentum constant used anywhere in Compare/Collaborate (§2.3) is named here ONCE so a UI
+  # string never hard-codes a threshold the pipeline could drift from on a re-run.
+
+# ================================================================================================
+# derived_views -- computed live in-app from the files above, not shipped as files. Listed here
+# because the contract between what the data supports and what the UI may claim runs through
+# these definitions; every denominator below is either verified against the shipped columns
+# here, or traced to a decision-record ruling id.
+# ================================================================================================
+# ================================================================================================
+# scenario_files -- data/scenarios/, the ranking engine's precomputed per-(tree, basis) substrates
+# (v1.5, pipeline/21_scenario_substrates.py). NOT contract-checked by ops/contract_check.py's
+# column/key machinery above (these are not one-row-per-key tables -- most are numpy arrays
+# packed in .npz, not parquet): `ops/deploy.py` copies the whole folder tree and validates it
+# structurally against this section (every path below present, and where a shape is given, the
+# array's saved shape matches -- read from each folder's own meta.json, never re-derived).
+# 150.5 MB total (ops/deploy.py --check-only's own size audit), 40 files, largest single file
+# 25.6 MB (topic_share_full.npz) -- comfortably
+# under the 95 MB per-file cap.
+# ================================================================================================
+scenario_files:
+  root: "data/scenarios/"
+  top_level:
+    - {path: "topic_share_frac.npz", shape: [7557, 4516], dtype: float32, order: F, format: sparse_triplet, meaning: "institution x topic share, fractional basis -- tree-INVARIANT (L3/F1 read from topics_all directly, not from any per-scenario derive), stored as a nonzero (row, col, val) triplet and rebuilt dense at load time (9.8% dense; identical values/dtype/order to a dense array, smaller on disk)"}
+    - {path: "topic_share_frac_meta.json", meaning: "shape/dtype/order/nnz + the 7 source-table sha256 hashes the substrate was built from (staleness check)"}
+    - {path: "topic_share_full.npz", shape: [7557, 4516], dtype: float32, order: F, format: sparse_triplet, meaning: "same, full-counting basis"}
+    - {path: "topic_share_full_meta.json", meaning: "same shape as the frac variant's meta.json"}
+  common/:
+    meaning: "tree- AND basis-invariant blocks (ERC/SDG lens substrates -- these read erc.parquet/sdg.parquet directly, no per-scenario derivation at all), built and stored ONCE, shared by every one of the 6 scenarios"
+    files: [l4.npz, l5.npz, l6.npz, l7.npz, meta.json]
+  frames_common/{original,conservative,bestfit}/:
+    meaning: "fields_df/subfields_df frames CONSOLIDATED across basis (frac and full agree on every column except `si`, which the frame stores twice as `si_frac`/`si_full`) -- built once per tree when the pipeline's own byte-for-byte diff proves the two bases agree (empirically checked at build time, never assumed). subfields_df consolidates on all 3 trees; fields_df consolidates on original/conservative but NOT bestfit (bestfit/frac's fields_df reads the shipped fields.parquet directly, a different source from bestfit/full's derived build -- more than `si` differs there, so it stays a per-scenario file instead, see bestfit_frac//bestfit_full/ below)."
+    files: ["subfields_df.parquet (all 3 trees)", "fields_df.parquet (original, conservative only)"]
+  "<tree>_<basis>/ (6 folders: original_frac, original_full, conservative_frac, conservative_full, bestfit_frac, bestfit_full)":
+    meaning: "per-scenario substrate: L0/L1/L2f arrays (institution x field / institution x subfield share and excess-eligibility matrices, tree- and basis-specific) + a meta.json recording each array's shape/dtype/order and, for fields_df/subfields_df, whether this scenario reads its own file or a frames_common/ shared one (mode: own | shared, with the exact path)"
+    files: [l0.npz, l1.npz, l2f.npz, meta.json, "fields_df.parquet (bestfit_frac and bestfit_full only -- own copy, not shared)"]
+    shapes:
+      original_frac: {l0.share: [7557, 26], l1.share: [7557, 252], l2f.excess: [7557, 252], l2f.eligible: [7557, 252]}
+      original_full: {l0.share: [7557, 26], l1.share: [7557, 252], l2f.excess: [7557, 252], l2f.eligible: [7557, 252]}
+      conservative_frac: {l0.share: [7557, 26], l1.share: [7557, 246], l2f.excess: [7557, 246], l2f.eligible: [7557, 246]}
+      conservative_full: {l0.share: [7557, 26], l1.share: [7557, 246], l2f.excess: [7557, 246], l2f.eligible: [7557, 246]}
+      bestfit_frac: {l0.share: [7557, 26], l1.share: [7557, 247], l2f.excess: [7557, 247], l2f.eligible: [7557, 247]}
+      bestfit_full: {l0.share: [7557, 26], l1.share: [7557, 247], l2f.excess: [7557, 247], l2f.eligible: [7557, 247]}
+    note: "the subfield count differs by tree (252 original, 246 conservative, 247 bestfit) -- expected, the three taxonomy trees genuinely bucket subfields differently; every array within one scenario folder shares that scenario's own subfield count."
+  loader: "app/lib/engine/substrates.py::load_substrates(ctx, tree, basis) -> dict -- reconstructs the exact same dict shape (same keys/dtypes/shapes/memory order) the pre-v1.5 in-app build_substrates() used to compute on every scenario switch; F1 is derived at load time from the loaded l3 (topic_share) matrix plus topics_dim.top25pct_frontier, never persisted separately (it is an exact column subset of l3, proven by array_equal)."
+
+derived_views:
+
+  per_scenario_fields_subfields:
+    what: "fields/subfields shapes for tree in {original, conservative, bestfit} x basis in {frac, full}, other than the shipped (bestfit, frac) pair"
+    how: "pipeline/agg/derive.py:derive_shapes(topics_all, topics_dim, tree, basis) over the shipped topics_all/topics_dim (the one topic-grain master, R2 S2)"
+    denominator: "same as the shipped fields/subfields share_frac/share_full (Sigma=1 per institution per scenario); basis='full' si = share_full / mean(share_full over nonzero institutions) -- a DOCUMENTED judgment call (derive.py 'BASIS GENERALIZATION'), not itself present in any shipped table for cross-check. The G6 floor test always reads vol_frac regardless of displayed basis (derive.py 'MEAN-SHARE POPULATION')."
+
+  lens_score_tables:
+    what: "L0/L1/L3/F1/L2f/L4/L5/L6(/C1/L7) ranked score tables per seed institution"
+    how: "app/lib/engine (Stream B); L1/L3/F1/L2f/L4/L5/L6 read fields/subfields/topics_all/erc/sdg; L0 reads fields; score forms: weighted Jaccard / histogram-intersection (Sigma-min) / excess-profile overlap depending on lens (Method B continuous form, spec_theta=1.5, config.yaml)"
+    denominator: "'% of portfolio in common' = the Sigma-min histogram intersection of the two institutions' share vectors in the lens's grain (fields/subfields/topics/ERC-panels/SDGs) under the active scenario; excess-profile overlaps (L2f/L5/L7) additionally floor out cells below their eligibility floor before comparing (L2f: G6 vol_frac>=30 on subfields.si's own floor; L5/L7: erc.si/no-floor-observed and sdg-derived, respectively)."
+
+  concordance:
+    what: "found in the top-N of k of n lenses defined for this seed"
+    rule: "N=30 (config.yaml proposal_r5.concordance_N, M5.5), n = enabled DEFAULT lenses (L0,L1,L3,F1,L2f,L4,L5,L6 = 8 by default; C1/L7 excluded from n unless the user enables them); k/n computed on the UNFILTERED rankings -- post-filters remove rows from the overview display and NEVER recompute k; ties share the rank, top-N cut includes every entry tied at the cut (L9), never padded when fewer than N nonzero candidates exist."
+
+  aspirational:
+    what: "L1 top-50 (tie-inclusive) pool filtered to pp_top10_frac > seed's pp_top10_frac AND pp_ci_low > seed's pp_ci_high (both from index.parquet), kept in L1-overlap order"
+    how: "evals/campaign_v2/gen_lists_v2.build_aspirational_v2; intervals rendered, not just point estimates; a PP-sort is a UI option, never the default"
+
+  seed_card:
+    fields: "type + type-corrected badge, umbrella badge, country, size (total_full_2020_2024 + total_frac_2020_2024), hhi_class, top fields (shape_field_bestfit, top-3), top subfields (subfields.parquet, top-5 by share_frac at the default scenario), evidence lines (n_eligible_subfields for L2f = count of this institution's subfields with vol_frac>=30; sdg_tagged_share; erc_classified_mass_frac/total_frac_2020_2024; frontier_top25_share; frontier_excluded_share as the catch-all/811 tooltip), pp_top10_frac with pp_ci_low/pp_ci_high, OpenAlex works link (authorships.institutions.id:<id>,publication_year:2020-2024), ROR link, homepage_url"
+
+  umbrella_badge:
+    rule: "type ∈ {government, funder, facility, nonprofit} (on the PATCHED index.type, never type_openalex) AND total_full_2020_2024 > 5x the country x type median (median computed live, over the index, on the SAME patched type column) -- config.yaml proposal_r5.umbrella_badge, multiplier=5, reference=country_type_median."
+    supplement: "UNION with overrides/umbrella_supplement.csv's 24 institution_ids, REGARDLESS of the rule above -- 3 of the 24 (AP-HP, Romanian Academy, Hungarian Research Network) carry a patched type OUTSIDE {government,funder,facility,nonprofit} and would never satisfy the automatic rule; the supplement is how they are still flagged."
+    disclosure: "never both the umbrella badge and the type-corrected badge on one row (WT #14) -- checked because both badges read the PATCHED type, so a type-corrected education institution can never also be an umbrella candidate under this rule."
+
+  scale_guard_ratio:
+    formula: "max(seed.total_full_2020_2024, candidate.total_full_2020_2024) / min(...) <= m"
+    m: "8 when the SMALLER of the pair is below 20,000 full works; 4 when it is >= 20,000 (config.yaml proposal_r5.scale_guard, M5.6/H15; band-differentiated, a single x5 is NOT band-safe)"
+
+  concordance_denominator_disclosure: "the overview caption states N (=30) and n (count of enabled default lenses) explicitly on every render -- never a bare k/n fraction without both numbers spelled out"
+
+  # ---- Refinement R2 (2026-08-29): derived views added by stream R2-P (text supplied in progress/R2_P.md, applied by the manager) ----
+  baselines_r2:
+    what: "Whole-index median + percentile rank for 8 KPIs, computed live by app/lib/baselines.py::build(index.parquet) and cache_resource'd by the page -- NOT a shipped table (R2 L31)."
+    kpis: [total_full_2020_2024, total_frac_2020_2024, hhi_subfield, breadth_subfields, sdg_tagged_share, frontier_top25_share, pp_top10_frac, bonus_year_full]
+    bonus_year_full: "vol_full_by_year_this_run's entry for config.yaml's bonus_year (2025 as shipped), parsed at call time -- not a column."
+    percentile_definition: "share of non-null index.parquet values STRICTLY BELOW the institution's own value (0..1); None when the institution's own value is null. Population = institutions with a non-null value for that KPI. The index is dominated by small specialised institutes (median 572 full publications, median breadth 1 subfield at the G6 floor), so the median is a population fact, not a norm -- the UI says so (copy BASELINE_HELP)."
+  si_status_r2:
+    what: "{solid, thin, none} added to subfields_table/erc_table/sdg_table/fields_table (app/lib/profile_data.py) -- a PROFILE-DISPLAY floor (R2 L34), separate from the ratified G6 lens floor in derive.py (same 30, different purpose, both in force)."
+    subfields: "solid: vol_frac >= 30; thin: 10 <= vol_frac < 30; none: vol_frac < 10."
+    erc_sdg: "same thresholds on the fractional `mass` column (never on share/si/esi); sdg.parquet is dense, so 'none' genuinely occurs there (zero-mass rows carry no SI mark -- the ERC/SDG zero-volume fix)."
+    fields: "solid when vol_frac > 0 and si is not null, else none; fields.si carries no floor, so 'thin' cannot occur at field grain."
+    subfields_si_value: "subfields_table's si is RECOMPUTED unfloored (share / mean(share over the rows present in the scenario frame for that subfield) -- derive.py's own mean_share_v population and formula, minus its G6 gate) so a thin row carries a real value; wherever subfields.parquet's floored si is defined the recomputed value equals it within float32 rounding (tests/test_profile_data.py, rtol 1e-5). erc.si and sdg.esi are not recomputed (no floor shipped)."
+  rank_volume_r2:
+    what: "topics_table gains a 1..n rank by volume on the CURRENT basis (vol_full if basis == full else vol_frac), unique, ties by topic_id -- feeds the frontier panel's 'top N topics by volume' mode (R2 L33); top25pct_frontier is unrelated and not a subset."
+  sdg_label_numbered_r2:
+    what: "resources/sdg_labels.csv and sdg_table gain sdg_label_numbered = 'SDG {n} · {label}' (R2 L36); sdg_label kept alongside."
+
+  # dynamics_2br (a per-taxon "Dynamics Δ" metric on a since-deleted Compare API,
+  # compare_data.metric_frame, and a since-deleted pair page) REMOVED (v1.5, this
+  # rebuild): the trimmed Compare surface has no field/subfield/SDG dynamics view any more
+  # (D3: the thematic-shape section carries Profile/Impact tabs only, no dynamics tab).
+  # collab_pair_topics.parquet / collab_pair_fields.parquet still ship vol_w1/vol_w2
+  # (dynamics_window_1/2 above) for the Relationship block's own, unrelated use -- see
+  # their own contract entries -- but no derived view builds a per-taxon dynamics figure
+  # from them any more.
+
+# ================================================================================================
+# pipeline_internal_not_deployed -- artefacts P7 (2BR3) builds and USES to compute the FWCI
+# columns shipped above (collab_pairs.fwci_median, collab_pair_fields.fwci_median,
+# collab_pair_topics.fwci_median), but does NOT deploy to app/data/ and are therefore NOT part
+# of ops/deploy.py's `files:` contract-checked set. Listed here so a future stream does not
+# mistake their absence from app/data/ for a missed deliverable.
+# ================================================================================================
+#   data/interim/fwci/fwci_ref.parquet (subfield_id x year x type; n, mean_cited, fallback_level
+#     -- fallback ladder subfield -> field -> year_type when n<50, §2.4): the FWCI reference
+#     table itself. 2,327 rows, 0.03 MB. Built by pipeline/17_fwci.py --stage ref.
+#   data/interim/fwci/fwci_work.parquet (work_id, fwci, subfield_id, year, type, fallback_level):
+#     per-work FWCI for the ENTIRE CORE-AR population (5,655,448 rows, 37.85 MB), not just joint
+#     works -- collab_pairs/collab_pair_fields/collab_pair_topics.fwci_median are MEDIANS over
+#     the subset of this table whose works are joint CORE-AR works for that pair/field/topic.
+#     Built by pipeline/17_fwci.py --stage work. Reference = the local EU27+GB/CH/NO/IS harvest
+#     (window_conventions.core_ar_window), NOT world OpenAlex -- disclosed in Methods (MT stream).

@@ -1,0 +1,112 @@
+[
+  {
+    "name_given": "Sorbonne Université",
+    "openalex_id": "https://openalex.org/I39804081",
+    "ror": "https://ror.org/02en5vm52",
+    "display_name": "Sorbonne Université",
+    "country_code": "FR",
+    "type": "education",
+    "works_2020_2024_direct": 67839,
+    "note": ""
+  },
+  {
+    "name_given": "Université Paris-Saclay",
+    "openalex_id": "https://openalex.org/I277688954",
+    "ror": "https://ror.org/03xjwb503",
+    "display_name": "Université Paris-Saclay",
+    "country_code": "FR",
+    "type": "education",
+    "works_2020_2024_direct": 48891,
+    "note": ""
+  },
+  {
+    "name_given": "Université Grenoble Alpes",
+    "openalex_id": "https://openalex.org/I899635006",
+    "ror": "https://ror.org/02rx3b187",
+    "display_name": "Université Grenoble Alpes",
+    "country_code": "FR",
+    "type": "education",
+    "works_2020_2024_direct": 30319,
+    "note": ""
+  },
+  {
+    "name_given": "Université de Lorraine",
+    "openalex_id": "https://openalex.org/I90183372",
+    "ror": "https://ror.org/04vfs2w97",
+    "display_name": "Université de Lorraine",
+    "country_code": "FR",
+    "type": "education",
+    "works_2020_2024_direct": 19888,
+    "note": ""
+  },
+  {
+    "name_given": "IFP Energies nouvelles (IFPEN)",
+    "openalex_id": "https://openalex.org/I265217849",
+    "ror": "https://ror.org/03gcbhc33",
+    "display_name": "IFP Énergies nouvelles",
+    "country_code": "FR",
+    "type": "facility",
+    "works_2020_2024_direct": 1056,
+    "note": ""
+  },
+  {
+    "name_given": "Ifremer",
+    "openalex_id": "https://openalex.org/I154202486",
+    "ror": "https://ror.org/044jxhp58",
+    "display_name": "Ifremer",
+    "country_code": "FR",
+    "type": "facility",
+    "works_2020_2024_direct": 5218,
+    "note": ""
+  },
+  {
+    "name_given": "Gdańsk (University of Gdańsk)",
+    "openalex_id": "https://openalex.org/I40413290",
+    "ror": "https://ror.org/011dv8m48",
+    "display_name": "University of Gdańsk",
+    "country_code": "PL",
+    "type": "education",
+    "works_2020_2024_direct": 8727,
+    "note": "ambiguous in D19 — human gate picks"
+  },
+  {
+    "name_given": "Gdańsk (Gdańsk University of Technology)",
+    "openalex_id": "https://openalex.org/I169333911",
+    "ror": "https://ror.org/006x4sc24",
+    "display_name": "Gdańsk University of Technology",
+    "country_code": "PL",
+    "type": "education",
+    "works_2020_2024_direct": 7015,
+    "note": "ambiguous in D19 — human gate picks"
+  },
+  {
+    "name_given": "University of Freiburg (Albert-Ludwigs-Universität Freiburg)",
+    "openalex_id": "https://openalex.org/I161046081",
+    "ror": "https://ror.org/0245cg223",
+    "display_name": "University of Freiburg",
+    "country_code": "DE",
+    "type": "education",
+    "works_2020_2024_direct": 22774,
+    "note": ""
+  },
+  {
+    "name_given": "Justus Liebig University Giessen",
+    "openalex_id": "https://openalex.org/I200763008",
+    "ror": "https://ror.org/033eqas34",
+    "display_name": "Justus-Liebig-Universität Gießen",
+    "country_code": "DE",
+    "type": "education",
+    "works_2020_2024_direct": 13639,
+    "note": ""
+  },
+  {
+    "name_given": "ETH Zurich",
+    "openalex_id": "https://openalex.org/I35440088",
+    "ror": "https://ror.org/05a28rw58",
+    "display_name": "ETH Zurich",
+    "country_code": "CH",
+    "type": "education",
+    "works_2020_2024_direct": 37784,
+    "note": ""
+  }
+]

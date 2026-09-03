@@ -1,0 +1,17 @@
+# PINNED = the verified stack (bump deliberately, re-run pytest +
+# the Playwright probe). Decisions log 2026-08-29: pins reused verbatim
+# from Lorraine's checked-in Streamlit/requirements.txt where wheels are confirmed for
+# CPython 3.11-3.13.
+streamlit==1.61.1     # persist_state="session" on keyed widgets requires this build
+pandas==2.3.3         # matches the engine's golden-regression environment (numpy 2 aware)
+numpy==2.4.6          # golden regression is proven under numpy 2, not pinned to 1.26
+plotly==5.24.1         # last 5.x; ranked-table / chart forms pixel-stable on this pin
+pyarrow==24.0.0        # parquet reader for app/data/*.parquet
+duckdb==1.5.5          # engine substrate joins
+pyyaml==6.0.3          # app/config.yaml loader (lib/app_config.py)
+wordcloud==1.9.6      # R1/L17: the subfield wordcloud (lib/wordcloud_png.py, Lorraine's own pin);
+                       # pulls pillow + matplotlib transitively. Wheel + render verified in env-app
+                       # on CPython 3.12 before the pin was written (progress/R1_E2.md).
+openpyxl==3.1.5      # A11: the Compare workbook (pandas ExcelWriter engine).
+                      # Pure-Python wheel, Lorraine's own pin; installed into env-app
+                      # and the sheet round trip verified before the pin was written.

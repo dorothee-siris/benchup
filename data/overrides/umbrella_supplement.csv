@@ -1,0 +1,25 @@
+display_name,institution_id,note
+Centre National de la Recherche Scientifique (CNRS),I1294671590,
+Inserm,I154526488,
+Commissariat a l'Energie Atomique et aux Energies Alternatives (CEA),I2738703131,
+Institut National de Recherche pour l'Agriculture l'Alimentation et l'Environnement (INRAE),I4210088668,
+Institut national de recherche en sciences et technologies du numerique (Inria),I1326498283,
+Consejo Superior de Investigaciones Cientificas (CSIC),I134820265,
+National Research Council (CNR Italy),I4210155236,
+Max Planck Society,I149899117,
+Fraunhofer Society,I4923324,structurally unflaggable -- output attributed to child institutions
+Leibniz Association,I315704651,
+Polish Academy of Sciences,I99542240,
+Czech Academy of Sciences,I202391551,
+Slovak Academy of Sciences,I207624831,
+Bulgarian Academy of Sciences,I24768866,
+Hungarian Research Network (ELKH/HUN-REN),I4387152226,"type=other -- outside the {government,funder,facility,nonprofit} automatic gate; flagged only via this supplement"
+Romanian Academy,I58077936,"type=archive -- outside the {government,funder,facility,nonprofit} automatic gate; flagged only via this supplement"
+Spanish CIBER (Centro de Investigacion Biomedica en Red),I4210115082,
+French AP-HP (Assistance Publique - Hopitaux de Paris),I4210097159,"type=healthcare -- outside the {government,funder,facility,nonprofit} automatic gate; flagged only via this supplement"
+UKRI (UK Research and Innovation),I4210087105,structurally unflaggable -- output attributed to child institutions
+MRC (UK) (Medical Research Council),I90344618,
+Institut Pasteur,I157536573,"debatable -- large biomedical research institute with a light international-network umbrella role, weaker evidence than CNRS/CEA-type cases (badge_calibration.md)"
+IRD (Institut de Recherche pour le Developpement),I4210166444,
+CIRAD (Centre de Cooperation Internationale en Recherche Agronomique pour le Developpement),I131077856,
+Portuguese FCT (Fundacao para a Ciencia e a Tecnologia),I7883018,structurally unflaggable -- output attributed to child institutions

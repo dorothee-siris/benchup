@@ -1,0 +1,381 @@
+{
+  "generated_at": "2026-08-27T13:41:28.350794+00:00",
+  "stream": "H-aggregate",
+  "dry_run": false,
+  "years_processed": [
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "population": "real_r2",
+  "population_rule": {
+    "index_floor_total": 200,
+    "index_floor_recent": 20,
+    "candidate_floor": 50,
+    "n_candidates": 13498,
+    "n_in_index": 7557
+  },
+  "index_floor": {
+    "T": 200,
+    "R": 20,
+    "n_index_at_choice": 7557,
+    "source": "data\\interim\\index_aug\\index_population_r2_config.json"
+  },
+  "tree_default": "bestfit",
+  "ship_default_tree_only": true,
+  "eval_golden_table_sizes_mb": {
+    "subfields_alltrees": 58.438937,
+    "fields_alltrees": 8.505644
+  },
+  "assignment": "primary",
+  "erc_tau": 0.5,
+  "bootstrap_reps": 1000,
+  "impact_cell_reps": 1000,
+  "impact_cells_stats": {
+    "elapsed_sec": 1719.088961839676,
+    "n_candidate_cells_evaluated": 2039661,
+    "n_qualifying_rows_written": 328978,
+    "max_cell_size": 12289,
+    "n_reps": 1000,
+    "floors": [
+      30,
+      10
+    ],
+    "exact_identity": {
+      "original": {
+        "covered_frac_exact": 4096896.6531793084,
+        "hit_frac_exact": 603554.2810466641
+      },
+      "conservative": {
+        "covered_frac_exact": 4096896.653179457,
+        "hit_frac_exact": 603554.2810466702
+      },
+      "bestfit": {
+        "covered_frac_exact": 4096896.6531793806,
+        "hit_frac_exact": 603554.2810466717
+      }
+    }
+  },
+  "corpus_identity": {
+    "n_raw_rows_read_across_years": 7688487,
+    "n_dropped_deleted": 0,
+    "n_supp_dropped_overlap": 658671,
+    "n_before_global_dedup": 7688487,
+    "n_cross_year_duplicates_dropped": 50,
+    "n_final_corpus_rows": 7688437,
+    "identity_gap_raw_vs_predelup": 0,
+    "identity_gap_prededup_vs_final": 0,
+    "identity_closes_to_zero": true,
+    "n_raw_rows": 8347158,
+    "n_cross_file_dups": 658671,
+    "n_cross_year_dups": 50,
+    "n_works": 7688437,
+    "dedup_identity_gap": 0,
+    "dedup_identity_closes_to_zero": true
+  },
+  "pending_reclassification": {
+    "by_source": {
+      "translations": 0,
+      "erc_probs": 0,
+      "sdg_hits": 0
+    },
+    "this_run_union": 0
+  },
+  "grey_totals_frac_mass": {
+    "retracted_excluded": 1408.124243785648,
+    "unusable": 96.73826114249843,
+    "title_only": 607152.608669559,
+    "lang_uncertain": 330259.5038884527,
+    "untranslated_grey": 14872.276491933724,
+    "classified_eligible": 4618728.821883528
+  },
+  "esi_europe_avg_sdg_share_classified_mass_basis": [
+    0.008189383789361727,
+    0.013557490723905719,
+    0.03893362378349432,
+    0.026509480425241153,
+    0.010611710047403572,
+    0.014783616820937491,
+    0.030194934592626385,
+    0.042154189194340975,
+    0.02201252225888932,
+    0.01788223119881537,
+    0.03261538865376251,
+    0.035665869078066556,
+    0.033082727278067055,
+    0.010063913302072626,
+    0.026335904251824596,
+    0.022207577820417317
+  ],
+  "table_sizes_mb": {
+    "index": 4.083602,
+    "index_candidates": 0.705861,
+    "topics_all": 54.908674,
+    "topics_dim": 1.221803,
+    "erc": 3.128608,
+    "sdg": 1.797232,
+    "fields": 3.187823,
+    "subfields": 9.477375,
+    "impact_cells": 6.348905,
+    "doctype_by_year": 0.975783
+  },
+  "total_size_mb": 84.859883,
+  "table_schemas": {
+    "index": {
+      "grain": "one row per index institution",
+      "columns": {
+        "institution_id": "object",
+        "inst_key": "int32",
+        "ror_id": "object",
+        "display_name": "object",
+        "display_name_acronyms": "object",
+        "display_name_alternatives": "object",
+        "type": "category",
+        "country_code": "category",
+        "city": "object",
+        "lat": "float64",
+        "lng": "float64",
+        "homepage_url": "object",
+        "total_full_2020_2024": "float64",
+        "total_frac_2020_2024": "float64",
+        "full_2023": "float64",
+        "full_2024": "float64",
+        "first_year": "int64",
+        "newcomer_flag": "bool",
+        "hhi_subfield": "float64",
+        "breadth_subfields": "int32",
+        "total_full_this_run": "float64",
+        "total_frac_this_run": "float64",
+        "total_frac": "float64",
+        "mass_retracted_excluded": "float64",
+        "mass_unusable": "float64",
+        "mass_title_only": "float64",
+        "mass_lang_uncertain": "float64",
+        "mass_untranslated_grey": "float64",
+        "mass_classified_eligible": "float64",
+        "erc_eligible_mass_frac": "float64",
+        "erc_classified_mass_frac": "float64",
+        "sdg_eligible_mass_frac": "float64",
+        "sdg_classified_mass_frac": "float64",
+        "sdg_tagged_share": "float64",
+        "pp_top10_frac": "float64",
+        "pp_eu_relative": "float64",
+        "pp_ci_low": "float64",
+        "pp_ci_high": "float64",
+        "frontier_top25_share": "float32",
+        "frontier_quadrant_mix": "object",
+        "frontier_excluded_share": "float32",
+        "frontier_unscored_share": "float32",
+        "hhi_class": "category",
+        "shape_field_original": "object",
+        "shape_field_conservative": "object",
+        "shape_field_bestfit": "object",
+        "vol_full_by_year_this_run": "object",
+        "vol_frac_by_year_this_run": "object"
+      }
+    },
+    "index_candidates": {
+      "grain": "one row per perimeter institution >= candidate_floor",
+      "columns": {
+        "institution_id": "object",
+        "inst_key": "int32",
+        "ror_id": "object",
+        "display_name": "object",
+        "type": "category",
+        "country_code": "category",
+        "city": "object",
+        "total_full_2020_2024": "float64",
+        "total_frac_2020_2024": "float64",
+        "full_2023": "float64",
+        "full_2024": "float64",
+        "first_year": "int64",
+        "newcomer_flag": "bool",
+        "in_index": "bool",
+        "passes_volume": "bool",
+        "passes_alive": "bool"
+      }
+    },
+    "topics_all": {
+      "grain": "institution x topic (all touched)",
+      "columns": {
+        "inst_key": "int32",
+        "institution_id": "object",
+        "topic_id": "object",
+        "share_frac": "float32",
+        "vol_frac": "float32",
+        "vol_full": "int32",
+        "vol_full_2020": "int16",
+        "vol_frac_2020": "float32",
+        "vol_full_2021": "int16",
+        "vol_frac_2021": "float32",
+        "vol_full_2022": "int16",
+        "vol_frac_2022": "float32",
+        "vol_full_2023": "int16",
+        "vol_frac_2023": "float32",
+        "vol_full_2024": "int16",
+        "vol_frac_2024": "float32",
+        "vol_full_2025": "int16",
+        "vol_frac_2025": "float32"
+      }
+    },
+    "topics_dim": {
+      "grain": "one row per OpenAlex topic (4,516)",
+      "columns": {
+        "domain_id": "int32",
+        "domain_name": "object",
+        "field_id": "int32",
+        "field_name": "object",
+        "subfield_id": "int32",
+        "subfield_name": "object",
+        "topic_id": "object",
+        "topic_name": "object",
+        "keywords": "object",
+        "expansion_by_period": "object",
+        "acceleration_by_period": "object",
+        "frontier_score_by_period": "object",
+        "expansion_latest": "float32",
+        "acceleration_latest": "float32",
+        "frontier_score_latest": "float32",
+        "quadrant": "object",
+        "top25pct_frontier": "boolean",
+        "is_frontier_scored": "bool",
+        "exclusion_reason_code": "object",
+        "exclusion_reason_label": "object",
+        "is_excluded": "bool",
+        "exclusion_list_version": "object",
+        "review_status": "object",
+        "original_subfield_id": "int16",
+        "conservative_subfield_id": "int16",
+        "bestfit_subfield_id": "int16",
+        "change_level": "object",
+        "fit_quality": "object",
+        "repair_status": "object"
+      }
+    },
+    "erc": {
+      "grain": "institution x ERC panel (28)",
+      "columns": {
+        "inst_key": "int32",
+        "institution_id": "object",
+        "panel_idx": "int16",
+        "share": "float32",
+        "mass": "float32",
+        "si": "float32"
+      }
+    },
+    "sdg": {
+      "grain": "institution x SDG (16)",
+      "columns": {
+        "inst_key": "int32",
+        "institution_id": "object",
+        "sdg_idx": "int16",
+        "share": "float32",
+        "esi": "float32",
+        "mass": "float32"
+      }
+    },
+    "fields": {
+      "grain": "institution x field (26), tree=bestfit only (--ship-default-tree-only)",
+      "columns": {
+        "inst_key": "int32",
+        "institution_id": "object",
+        "field_id": "int16",
+        "tree": "category",
+        "vol_frac": "float32",
+        "vol_full": "int32",
+        "share_frac": "float32",
+        "share_full": "float32",
+        "si": "float32"
+      }
+    },
+    "subfields": {
+      "grain": "institution x subfield (252), tree=bestfit only (--ship-default-tree-only); by-year string columns dropped, derivable from topics_all",
+      "columns": {
+        "inst_key": "int32",
+        "institution_id": "object",
+        "subfield_id": "int16",
+        "field_id": "int16",
+        "tree": "category",
+        "vol_frac": "float32",
+        "vol_full": "int32",
+        "share_frac": "float32",
+        "share_full": "float32",
+        "si": "float32"
+      }
+    },
+    "impact_cells": {
+      "grain": "institution x subfield x tree x floor",
+      "columns": {
+        "inst_key": "int32",
+        "institution_id": "object",
+        "subfield_id": "int16",
+        "tree": "category",
+        "floor": "int16",
+        "pp_top10_frac": "float32",
+        "pp_ci_low": "float32",
+        "pp_ci_high": "float32",
+        "pp_denominator_frac": "float32",
+        "n_works_full": "int32"
+      }
+    },
+    "fields_alltrees": {
+      "grain": "institution x field (26) x tree (eval_golden, all 3 trees, not shipped)",
+      "columns": {
+        "inst_key": "int32",
+        "institution_id": "object",
+        "field_id": "int16",
+        "tree": "category",
+        "vol_frac": "float32",
+        "vol_full": "int32",
+        "share_frac": "float32",
+        "share_full": "float32",
+        "si": "float32"
+      }
+    },
+    "subfields_alltrees": {
+      "grain": "institution x subfield (252) x tree (eval_golden, all 3 trees, not shipped)",
+      "columns": {
+        "inst_key": "int32",
+        "institution_id": "object",
+        "subfield_id": "int16",
+        "field_id": "int16",
+        "tree": "category",
+        "vol_frac": "float32",
+        "vol_full": "int32",
+        "share_frac": "float32",
+        "share_full": "float32",
+        "si": "float32",
+        "vol_frac_by_year": "object",
+        "vol_full_by_year": "object"
+      }
+    },
+    "doctype_by_year": {
+      "grain": "institution x year x doc_type (7,557 index institutions x 6 years {2020..2025} x up to 5 doc types, sparse to nonzero cells)",
+      "columns": {
+        "inst_key": "int32",
+        "institution_id": "object",
+        "year": "int16",
+        "doc_type": "category",
+        "vol_full": "int32",
+        "vol_frac": "float32"
+      }
+    }
+  },
+  "text_diff_used": true,
+  "type_overrides": {
+    "applied_at": "2026-08-28T21:54:22.117396+00:00",
+    "n_rows": 16,
+    "file": "data/overrides/type_overrides.csv",
+    "sha256": "2264cc95f5ed8d4d2a327776e4c1e2e64bab782799ebdf63f508cbd4704d812f"
+  },
+  "doctype_by_year": {
+    "note": "R1 R-S5 addition (BUILD_PLAN_2A.md L24, 2026-08-29): institution x year x document-type volumes, built by pipeline/09c_doctype_by_year.py using the SAME loader (agg.enriched_corpus.load_year_corpus, use_aug_harvest=True) and SAME attribution explode (agg.attribution.explode_fractional_weights) as this file's own year_vol/by_year block (09b_aggregate_eu.py) that produced index.vol_full_by_year_this_run/vol_frac_by_year_this_run -- verified identical to those packed columns on all institution x year cells (python pipeline/09c_doctype_by_year.py --check).",
+    "generated_at": "2026-08-29T08:05:10.716476+00:00",
+    "n_rows": 141182,
+    "file": "data/artefacts_eu/doctype_by_year.parquet",
+    "sha256": "bc401f8a745c9876eac0d5d7b5082865d6265a4d009ca368727eb76905205acd"
+  }
+}

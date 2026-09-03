@@ -1,0 +1,29 @@
+panel_idx,panel_code,panel_label,erc_domain
+0,LS9,Biotechnology and Biosystems Engineering,LS
+1,LS3,"Cell Biology, Development, Stem Cells and Regeneration",LS
+2,PE6,Computer Science and Informatics,PE
+3,PE3,Condensed Matter Physics,PE
+4,PE10,Earth System Science,PE
+5,LS8,"Environmental Biology, Ecology and Evolution",LS
+6,PE2,Fundamental Constituents of Matter,PE
+7,SH7,"Human Mobility, Environment, and Space",SH
+8,LS6,"Immunity, Infection and Immunotherapy",LS
+9,SH1,"Individuals, Markets and Organisations",SH
+10,SH2,"Institutions, Governance and Legal Systems",SH
+11,LS2,Integrative Biology: from Genes and Genomes to Systems,LS
+12,PE11,Materials Engineering,PE
+13,PE1,Mathematics,PE
+14,LS1,"Molecules of Life: Biological Mechanisms, Structures and Functions",LS
+15,LS5,Neuroscience and Disorders of the Nervous System,LS
+16,PE4,Physical and Analytical Chemical Sciences,PE
+17,LS4,"Physiology in Health, Disease and Ageing",LS
+18,LS7,"Prevention, Diagnosis and Treatment of Human Diseases",LS
+19,PE8,Products and Processes Engineering,PE
+20,SH8,Studies of Cultures and Arts,SH
+21,PE5,Synthetic Chemistry and Materials,PE
+22,PE7,Systems and Communication Engineering,PE
+23,SH5,Texts and Concepts,SH
+24,SH4,The Human Mind and Its Complexity,SH
+25,SH3,The Social World and Its Interactions,SH
+26,SH6,The Study of the Human Past,SH
+27,PE9,Universe Sciences,PE

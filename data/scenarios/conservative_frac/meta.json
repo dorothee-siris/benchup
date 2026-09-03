@@ -1,0 +1,112 @@
+{
+  "tree": "conservative",
+  "basis": "frac",
+  "source_hashes": {
+    "index.parquet": "a30ae110d6fe485cf53bfed6e1c879c792df9bf557adcda214d0a62c7c67e97e",
+    "topics_all.parquet": "82493c9554d63690e8e59a17e5dc4a66f56e7aa088b18d79b559f5d1396ae11a",
+    "topics_dim.parquet": "7136e939c84b7d48c95d5601fb9b90d9b7113c5d663e3cbdee990dd3ea6daf21",
+    "fields.parquet": "0936536778813276579874ebe67770420e45bf79c5ebef6864eee5c78772ed6f",
+    "subfields.parquet": "6be241e4bf8e8e613d4a8ecf87fc9f6f8dfd0f39f64ae4c5d33afeffc777fcb7",
+    "erc.parquet": "135b83e68900522f74a5aab601ba4e619864c5200553d1d0912f9ff49588251e",
+    "sdg.parquet": "ca417785bc98868f5a4f5c46c4be618a02aa4df41bbc468757bd6d4eb787dc72"
+  },
+  "frames": {
+    "fields_df": {
+      "mode": "shared",
+      "path": "frames_common/conservative/fields_df.parquet",
+      "ext": "parquet",
+      "si_col": "si_frac",
+      "column_order": [
+        "inst_key",
+        "institution_id",
+        "field_id",
+        "tree",
+        "vol_frac",
+        "vol_full",
+        "share_frac",
+        "share_full",
+        "si"
+      ]
+    },
+    "subfields_df": {
+      "mode": "shared",
+      "path": "frames_common/conservative/subfields_df.parquet",
+      "ext": "parquet",
+      "si_col": "si_frac",
+      "column_order": [
+        "inst_key",
+        "institution_id",
+        "subfield_id",
+        "field_id",
+        "tree",
+        "vol_frac",
+        "vol_full",
+        "share_frac",
+        "share_full",
+        "si",
+        "vol_full_2020",
+        "vol_frac_2020",
+        "vol_full_2021",
+        "vol_frac_2021",
+        "vol_full_2022",
+        "vol_frac_2022",
+        "vol_full_2023",
+        "vol_frac_2023",
+        "vol_full_2024",
+        "vol_frac_2024",
+        "vol_full_2025",
+        "vol_frac_2025"
+      ]
+    }
+  },
+  "arrays": {
+    "l0": {
+      "dtypes": {
+        "share": "float32"
+      },
+      "shapes": {
+        "share": [
+          7557,
+          26
+        ]
+      },
+      "order": {
+        "share": "F"
+      }
+    },
+    "l1": {
+      "dtypes": {
+        "share": "float32"
+      },
+      "shapes": {
+        "share": [
+          7557,
+          246
+        ]
+      },
+      "order": {
+        "share": "F"
+      }
+    },
+    "l2f": {
+      "dtypes": {
+        "excess": "float32",
+        "eligible": "bool"
+      },
+      "shapes": {
+        "excess": [
+          7557,
+          246
+        ],
+        "eligible": [
+          7557,
+          246
+        ]
+      },
+      "order": {
+        "excess": "F",
+        "eligible": "F"
+      }
+    }
+  }
+}

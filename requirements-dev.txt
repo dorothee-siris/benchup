@@ -1,0 +1,6 @@
+# Dev-only deps for the pytest suite and the Playwright smoke/probe layer. Versions pinned
+# to whatever pip resolved unconstrained against requirements.txt's pins on 2026-08-29
+# -- recorded here rather than left floating so a
+# re-install is reproducible; bump deliberately and re-run the probe.
+pytest==9.1.1
+playwright==1.62.0
