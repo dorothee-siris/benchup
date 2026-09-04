@@ -3,16 +3,18 @@ app/tests/test_leaders_data.py -- acceptance tests
 (Tier A). Real data (`app/data/*.parquet` as built by
 the upstream build) -- no fixtures, no mocks.
 
+One ranking pool (no `pool` column anywhere in this file's data): `topic_leaders.parquet`/
+`topics_led.parquet` rank every institution type together, `topics_led.parquet` holds rank<=20.
+
 Anchors verified by hand against the underlying per-work star table
-(a build artifact, not shipped in app/data) and
-`app/data/topic_leaders.parquet` (see the recomputation
-commands in each test's docstring):
+(`star_works.parquet`) and `app/data/topic_leaders.parquet`/`topics_led.parquet`
+(see the recomputation commands in each test's docstring):
   - ETH Zurich (I35440088) holds 18 star works in topic T10001 -- the frozen
     definition (top 1% most cited within topic x year), NOT the earlier
     "16" from a different (year-only percentile) filter.
   - Ifremer (I154202486) holds 160 star works in total, all topics.
-  - CNRS (I1294671590) T10001: rank 4 in pool "all", rank 3 in pool
-    "education".
+  - CNRS (I1294671590) T10001: world rank 4 (one pool, all institution types).
+  - CNRS (I1294671590) leads 1,609 topics at rank<=20.
 
 Run: python -m pytest tests/test_leaders_data.py -q
 """
@@ -32,6 +34,7 @@ DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 CNRS = "I1294671590"
 ETH = "I35440088"
 IFREMER = "I154202486"
+STRASBOURG = "I68947357"
 
 
 @pytest.fixture(scope="module")
@@ -57,6 +60,18 @@ def inst_stars():
 @pytest.fixture(scope="module")
 def pair_stars_df():
     return pd.read_parquet(DATA_DIR / "pair_stars.parquet")
+
+
+@pytest.fixture(scope="module")
+def star_works():
+    return pd.read_parquet(DATA_DIR / "star_works.parquet")
+
+
+@pytest.fixture(scope="module")
+def topics_dim_field_map():
+    df = pd.read_parquet(DATA_DIR / "topics_dim.parquet", columns=["topic_id", "field_id"])
+    df["topic_id"] = df["topic_id"].astype(str)
+    return df
 
 
 # ============================================================== invariants =
@@ -117,29 +132,17 @@ def test_star_share_range_and_nan_rule(index_df):
     assert len(over_02) <= 1, f"more than the one documented >0.2 outlier: {over_02}"
 
 
-def test_fair_pool_rule_every_row(index_df):
-    """n_topics_led_fair == n_topics_led_edu for type=='education' rows,
-    else == n_topics_led_all, for every one of the 7,557 institutions."""
-    is_edu = index_df["type"].astype(str) == "education"
-    expected = np.where(is_edu, index_df["n_topics_led_edu"], index_df["n_topics_led_all"])
-    np.testing.assert_array_equal(index_df["n_topics_led_fair"].to_numpy(), expected)
+def test_no_pool_column_anywhere(index_df, topics_led):
+    """v1.7: one ranking pool, no `pool` column survives on any table this
+    module reads, and the two retired index columns are gone."""
+    assert "pool" not in topics_led.columns
+    assert "n_topics_led_edu" not in index_df.columns
+    assert "n_topics_led_fair" not in index_df.columns
+    assert "n_topics_led_all" in index_df.columns
 
 
-def test_fair_pool_rule_vacuity(index_df):
-    """Vacuity: flipping one education institution's fair value away from
-    its edu count must fail the same comparison."""
-    is_edu = index_df["type"].astype(str) == "education"
-    assert is_edu.any(), "no education-type institution present to test with"
-    expected = np.where(is_edu, index_df["n_topics_led_edu"], index_df["n_topics_led_all"])
-    corrupted = index_df["n_topics_led_fair"].to_numpy().copy()
-    edu_pos = np.flatnonzero(is_edu.to_numpy())[0]
-    corrupted[edu_pos] = corrupted[edu_pos] + 5
-    with pytest.raises(AssertionError):
-        np.testing.assert_array_equal(corrupted, expected)
-
-
-def test_topics_led_rank_always_le_10(topics_led):
-    assert (topics_led["rank"] <= 10).all()
+def test_topics_led_rank_always_le_20(topics_led):
+    assert (topics_led["rank"] <= 20).all()
     assert (topics_led["rank"] >= 1).all()
 
 
@@ -160,17 +163,22 @@ def test_pair_stars_symmetric_access(ctx, pair_stars_df):
 
 # ================================================================== anchors =
 
-def test_anchor_cnrs_topics_led_all(index_df):
-    """CNRS (I1294671590) sanity floor: >=500 topics led in pool 'all'."""
+def test_anchor_cnrs_leads_1609_topics(ctx, index_df):
+    """CNRS (I1294671590) leads 1,609 topics at rank<=20, one pool across
+    every institution type -- via `led_topics` (row count) and via
+    `index.n_topics_led_all` (both must agree, and both must hit the exact
+    anchor)."""
+    led = LD.led_topics(ctx, CNRS)
+    assert len(led) == 1609, len(led)
     row = index_df.set_index("institution_id").loc[CNRS]
-    assert int(row["n_topics_led_all"]) >= 500, row["n_topics_led_all"]
+    assert int(row["n_topics_led_all"]) == 1609, row["n_topics_led_all"]
 
 
 def test_anchor_eth_16_stars_t10001(ctx):
     """ETH Zurich holds 18 star works in T10001 (the frozen
     top-1%-within-topic-year definition, not the "16" from an earlier
     year-only-percentile probe). Hand-checked once against the underlying
-    per-work star table (not shipped in app/data):
+    per-work star table:
         sub = df[df.topic_id == 'T10001']
         sub['ids'] = sub.inst_ids.str.split('|')
         sub['ids'].apply(lambda l: 'I35440088' in l).sum() # -> 18
@@ -186,38 +194,136 @@ def test_anchor_ifremer_total_160(index_df):
     assert int(row["n_stars"]) == 160
 
 
-def test_anchor_topic_ranks_cnrs_t10001(ctx):
-    """topic_ranks(ctx, [T10001], [CNRS]) returns rank 4 in pool 'all' (and
-    rank 3 in pool 'education', probe 2026-09-03)."""
-    frame = LD.topic_ranks(ctx, ["T10001"], [CNRS])
-    assert len(frame) == 2
-    by_pool = frame.set_index("pool")["rank"]
-    assert int(by_pool.loc["all"]) == 4
-    assert int(by_pool.loc["education"]) == 3
+def test_anchor_topic_rank_cnrs_t10001(ctx):
+    """topic_rank(ctx, CNRS, [T10001]) returns world rank 4 -- one pool,
+    across every institution type (was rank 4 in the retired 'all' pool,
+    rank 3 in the retired 'education' pool; v1.7 has one merged ranking)."""
+    ranks = LD.topic_rank(ctx, CNRS, ["T10001"])
+    assert ranks == {"T10001": 4}
 
 
 # =============================================================== functions =
 
 def test_led_topics_joined_with_topic_name(ctx):
     frame = LD.led_topics(ctx, ETH)
-    assert set(frame.columns) == {"topic_id", "pool", "rank", "topic_name"}
-    assert (frame["rank"] <= 10).all()
+    assert set(frame.columns) == {"topic_id", "rank", "topic_name"}
+    assert (frame["rank"] <= 20).all()
+    assert (frame["rank"] >= 1).all()
     assert frame["topic_name"].notna().all()
     assert len(frame) > 0
+    assert frame["rank"].is_monotonic_increasing
 
 
 def test_led_topics_empty_for_unknown_institution(ctx):
     frame = LD.led_topics(ctx, "I000000000000")
-    assert list(frame.columns) == ["topic_id", "pool", "rank", "topic_name"]
+    assert list(frame.columns) == ["topic_id", "rank", "topic_name"]
     assert len(frame) == 0
 
 
-def test_topic_ranks_empty_inputs(ctx):
-    assert len(LD.topic_ranks(ctx, [], [CNRS])) == 0
-    assert len(LD.topic_ranks(ctx, ["T10001"], [])) == 0
+def test_topic_rank_empty_inputs(ctx):
+    assert LD.topic_rank(ctx, CNRS, []) == {}
+
+
+def test_topic_rank_none_for_unranked_topic(ctx):
+    """A topic id that does not exist at all in topic_leaders.parquet ->
+    None, never a KeyError or a fabricated worst rank; a real topic mixed in
+    the same call still resolves."""
+    ranks = LD.topic_rank(ctx, CNRS, ["T10001", "T00000000"])
+    assert ranks["T00000000"] is None
+    assert ranks["T10001"] == 4
+
+
+def test_topic_leader_name_rank1(ctx):
+    """The rank-1 publisher's own name for a well-populated topic -- a
+    non-empty string, and it must be the SAME institution `topic_rank`
+    reports at rank 1 for that topic (cross-checked against a direct read
+    of topic_leaders.parquet, not against `topic_leader_name` circularly)."""
+    name = LD.topic_leader_name(ctx, "T10001")
+    assert isinstance(name, str) and len(name) > 0
+    leaders = pd.read_parquet(DATA_DIR / "topic_leaders.parquet")
+    rank1 = leaders[(leaders["topic_id"].astype(str) == "T10001") & (leaders["rank"] == 1)]
+    assert len(rank1) == 1
+    want = rank1["display_name"].iloc[0]
+    want = str(want) if pd.notna(want) else str(rank1["institution_id"].iloc[0])
+    assert name == want
+
+
+def test_topic_leader_name_none_for_unknown_topic(ctx):
+    assert LD.topic_leader_name(ctx, "T00000000") is None
 
 
 def test_stars_by_topic_multi_institution(ctx):
     frame = LD.stars_by_topic(ctx, [ETH, IFREMER])
     assert set(frame["institution_id"].astype(str).unique()) <= {ETH, IFREMER}
     assert frame["n_stars"].sum() > 0
+
+
+# ================================================= new star_works accessors =
+
+def test_stars_for_topics_sums_to_inst_stars_total(ctx, inst_stars, index_df):
+    """Sigma stars_for_topics(ctx, Strasbourg, <all its own topics>) ==
+    inst_stars.parquet's own total for Strasbourg == index.n_stars for
+    Strasbourg -- one institution's per-topic star breakdown must foot to
+    the SAME total three different ways."""
+    own = inst_stars.loc[inst_stars["institution_id"].astype(str) == STRASBOURG]
+    topics = own["topic_id"].astype(str).tolist()
+    want = int(own["n_stars"].sum())
+    got = LD.stars_for_topics(ctx, STRASBOURG, topics)
+    assert set(got) == set(topics)
+    assert sum(got.values()) == want
+    idx_n_stars = int(index_df.set_index("institution_id").loc[STRASBOURG, "n_stars"])
+    assert idx_n_stars == want
+
+
+def test_stars_for_topics_empty_and_zero_fill(ctx):
+    assert LD.stars_for_topics(ctx, STRASBOURG, []) == {}
+    # a topic Strasbourg holds no star in still comes back as an explicit 0,
+    # never absent from the result.
+    got = LD.stars_for_topics(ctx, STRASBOURG, ["T00000000"])
+    assert got == {"T00000000": 0}
+
+
+def test_pair_stars_by_topic_sums_to_pair_stars(ctx, inst_stars):
+    """Sigma pair_stars_by_topic(ctx, Strasbourg, CNRS, <candidate topics>)
+    == pair_stars(ctx, Strasbourg, CNRS) -- the candidate set is the union
+    of both institutions' own star topics (a joint star on any topic
+    outside that union is impossible, since it would require a star for
+    BOTH institutions on a topic neither holds one in). Also checks
+    symmetry (a, b) == (b, a)."""
+    a_topics = inst_stars.loc[inst_stars["institution_id"].astype(str) == STRASBOURG, "topic_id"].astype(str)
+    b_topics = inst_stars.loc[inst_stars["institution_id"].astype(str) == CNRS, "topic_id"].astype(str)
+    candidates = sorted(set(a_topics) | set(b_topics))
+    want = LD.pair_stars(ctx, STRASBOURG, CNRS)
+    got = LD.pair_stars_by_topic(ctx, STRASBOURG, CNRS, candidates)
+    assert sum(got.values()) == want
+    got_rev = LD.pair_stars_by_topic(ctx, CNRS, STRASBOURG, candidates)
+    assert got == got_rev
+
+
+def test_pair_stars_by_topic_empty_inputs(ctx):
+    assert LD.pair_stars_by_topic(ctx, STRASBOURG, CNRS, []) == {}
+
+
+def test_pair_stars_by_field_hand_recount(ctx, star_works, topics_dim_field_map):
+    """A hand recount of pair_stars_by_field for the Strasbourg x CNRS pair,
+    one field, straight from star_works.parquet + topics_dim.parquet (the
+    field with the largest joint count, so the recount is non-vacuous), plus
+    a whole-pair total cross-check against `pair_stars`."""
+
+    def _has_token(inst_ids: str, iid: str) -> bool:
+        return f"|{inst_ids}|".find(f"|{iid}|") >= 0
+
+    mask = star_works["inst_ids"].apply(lambda s: _has_token(s, STRASBOURG) and _has_token(s, CNRS))
+    joint = star_works.loc[mask, ["work_id", "topic_id"]].merge(topics_dim_field_map, on="topic_id", how="left")
+    assert len(joint) > 0, "Strasbourg x CNRS must hold >=1 joint star paper for this test to be non-vacuous"
+
+    by_field = LD.pair_stars_by_field(ctx, STRASBOURG, CNRS)
+    assert sum(by_field.values()) == joint["work_id"].nunique()
+    assert sum(by_field.values()) == LD.pair_stars(ctx, STRASBOURG, CNRS)
+
+    top_field = int(joint["field_id"].value_counts().idxmax())
+    hand_count = int((joint["field_id"] == top_field).sum())
+    assert by_field[top_field] == hand_count, (top_field, by_field[top_field], hand_count)
+
+    # symmetry
+    assert LD.pair_stars_by_field(ctx, CNRS, STRASBOURG) == by_field

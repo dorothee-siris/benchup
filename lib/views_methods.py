@@ -99,9 +99,9 @@ def _taxonomy_facts() -> dict:
 
 @st.cache_resource(show_spinner=False)
 def _leader_depth() -> object:
-    """How many institutions deep `topic_leaders.parquet` ranks each topic
-    x pool leaderboard, read off the table's own `rank` column rather than
-    typed in."""
+    """How many institutions deep `topic_leaders.parquet` ranks each topic's
+    leaderboard (one ranking across every institution type), read off the
+    table's own `rank` column rather than typed in."""
     try:
         col = pd.read_parquet(DATA_DIR / "topic_leaders.parquet", columns=["rank"])
         return int(col["rank"].max())

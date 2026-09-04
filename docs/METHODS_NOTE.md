@@ -119,19 +119,18 @@ top-quarter pool it sits inside.
 
 ## World leaders
 
-For every topic, this tool ranks the world's publishers twice: once across every institution
-type, and once restricted to universities alone (`app/data/topic_leaders.parquet`, `pool` in
-`{all, education}`). Both leaderboards run up to 200 institutions deep, articles and reviews
-only, 2020 to 2024, pulled live from OpenAlex on the day the leader list was built (measured live
-as the maximum `rank` on the shipped table.
+For every topic, this tool ranks the world's publishers by output, one ranking across every
+institution type (`app/data/topic_leaders.parquet`). The ranking runs up to 200 institutions
+deep, articles and reviews only, 2020 to 2024, pulled live from OpenAlex on the day the leader
+list was built (measured live as the maximum `rank` on the shipped table).
 
-The two leaderboards exist because a single ranking across every institution type favours large,
-multi-site research and technology organisations by construction: a body that runs many
-institutes under one name accumulates more publications than any single university. An
-institution's own "topics led" figure reads the fair pool for its own type: the university
-leaderboard for a university, the all-institution leaderboard for everyone else (`app/data/
-topics_led.parquet`; `index.parquet` `n_topics_led_fair`). Every rank shown on the page names its
-own pool, so a reader never mistakes one leaderboard's tenth place for the other's.
+Ranking every institution type together favours large, multi-site research and technology
+organisations by construction: a body that runs many institutes under one name accumulates more
+publications than any single university, so a handful of such organisations lead
+disproportionately many topics. An institution's own "topics led" figure counts the topics where
+it ranks in the world top 20 of that one ranking (`app/data/topics_led.parquet`; `index.parquet`
+`n_topics_led_all`); a reader comparing institutions of very different kinds should keep that
+skew in mind.
 
 ## Star papers
 
@@ -206,8 +205,8 @@ unfound by every lens at once.
 
 The taxonomy repair leaves gaps too: 859 of the taxonomy's 4,516 topics needed a forced or a
 no-fit placement, sitting in the tree without a confident match (`topics_dim.parquet`
-`fit_quality` in `{forced, no_fit}`, measured live). The type behind a fair pool, or a company and
-international share, follows a small set of corrections SIRIS made to OpenAlex's own institution
+`fit_quality` in `{forced, no_fit}`, measured live). The type behind a company or international
+co-publication share follows a small set of corrections SIRIS made to OpenAlex's own institution
 type (a locked, human-adjudicated override list applied at data-build time, upstream of what
 ships in `app/data/`); a type this tool has not reviewed keeps OpenAlex's own label.
 

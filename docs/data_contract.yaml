@@ -15,20 +15,23 @@
 # here because they are still part of the contract between the shipped data and what the UI
 # is allowed to claim.
 #
-# Current state: 23 declared files (22 parquet tables + 1 override CSV) plus the
+# Current state: 25 declared files (24 parquet tables + 1 override CSV) plus the
 # `data/scenarios/` folder (the ranking engine's precomputed per-scenario substrates,
 # documented separately in `scenario_files` below -- its members are not one-row-per-key
 # tables, so the column/key contract shape does not fit them).
 #
 # Dtype policy: every object-dtype ID/label column ships as `category` (three list<double>
-# period-array columns on topics_dim are the sole exception -- unhashable values, left as
-# object); every float64 column ships as float32; int/Int/bool/category columns are untouched.
+# period-array columns on topics_dim, and star_works.parquet's work_id/topic_id/inst_ids, are
+# the exceptions -- topics_dim's three for unhashable values, star_works.parquet because it
+# ships as a straight byte copy of its own source table, never round-tripped through a
+# dtype-normalising pass); every float64 column ships as float32; int/Int/bool/category columns
+# are untouched.
 #
 # Size policy: every individual declared or scenario file stays under 95 MB (GitHub's per-file
 # limit minus headroom); the whole deploy target (`data/`, scenarios included) stays under
 # 700 MB.
 
-contract_version: "1.6"
+contract_version: "1.7"
 snapshot: august_2026 # the OpenAlex harvest vintage this file describes
 generated_at: "2026-08-27T13:41:28.350794+00:00" # when the source harvest was generated
 deploy_target: "data/"
@@ -134,9 +137,7 @@ files:
       - {name: total_ar_full_w2, dtype: float32, meaning: "same rule as total_ar_full_w1, WINDOW = 2023-2024 (dynamics window 2, mean annual). The momentum d2 denominator."}
       - {name: n_stars, dtype: int32, meaning: "count of this institution's star papers (see inst_stars.parquet's build_note for the rule -- top 1% most-cited within their own topic x year, world, articles+reviews, 2020-2024), 0 when the institution holds none. Equals the sum of this institution's inst_stars.parquet rows exactly."}
       - {name: star_share, dtype: float32, meaning: "ADDITIVE (v1.5): n_stars / (total_ar_full_w1 + total_ar_full_w2) -- a size-free share of the institution's own articles+reviews output, 2020-2024, that are star papers. NULL iff the denominator is 0. Checked range in practice: [0, 0.21] -- one institution (a very small, elite AI lab) sits fractionally above the naive 0.2 sanity ceiling on a tiny denominator; a real ratio, not a computation error (Methods notes the tiny-denominator caveat)."}
-      - {name: n_topics_led_all, dtype: int16, meaning: "ADDITIVE (v1.5): count of topics_led.parquet rows for this institution, pool='all' -- topics where this institution ranks in the world top 10 by publication volume, 2020-2024, across every institution type."}
-      - {name: n_topics_led_edu, dtype: int16, meaning: "ADDITIVE (v1.5): same count, pool='education' -- the fair-comparison pool (education-type institutions only)."}
-      - {name: n_topics_led_fair, dtype: int16, meaning: "ADDITIVE (v1.5): n_topics_led_edu when this institution's own (patched) type is 'education', n_topics_led_all otherwise -- the ONE 'topics led' figure the app shows on a profile or a card (the fair-pool rule: a large, non-university research organisation is not compared against the narrower education-only leaderboard it was never a candidate for)."}
+      - {name: n_topics_led_all, dtype: int16, meaning: "RECOMPUTED (v1.7): count of topics_led.parquet rows for this institution -- topics where this institution ranks in the world top 20 by publication volume (articles and reviews, 2020-2024), one ranking across every institution type. THE 'topics led' figure the app shows on a profile or a card. v1.7 retires the earlier two-pool, rank<=10 rule: one ranking now covers every institution type, so a large, multi-site research organisation leads disproportionately many topics under this rule -- the app's own Methods page states the skew."}
       - {name: fwci_eu_median, dtype: float32, meaning: "median FWCI_EU (see fwci_taxa.parquet's own column for the full definition -- work-level citation count over the matching European subfield x year x type stratum mean) over this institution's own covered CORE-AR works, ALL subfields pooled -- the institution-level figure the Compare cards show. NULL iff fwci_eu_n is 0 (no covered works)."}
       - {name: fwci_eu_mean, dtype: float32, meaning: "ADDITIVE (v1.5): mean of the same population as fwci_eu_median -- hover-only, never the headline figure (same bar=median/hover=mean convention as fwci_taxa.parquet)."}
       - {name: fwci_eu_n, dtype: int32, meaning: "ADDITIVE (v1.5): count of this institution's own CORE-AR works with a valid FWCI_EU value -- the fwci_eu_median/fwci_eu_mean denominator. Can exceed the SUM of this institution's fwci_taxa.parquet field-grain n_covered rows (that table floors each field cell at n_covered>=3 and drops smaller cells; this institution-level total applies no such floor, so it is always >= the shipped per-field sum, never <)."}
@@ -402,6 +403,8 @@ files:
       - {name: n_sdg, dtype: int16, meaning: "field-grain rollup of joint CORE-AR works with >=1 SDG keyword hit, same tagging source as collab_pairs.n_sdg / the retired pair-topic table's n_sdg column."}
       - {name: fwci_median, dtype: float32, meaning: "MEDIAN FWCI over this row's CORE-AR joint works with a valid FWCI value, NULL when < 3 such works."}
       - {name: mom_class, dtype: category, meaning: "same rule as the retired pair-topic table's mom_class column, computed from this row's vol_w1/vol_w2 against the parent pair's d1/d2/MED."}
+      - {name: fwci_mean, dtype: float32, meaning: "ADDED (v1.7): mean FWCI over this row's CORE-AR joint works with a valid FWCI value; NaN iff n_fwci==0. Unfloored (contrast with fwci_median's n<3 floor), so fwci_mean is defined on strictly more rows than fwci_median."}
+      - {name: n_fwci, dtype: int32, meaning: "ADDED (v1.7): count of this row's CORE-AR joint works with a valid FWCI value -- the fwci_mean denominator, unfloored. n_fwci >= n_covered on every shipped row: n_fwci counts every FWCI-covered joint work (FWCI's own fallback rule reaches a work whose exact subfield x year x type stratum has no world PP10 threshold), while n_covered counts only the narrower, non-fallback, retraction-excluded set of joint works eligible for the world top-decile flag above."}
     dropped_column: "mean_citations (v1's uncapped-table impact proxy, the ONE table that could still afford it after the retired pair-topic table dropped it for size) is SUPERSEDED by fwci_median and dropped."
     build_note: "Field-level accumulation runs in the same per-work pass as the retired pair-topic table's topic-level one, restricted to the same core_total>=5 qualifying pairs."
 
@@ -440,6 +443,21 @@ files:
       - {name: n_works, dtype: int64, meaning: "count of CORE-AR works this eu_median_work_fwci was computed over (the corpus-wide denominator, unrelated to any single institution's n_covered)."}
     build_note: "Built from the same joins as fwci_taxa.parquet, minus the institution-attribution split (this table is corpus-wide, not per-institution). Invariant-checked alongside fwci_taxa.parquet."
 
+  # ---- inst_topic_impact.parquet ----
+  inst_topic_impact.parquet:
+    grain: "institution x PRIMARY topic (the work's own first pipe-delimited topic, the same convention topic_leaders.parquet/topics_led.parquet/star_works.parquet use), articles and reviews only, 2020-2024 (window_conventions.core_ar_window), full attribution (a work counts once per institution present); floored at n_ar>=3. 988,587 rows, 11.63 MB zstd."
+    keys: [institution_id, topic_id]
+    columns:
+      - {name: institution_id, dtype: category, meaning: null}
+      - {name: topic_id, dtype: category, meaning: "the work's PRIMARY topic"}
+      - {name: n_ar, dtype: int32, meaning: "count of this institution's CORE-AR works with this primary topic. Bounded above by topics_all.parquet's own whole-run volume for the matching (institution, topic, 2020-2024) slice, to within a small, disclosed epsilon: 0.0116% of rows exceed that bound, always by exactly one work, always on a topic where topics_all.parquet's own snapshot has since moved a boundary work to 2025 -- an ordinary cross-snapshot vintage disagreement (CLAUDE.md's own vintage-churn note), not a data-quality defect."}
+      - {name: n_covered, dtype: int32, meaning: "of n_ar, the count with a valid FWCI value -- the fwci_mean/fwci_median denominator. 0 is a valid value (no shipped row happens to reach it, since every shipped row already clears the n_ar>=3 floor with margin); fwci_mean/fwci_median are NaN exactly iff n_covered==0."}
+      - {name: fwci_mean, dtype: float32, meaning: "mean FWCI over this institution's n_covered works on this topic; NaN iff n_covered==0."}
+      - {name: fwci_median, dtype: float32, meaning: "median FWCI over the same n_covered population; NaN iff n_covered==0."}
+      - {name: n_pp, dtype: int32, meaning: "of n_ar, the count with a world top-decile threshold available for their own (original-tree subfield, year, type) cohort -- the pp10_wd denominator."}
+      - {name: n_top10_wd, dtype: int32, meaning: "of n_pp, the count landing at or above that world threshold. pp10_wd = n_top10_wd / n_pp, computed at query time, not itself a shipped column."}
+    build_note: "The same institution attribution and world-threshold join impact_taxa.parquet uses, at topic grain instead of field/subfield/SDG/ERC grain, restricted to each work's PRIMARY topic. Cross-checked against impact_taxa.parquet: n_pp and pp10_wd reconcile exactly (638/638 anchor cells) when rolled up to the shared bestfit-subfield grain. Cross-checked against fwci_taxa.parquet: n_covered reconciles on 99.47% of anchor cells, the residual (three cells, each off by one or two works) traced to re-deriving institution attribution from the raw corpus a second time rather than reading a single frozen attribution table -- a small, bounded epsilon, not a logic error."
+
   # ---- impact_taxa.parquet ----
   impact_taxa.parquet:
     grain: "institution x grain x taxon_id, floored at n_covered_pp>=1 (NO display floor lives in the data -- the below-floor CAUTION channel is a UI-layer rendering rule over this same unfloored table, not a second, filtered file). 1,100,275 rows (field 141,654 / 26 distinct fields, subfield 687,618 / 247 distinct subfields, sdg 100,400 / 16 distinct goals, erc 170,603 / 28 distinct panels), 3.28 MB zstd."
@@ -477,27 +495,37 @@ files:
 
   # ---- topic_leaders.parquet ----
   topic_leaders.parquet:
-    grain: "topic x pool x rank, rank 1..n (n<=200, the OpenAlex group_by page cap) per (topic_id, pool); 1,778,024 rows, 3.93 MB, zstd. Covers all 4,516 topics x 2 pools."
-    keys: [topic_id, pool, rank]
+    grain: "topic x rank, rank 1..n (n<=200, the OpenAlex group_by page cap) per topic_id, one ranking across every institution type (v1.7 retires the earlier two-pool split); 890,415 rows, 2.35 MB, zstd. Covers all 4,516 topics."
+    keys: [topic_id, rank]
     columns:
       - {name: topic_id, dtype: category, meaning: "OpenAlex topic id (topics_dim.topic_id)"}
-      - {name: pool, dtype: category, meaning: "{all, education} -- world publisher ranking population for this topic. 'all' = every institution type; 'education' = authorships.institutions.type:education only (the fair-comparison pool, since the 'all' pool is dominated by a handful of very large national research organisations -- see Methods)."}
-      - {name: rank, dtype: int16, meaning: "1-based rank by n_works within (topic_id, pool), dense, contiguous, no gaps, capped at 200"}
+      - {name: rank, dtype: int16, meaning: "1-based rank by n_works within topic_id, dense, contiguous, no gaps, capped at 200"}
       - {name: institution_id, dtype: category, meaning: "OpenAlex institution id of the ranked publisher (NOT restricted to this app's 7,557-institution index -- world publishers include non-indexed institutions, e.g. large non-European research organisations)"}
       - {name: display_name, dtype: string, meaning: "OpenAlex display name; populated for rank<=10 only (null beyond, since only the top-10 names are ever shown in the app), and can be null even at rank<=10 on the rare topic where OpenAlex returned no name for that institution id (9 such rows shipped -- the app falls back to the institution id, or this app's own index display_name when the id happens to be an indexed institution)"}
-      - {name: n_works, dtype: int32, meaning: "world publication count (articles+reviews, 2020-2024) this rank was computed on; non-increasing with rank within (topic_id, pool)"}
-    build_note: "A live OpenAlex sweep, one query per topic, grouped by publishing institution. Pulled on 2026-09-03 -- a different date from the OpenAlex harvest snapshot behind every other table; report both vintages in any Methods text, they are not interchangeable."
+      - {name: n_works, dtype: int32, meaning: "world publication count (articles+reviews, 2020-2024) this rank was computed on; non-increasing with rank within topic_id"}
+    build_note: "A live OpenAlex sweep, one query per topic, grouped by publishing institution, every institution type ranked together (a body that runs many institutes under one name accumulates more publications than any single university -- the app's own Methods page states the resulting skew). Pulled on 2026-09-03 -- a different date from the OpenAlex harvest snapshot behind every other table; report both vintages in any Methods text, they are not interchangeable."
 
   # ---- topics_led.parquet ----
   topics_led.parquet:
-    grain: "one row per (institution_id, topic_id, pool) where an INDEXED institution (app/data/index.parquet's 7,557) holds rank<=10 in topic_leaders.parquet for that pool; 24,895 rows, 0.07 MB, zstd."
-    keys: [institution_id, topic_id, pool]
+    grain: "one row per (institution_id, topic_id) where an INDEXED institution (app/data/index.parquet's 7,557) holds rank<=20 in topic_leaders.parquet; 24,698 rows, 0.08 MB, zstd."
+    keys: [institution_id, topic_id]
     columns:
       - {name: institution_id, dtype: category, meaning: "restricted to indexed institutions only (topic_leaders.parquet's own institution_id is unrestricted; this table is the indexed-population slice)"}
       - {name: topic_id, dtype: category, meaning: "OpenAlex topic id"}
-      - {name: pool, dtype: category, meaning: "{all, education} -- same convention as topic_leaders.parquet.pool"}
-      - {name: rank, dtype: int16, meaning: "1..10 (this table's own floor -- topic_leaders.parquet carries ranks up to 200, this table keeps only the top-10 cut every 'topics led' figure in the app uses)"}
-    build_note: "A filter of topic_leaders.parquet down to indexed institutions at rank<=10. A topic counts toward the app's single 'topics led' figure using the education pool when the institution's own type is education, the all pool otherwise -- see index.parquet's n_topics_led_fair column and Methods."
+      - {name: rank, dtype: int16, meaning: "1..20 (this table's own floor -- topic_leaders.parquet carries ranks up to 200, this table keeps only the top-20 cut the app's single 'topics led' figure uses)"}
+    build_note: "A filter of topic_leaders.parquet down to indexed institutions at rank<=20, one ranking across every institution type. The app's 'topics led' figure (index.parquet n_topics_led_all) counts, for one institution, the rows of this table carrying that institution_id -- see index.parquet and the app's own Methods page for the resulting skew toward large, multi-site organisations."
+
+  # ---- star_works.parquet ----
+  star_works.parquet:
+    grain: "one row per star paper -- a work is a star paper for exactly one topic and year, its own PRIMARY topic; 310,327 rows, 6.3 MB zstd. Shipped as a straight byte copy of its own source table, never round-tripped through a dtype-normalising pass: its three id/label columns are `object`, the dtype-policy exception this file's header note names (alongside topics_dim.parquet's three list-typed columns)."
+    keys: [work_id]
+    columns:
+      - {name: work_id, dtype: object, meaning: "OpenAlex work id; primary key. Shipped as a plain string (object), not category -- the dtype-policy exception this file's grain note names."}
+      - {name: topic_id, dtype: object, meaning: "the work's PRIMARY topic -- the topic this work was ranked a star paper for. Shipped as a plain string (object), the same exception as work_id."}
+      - {name: year, dtype: int16, meaning: "publication year, 2020-2024 -- the year this work was ranked a star paper for"}
+      - {name: cited_by, dtype: int32, meaning: "citation count behind the star-paper rule below"}
+      - {name: inst_ids, dtype: object, meaning: "pipe-delimited OpenAlex institution ids, every direct-authorship institution named on the work (not restricted to this app's indexed population); a plain, un-split string, the dtype-policy exception this file's header note names. Match one institution by testing for the exact pipe-delimited token (pad with a leading and trailing pipe before matching), never a plain substring search -- one institution id can be a text prefix of another."}
+    build_note: "Star-paper rule: per (topic_id, year), k = max(1, ceil(0.01 x count)); the k most-cited world articles and reviews that year are that topic and year's star papers -- the top 1% by citation count within that topic and year, ties beyond k cut. inst_stars.parquet and pair_stars.parquet are this same population, exploded to institution and institution-pair grain and restricted to this app's indexed institutions. Pulled from OpenAlex on 2026-09-03 -- a different date from the OpenAlex harvest snapshot behind every other table in this file; report both vintages in any Methods text, they are not interchangeable."
 
   # ---- inst_stars.parquet ----
   inst_stars.parquet:
@@ -583,8 +611,8 @@ derived_views:
     disclosure: "never both the umbrella badge and the type-corrected badge on one row -- checked because both badges read the PATCHED type, so a type-corrected education institution can never also be an umbrella candidate under this rule."
 
   scale_guard_ratio:
-    formula: "max(seed.total_full_2020_2024, candidate.total_full_2020_2024) / min(...) <= m"
-    m: "8 when the SMALLER of the pair is below 20,000 full works; 4 when it is >= 20,000 (config.yaml's scale_guard block; band-differentiated, a single x5 is NOT band-safe)"
+    formula: "max(seed.total_full_2020_2024, candidate.total_full_2020_2024) / min(...) <= ratio"
+    ratio: "a single flat ratio (config.yaml scale_guard.ratio, shipped value 3), the SAME cut at every size -- retires the earlier two-band rule (8x below 20,000 full works, 4x at or above it). Opt-in, off by default; the aspirational view is exempt (it is not a size-matched candidate list to begin with)."
 
   concordance_denominator_disclosure: "the overview caption states N (=50) and n (count of enabled default lenses) explicitly on every render -- never a bare k/n fraction without both numbers spelled out"
 

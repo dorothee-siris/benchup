@@ -710,8 +710,8 @@ COMPARE = {
                        "most-cited works in their own topic and year. Count: {count}. European "
                        "median: {eu_median}."),
     "CARD_TOPICS_LED": "Topics led",
-    "CARD_TOPICS_LED_TIP": ("Topics where this institution ranks among the world top ten "
-                            "publishers, {pool} pool. European median: {eu_median}."),
+    "CARD_TOPICS_LED_TIP": ("Topics where this institution ranks among the world top twenty "
+                            "publishers, all institutions. European median: {eu_median}."),
     "CARD_FRONTIER": "Frontier share",
     "CARD_FRONTIER_TIP": ("Share of {y0} to {y1} output sitting in the global top-quarter "
                           "frontier topics. European median: {eu_median}."),
@@ -730,7 +730,7 @@ COMPARE = {
     "SHAPE_BASIS_CAPTION": ("Top {n} subfields by the pair's combined volume, best-fit "
                             "taxonomy, full counting."),
     "SHAPE_NOTE_PROFILE": ("Each bar is a subfield's share of that institution's own output; "
-                           "the diamond is the European mean."),
+                           "the dashed red mark is the European mean."),
     "SHAPE_NOTE_IMPACT": ("Each bar is PP10_WD against the world reference; a row resting on "
                           "fewer than {floor} covered works carries a dagger."),
 
@@ -739,7 +739,7 @@ COMPARE = {
     "SDG_BASIS_CAPTION": ("Every Sustainable Development Goal this taxonomy tags, best-fit "
                           "taxonomy, full counting."),
     "SDG_NOTE_PROFILE": ("Each bar is a goal's share of that institution's own tagged output; "
-                         "the diamond is the European mean."),
+                         "the dashed red mark is the European mean."),
     "SDG_NOTE_IMPACT": ("Each bar is PP10_WD against the world reference; a row resting on "
                         "fewer than {floor} covered works carries a dagger."),
     "SDG_UNTAGGED": "{name}: {share} of output carries no Sustainable Development Goal tag.",
@@ -976,17 +976,15 @@ METHODS = {
     "world_leaders": {
         "title": "World leaders",
         "body": (
-            "For every topic, this tool ranks the world's publishers twice: once across every "
-            "institution type, and once restricted to universities alone. Both leaderboards run up "
-            "to {leader_depth} institutions deep, articles and reviews only, {y0} to {y1}, pulled "
-            "live from OpenAlex on the day the leader list was built.\n\n"
-            "The two leaderboards exist because a single ranking across every institution type "
-            "favours large, multi-site research and technology organisations by construction: a body "
-            "that runs many institutes under one name accumulates more publications than any single "
-            "university. An institution's own 'topics led' figure reads the fair pool for its own "
-            "type: the university leaderboard for a university, the all-institution leaderboard for "
-            "everyone else. Every rank shown on the page names its own pool, so a reader never "
-            "mistakes one leaderboard's tenth place for the other's."),
+            "For every topic, this tool ranks the world's publishers by output, one ranking across "
+            "every institution type, up to {leader_depth} institutions deep, articles and reviews "
+            "only, {y0} to {y1}, pulled live from OpenAlex on the day the leader list was built.\n\n"
+            "Ranking every institution type together favours large, multi-site research and "
+            "technology organisations by construction: a body that runs many institutes under one "
+            "name accumulates more publications than any single university, so a handful of such "
+            "organisations lead disproportionately many topics. An institution's own 'topics led' "
+            "figure counts the topics where it ranks in the world top twenty of that one ranking; a "
+            "reader comparing institutions of very different kinds should keep that skew in mind."),
     },
     "star_papers": {
         "title": "Star papers",
@@ -1054,7 +1052,7 @@ METHODS = {
             "mission peer among them, can go unfound by every lens at once.\n\n"
             "The taxonomy repair leaves gaps too: {n_forced_or_nofit} of the taxonomy's {n_topics} "
             "topics needed a forced or a no-fit placement, sitting in the tree without a confident "
-            "match. The type behind a fair pool, or a company and international share, follows a "
+            "match. The type behind a company or international co-publication share follows a "
             "small set of corrections SIRIS made to OpenAlex's own institution type; a type this "
             "tool has not reviewed keeps OpenAlex's own label.\n\n"
             "World leaders and star papers are pulled from OpenAlex on the day they were built, a "

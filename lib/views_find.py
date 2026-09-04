@@ -171,8 +171,8 @@ _STARS_HELP = ("A star paper is one of the world's top 1% most-cited articles or
               "in its topic and publication year, 2020-2024 (ties beyond the cut are not "
               "counted). The share is star papers over this institution's own article and "
               "review output in the same window.")
-_LED_SUBLINE_TEMPLATE = "world top-10 publisher, {pool}"
-_LED_HELP_TEMPLATE = "World top-10 publisher in {n} topics ({pool} pool)."
+_LED_SUBLINE = "world top 20, all institutions"
+_LED_HELP_TEMPLATE = "World top-20 publisher (all institutions) in {n} topics."
 
 SORT_VOLUME, SORT_TAXONOMY = "volume", "taxonomy"
 
@@ -613,15 +613,13 @@ def _stars_kpi(row) -> tuple[str, str, str]:
 
 
 def _led_kpi(row) -> tuple[str, str, str]:
-    """(value, subline, help) for the Topics-led tile: index.n_topics_led_fair
-    (the fair-pool pick -- universities for `type == education`, all
-    institutions otherwise), MISSING_KPI_MARK when the column is absent
-    or null. The pool NAME (never the raw `type` value) is stated in both the
-    subline and the help text."""
-    pool = "universities" if str(row.get("type")) == "education" else "all institutions"
-    n = row.get("n_topics_led_fair")
+    """(value, subline, help) for the Topics-led tile: index.n_topics_led_all
+    (rank<=20 among ALL institution types, one ranking pool -- the Methods
+    page states the resulting skew toward large, multi-site organisations),
+    MISSING_KPI_MARK when the column is absent or null."""
+    n = row.get("n_topics_led_all")
     value = MISSING_KPI_MARK if n is None or pd.isna(n) else _count(n)
-    return value, _LED_SUBLINE_TEMPLATE.format(pool=pool), _LED_HELP_TEMPLATE.format(n=value, pool=pool)
+    return value, _LED_SUBLINE, _LED_HELP_TEMPLATE.format(n=value)
 
 
 def _profile_cards(card: dict, row, bundle: dict) -> None:
@@ -1705,13 +1703,13 @@ def _aspirational_sheet_frame(bundle: dict, rankings: dict, filters: dict, seed_
 
 
 _LEADERS_SHEET_TITLE = "Topics led & star papers"
-_LEADERS_SHEET_COLUMNS = ["topic_id", "topic_name", "pool", "world_rank", "n_stars"]
+_LEADERS_SHEET_COLUMNS = ["topic_id", "topic_name", "world_rank", "n_stars"]
 _LEADERS_SHEET_NOT_AVAILABLE = pd.DataFrame([{"note": "not available in this build"}])
 
 
 def _leaders_sheet_frame(seed_id: str) -> pd.DataFrame:
     """Sheet 14, "Topics led & star papers": every
-    topic this institution leads (world top-10, either pool -- `topics_led.
+    topic this institution leads (world top 20, all institutions -- `topics_led.
     parquet` via `leaders_data.led_topics`, which already carries
     `topic_name`) merged with its star-paper count in that topic
     (`inst_stars.parquet` via `leaders_data.stars_by_topic`), sorted by rank

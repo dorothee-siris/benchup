@@ -290,12 +290,17 @@ def test_kpi_builders_render_from_a_tiny_fixture_index_with_the_five_new_columns
     carrying the five new columns, run through the tile-BUILDER functions
     directly (no Streamlit) -- proves the two new KPI strings render once the
     columns exist, independent of whether the real deployed index has them
-    yet (the absent-column path is the test right after this one)."""
+    yet (the absent-column path is the test right after this one).
+
+    v1.7: one ranking pool -- the Topics-led subline/help are now FIXED text
+    ("world top 20, all institutions") regardless of the institution's own
+    `type`, so I_EDU and I_RTO (education vs facility) must render the
+    IDENTICAL subline, not a type-conditional one."""
     fixture = pd.DataFrame([
         {"institution_id": "I_EDU", "type": "education", "n_stars": 16, "star_share": 0.021,
-         "n_topics_led_fair": 39, "n_topics_led_all": 39, "n_topics_led_edu": 39},
+         "n_topics_led_all": 39},
         {"institution_id": "I_RTO", "type": "facility", "n_stars": 0, "star_share": 0.0,
-         "n_topics_led_fair": 0, "n_topics_led_all": 0, "n_topics_led_edu": 0},
+         "n_topics_led_all": 0},
     ]).set_index("institution_id")
 
     row = fixture.loc["I_EDU"]
@@ -306,13 +311,16 @@ def test_kpi_builders_render_from_a_tiny_fixture_index_with_the_five_new_columns
     # every other strip/caption in the app uses) replaces the parentheses.
     assert stars_value == "16 · 2.1% of output", stars_value
     assert led_value == "39", led_value
-    assert "universities" in led_sub and "universities" in led_help, (led_sub, led_help)
+    assert led_sub == "world top 20, all institutions", led_sub
+    assert "all institutions" in led_help, led_help
     assert views_find.MISSING_KPI_MARK not in stars_value
     assert views_find.MISSING_KPI_MARK not in led_value
 
     row_rto = fixture.loc["I_RTO"]
-    _, rto_sub, rto_help = views_find._led_kpi(row_rto)
-    assert "all institutions" in rto_sub and "all institutions" in rto_help, (rto_sub, rto_help)
+    rto_value, rto_sub, rto_help = views_find._led_kpi(row_rto)
+    assert rto_value == "0", rto_value
+    assert rto_sub == led_sub, (rto_sub, led_sub)  # fixed text, same for every type
+    assert "all institutions" in rto_help, rto_help
 
 
 def test_kpi_builders_render_missing_mark_when_the_p5_columns_are_absent():
@@ -327,7 +335,7 @@ def test_kpi_builders_render_missing_mark_when_the_p5_columns_are_absent():
     assert led_value == views_find.MISSING_KPI_MARK, led_value
 
     row_null = pd.Series({"n_stars": float("nan"), "star_share": float("nan"),
-                          "type": "education", "n_topics_led_fair": float("nan")})
+                          "type": "education", "n_topics_led_all": float("nan")})
     stars_value2, _, _ = views_find._stars_kpi(row_null)
     led_value2, _, _ = views_find._led_kpi(row_null)
     assert stars_value2 == views_find.MISSING_KPI_MARK, stars_value2

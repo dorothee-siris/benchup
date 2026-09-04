@@ -21,12 +21,18 @@ ID_COLUMNS = ("institution_id", "a", "b", "topic_id")
 
 PARQUET_FILES = sorted(p.name for p in DATA_DIR.glob("*.parquet"))
 
-# topics_dim's three list<double> period-array columns are the sole sanctioned
-# object-dtype holdout (unhashable numpy-array values -- category cast would fail).
+# topics_dim's three list<double> period-array columns, and star_works.parquet's
+# work_id/topic_id/inst_ids (v1.7: shipped as a straight byte copy of its own source
+# table, never round-tripped through the repack's dtype-normalising pass), are the
+# sanctioned object-dtype holdouts (topics_dim's for unhashable numpy-array values --
+# category cast would fail; star_works.parquet's per its own contract entry).
 KNOWN_OBJECT_HOLDOUTS = {
     ("topics_dim.parquet", "expansion_by_period"),
     ("topics_dim.parquet", "acceleration_by_period"),
     ("topics_dim.parquet", "frontier_score_by_period"),
+    ("star_works.parquet", "work_id"),
+    ("star_works.parquet", "topic_id"),
+    ("star_works.parquet", "inst_ids"),
 }
 
 
@@ -36,15 +42,15 @@ def test_impact_fields_deleted() -> None:
     )
 
 
-def test_deployed_table_count_is_23() -> None:
-    assert len(PARQUET_FILES) == 22, sorted(PARQUET_FILES)  # 22 parquet + 1 override csv = 23
+def test_deployed_table_count_is_25() -> None:
+    assert len(PARQUET_FILES) == 24, sorted(PARQUET_FILES)  # 24 parquet + 1 override csv = 25
 
 
 @pytest.mark.parametrize("fname", PARQUET_FILES)
 def test_id_columns_are_category(fname: str) -> None:
     df = pd.read_parquet(DATA_DIR / fname, columns=None)
     for col in ID_COLUMNS:
-        if col in df.columns:
+        if col in df.columns and (fname, col) not in KNOWN_OBJECT_HOLDOUTS:
             assert str(df[col].dtype) == "category", (
                 f"{fname}.{col}: expected category, got {df[col].dtype}"
             )

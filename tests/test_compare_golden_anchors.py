@@ -95,22 +95,24 @@ def test_cards_n_stars_matches_a_hand_sum_of_inst_stars_parquet(ctx):
 
 
 def test_cards_n_topics_led_fair_matches_a_hand_count_of_topics_led_parquet(ctx):
+    """v1.7: one ranking pool, topics_led.parquet has no `pool` column and
+    holds rank<=20 across every institution type. cards()'s "n_topics_led_fair"
+    OUTPUT key is now sourced from index.n_topics_led_all (the key itself is
+    kept for the untouched card renderer -- see compare_data.py's own
+    comment); this hand count is the same all-institutions population."""
     cards = CD.cards(ctx, IDS).set_index("institution_id")
     con = duckdb.connect()
     try:
         rows = con.execute(
-            "SELECT institution_id, pool, COUNT(*) AS n FROM read_parquet(?) "
-            "WHERE institution_id IN (?, ?) GROUP BY institution_id, pool",
+            "SELECT institution_id, COUNT(*) AS n FROM read_parquet(?) "
+            "WHERE institution_id IN (?, ?) GROUP BY institution_id",
             [_posix(DATA_DIR / "topics_led.parquet"), IFREMER, NIOZ],
-        ).df()
+        ).df().set_index("institution_id")["n"]
     finally:
         con.close()
-    idx = ctx["index_by_id"]
     for iid in IDS:
-        pool = "education" if str(idx.loc[iid, "type"]) == "education" else "all"
-        sub = rows[(rows["institution_id"] == iid) & (rows["pool"] == pool)]
-        by_hand = int(sub["n"].iloc[0]) if len(sub) else 0
-        assert int(cards.loc[iid, "n_topics_led_fair"]) == by_hand, (iid, pool)
+        by_hand = int(rows.loc[iid]) if iid in rows.index else 0
+        assert int(cards.loc[iid, "n_topics_led_fair"]) == by_hand, iid
 
     # VACUITY
     with pytest.raises(AssertionError):
@@ -146,16 +148,20 @@ def test_relationship_joint_stars_matches_a_hand_read_of_pair_stars_parquet(ctx,
 # ---------------------------------------------------------------------------
 
 def test_shared_frontier_rank_and_stars_match_a_hand_read_of_the_raw_leader_tables(ctx, subs):
+    """v1.7: topic_leaders.parquet has no `pool` column -- one ranking across
+    every institution type (shared_frontier's own pool_a/pool_b are now
+    always "all", kept only for the untouched table renderer)."""
     sf = CD.shared_frontier(ctx, subs, IDS)
     assert len(sf) > 0, "the anchor pair must share at least one frontier topic"
     row = sf.iloc[0]
     topic_id = row["topic_id"]
+    assert row["pool_a"] == "all" and row["pool_b"] == "all"
 
     con = duckdb.connect()
     try:
         rank_row = con.execute(
-            "SELECT rank FROM read_parquet(?) WHERE topic_id = ? AND institution_id = ? AND pool = ?",
-            [_posix(DATA_DIR / "topic_leaders.parquet"), topic_id, IFREMER, row["pool_a"]],
+            "SELECT rank FROM read_parquet(?) WHERE topic_id = ? AND institution_id = ?",
+            [_posix(DATA_DIR / "topic_leaders.parquet"), topic_id, IFREMER],
         ).df()
         star_row = con.execute(
             "SELECT n_stars FROM read_parquet(?) WHERE topic_id = ? AND institution_id = ?",

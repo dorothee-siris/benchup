@@ -128,11 +128,13 @@ def _check_size_range(rows: list, lo: float, hi: float) -> bool:
 
 
 def _check_scale_guard(rows: list, seed_row) -> bool:
+    """A flat ratio at every size (config.yaml scale_guard.ratio) -- the
+    earlier two-band rule (lt_20k/ge_20k off a band_threshold_works cutoff)
+    is retired."""
     seed_total = float(seed_row["total_full_2020_2024"])
-    sg = CFG["scale_guard"]
-    m = sg["lt_20k"] if seed_total < sg["band_threshold_works"] else sg["ge_20k"]
+    ratio = CFG["scale_guard"]["ratio"]
     return all(max(seed_total, r["total_full_2020_2024"]) / min(seed_total, r["total_full_2020_2024"])
-               <= m + 1e-9
+               <= ratio + 1e-9
                for r in rows if r["total_full_2020_2024"])
 
 
@@ -256,7 +258,8 @@ def test_active_controls_strip_names_each_post_filter():
         ({"countries": ["FR", "DE"]}, copy.STRIP_COUNTRY.format(countries="France, Germany")),
         ({"exclude_own_country": True}, copy.STRIP_EXCLUDE_OWN_COUNTRY),
         ({"size_range": (1000, 5000)}, copy.STRIP_SIZE_RANGE.format(lo=1000, hi=5000)),
-        ({"scale_guard": True}, copy.STRIP_SCALE_GUARD),
+        ({"scale_guard": True},
+         copy.STRIP_SCALE_GUARD.format(ratio=f"{CFG['scale_guard']['ratio']:g}", suffix="")),
         ({"family_min": FAMILY_THR}, copy.STRIP_FAMILY.format(threshold=FAMILY_THR)),
     ]
     for filters, expected in cases:

@@ -364,7 +364,14 @@ _CARD_INDEX_COLS = {
     "sdg_share": "sdg_tagged_share", "frontier_top25_share": "frontier_top25_share",
     "pp": "pp_top10_frac", "intl_share": "intl_share", "company_share": "company_share",
     "fwci_eu_median": "fwci_eu_median",  # added separately -- absent until it lands (NaN meanwhile)
-    "star_share": "star_share", "n_stars": "n_stars", "n_topics_led_fair": "n_topics_led_fair",
+    "star_share": "star_share", "n_stars": "n_stars",
+    # v1.7: the two-pool "fair pool" figure is retired -- index carries ONE
+    # topics-led column now (n_topics_led_all, rank<=20, every institution
+    # type ranked together). The OUTPUT key stays "n_topics_led_fair" (its
+    # consuming card still reads this exact name) -- only the SOURCE index
+    # column changes; the key itself is renamed the day that card's own
+    # rendering is rewritten.
+    "n_topics_led_fair": "n_topics_led_all",
 }
 CARDS_COLS = (["institution_id"] + list(_CARD_INDEX_COLS) + ["vol_change", "led_pool"]
              + [f"{c}_eu_median" for c in list(_CARD_INDEX_COLS) + ["vol_change"]])
@@ -398,8 +405,12 @@ def cards(ctx: dict, ids: list[str]) -> pd.DataFrame:
     own docstring for windows) plus `vol_change` (change in MEAN ANNUAL full
     volume, 2020-22 -> 2023-24, the reference version's own
     `_dynamics_value`/`_window_mean` reused verbatim),
-    `fwci_eu_median`/`star_share`/`n_stars`/`n_topics_led_fair` and `led_pool` ('universities' when `type == "education"`,
-    else 'all institutions', the fair-pool rule). EVERY numeric figure also
+    `fwci_eu_median`/`star_share`/`n_stars`/`n_topics_led_fair` (v1.7: sourced from
+    index.n_topics_led_all, rank<=20 across every institution type -- the
+    output key is unchanged, only its source column) and `led_pool`
+    (always 'all institutions': the two-pool "fair pool" rule is retired,
+    the column is kept only for the untouched card renderer that still
+    reads it). EVERY numeric figure also
     ships a `<col>_eu_median` twin: the NaN-safe median of that SAME figure
     over the whole 7,557-row index, computed once
     per call, identical for both rows of a 2-institution pair by
@@ -422,7 +433,7 @@ def cards(ctx: dict, ids: list[str]) -> pd.DataFrame:
         for out_col, src_col in _CARD_INDEX_COLS.items():
             rec[out_col] = _v(src_col)
         rec["vol_change"] = float(all_changes.get(iid, np.nan))
-        rec["led_pool"] = "universities" if str(row["type"]) == "education" else "all institutions"
+        rec["led_pool"] = "all institutions"  # v1.7: one ranking pool, kept for the untouched card renderer
         rows.append(rec)
     out = pd.DataFrame(rows)
 
@@ -635,9 +646,12 @@ def frontier_positioning(ctx: dict, subs: dict, ids: list[str]) -> pd.DataFrame:
     pool where this institution's OWN volume, current basis, is >= 1),
     `n_of_those_top_decile` (the subset also in the GLOBAL top-decile-by-
     `frontier_score_latest` set, `_elite_frontier_topic_ids`),
-    `n_topics_led_fair` (index column, the fair pool), `n_stars_in_frontier_topics` (this
-    institution's own star-work count, summed over exactly the topics it
-    was just counted as publishing in above).
+    `n_topics_led_fair` (v1.7: sourced from index.n_topics_led_all, rank<=20
+    across every institution type -- the output key is unchanged, only its
+    source column, kept for the untouched metric renderer that still reads
+    it), `n_stars_in_frontier_topics` (this institution's own star-work
+    count, summed over exactly the topics it was just counted as
+    publishing in above).
 
     `df.attrs["n_shared"]` -- the count of top-quartile-frontier
     topics where BOTH `ids` hold >= 1 publication; `frozenset` when `ids`
@@ -659,7 +673,7 @@ def frontier_positioning(ctx: dict, subs: dict, ids: list[str]) -> pd.DataFrame:
 
         row = ctx["index_by_id"].loc[iid]
         share_top25 = row.get("frontier_top25_share")
-        led_fair = row.get("n_topics_led_fair")
+        led_fair = row.get("n_topics_led_all")  # v1.7: one pool, rank<=20 -- see the docstring's shim note
         rows.append({
             "institution_id": iid,
             "share_top25": float(share_top25) if pd.notna(share_top25) else float("nan"),
@@ -797,8 +811,11 @@ def shared_frontier(ctx: dict, subs: dict, ids: list[str]) -> pd.DataFrame:
                                                    distinct from `cards`' own `vol_change`),
                                                    `low_volume_*` when the institution's own
                                                    2020-2024 volume on the topic is < 10 works
-      rank_a, pool_a, rank_b, pool_b -- `leaders_data.topic_ranks`, fair pool per
-                                                   institution `type`, NaN when the
+      rank_a, pool_a, rank_b, pool_b -- `leaders_data.topic_rank`, one ranking
+                                                   pool across every institution type now
+                                                   (pool_a/pool_b always "all", kept only
+                                                   because the untouched table renderer
+                                                   still reads those two columns), NaN when the
                                                    institution is not in the topic's top 200
       stars_a, stars_b -- `leaders_data.stars_by_topic`, 0 when absent
       url_a, url_b, url_joint -- `links.topic_url`/`links.joint_topic_url`
@@ -839,13 +856,12 @@ def shared_frontier(ctx: dict, subs: dict, ids: list[str]) -> pd.DataFrame:
         return (w2 - w1), (core_vol < LOW_VOLUME_FLOOR)
 
     topic_ids = list(base["topic_id"])
-    ranks = LD.topic_ranks(ctx, topic_ids, [a, b])
-    type_a = str(ctx["index_by_id"].loc[a, "type"])
-    type_b = str(ctx["index_by_id"].loc[b, "type"])
-    pool_a = "education" if type_a == "education" else "all"
-    pool_b = "education" if type_b == "education" else "all"
-    ranks_a = ranks[(ranks["institution_id"] == a) & (ranks["pool"] == pool_a)].set_index("topic_id")["rank"]
-    ranks_b = ranks[(ranks["institution_id"] == b) & (ranks["pool"] == pool_b)].set_index("topic_id")["rank"]
+    # v1.7: one ranking pool across every institution type (topic_leaders.parquet no
+    # longer carries a `pool` column) -- pool_a/pool_b below are always "all", kept
+    # only because the untouched table renderer still reads those two columns.
+    ranks_a_map = LD.topic_rank(ctx, a, topic_ids)
+    ranks_b_map = LD.topic_rank(ctx, b, topic_ids)
+    pool_a = pool_b = "all"
 
     stars = LD.stars_by_topic(ctx, [a, b])
     stars_a = stars[stars["institution_id"] == a].set_index("topic_id")["n_stars"]
@@ -866,8 +882,8 @@ def shared_frontier(ctx: dict, subs: dict, ids: list[str]) -> pd.DataFrame:
             "vol_joint": float(vol_joint_by_topic.get(tid, 0.0)) if joint_known else np.nan,
             "joint_known": joint_known,
             "change_a": ca, "change_b": cb, "low_volume_a": low_a, "low_volume_b": low_b,
-            "rank_a": (int(ranks_a[tid]) if tid in ranks_a.index else np.nan), "pool_a": pool_a,
-            "rank_b": (int(ranks_b[tid]) if tid in ranks_b.index else np.nan), "pool_b": pool_b,
+            "rank_a": (ranks_a_map.get(tid) if ranks_a_map.get(tid) is not None else np.nan), "pool_a": pool_a,
+            "rank_b": (ranks_b_map.get(tid) if ranks_b_map.get(tid) is not None else np.nan), "pool_b": pool_b,
             "stars_a": int(stars_a.get(tid, 0)), "stars_b": int(stars_b.get(tid, 0)),
             "url_a": links.topic_url(a, tid), "url_b": links.topic_url(b, tid),
             "url_joint": links.joint_topic_url(a, b, tid),

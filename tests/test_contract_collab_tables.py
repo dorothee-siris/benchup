@@ -63,7 +63,7 @@ def test_new_table_exists_with_exact_columns(contract: dict, fname: str) -> None
     )
 
 
-def test_contract_declares_23_files(contract: dict) -> None:
+def test_contract_declares_25_files(contract: dict) -> None:
     # History of this count (each step live-verified against the deploy
     # step's own printed total, not typed in twice): ... -> 23 ->
     # 22 (impact_fields.parquet deleted, dead, superseded by impact_taxa.parquet)
@@ -73,16 +73,18 @@ def test_contract_declares_23_files(contract: dict) -> None:
     # rollup) -> 23 (contract v1.6): impact_cells.parquet and
     # collab_pair_topics.parquet deleted (dead, no code path read either);
     # type_overrides.csv and pool_exclusions.csv moved to a private build
-    # tree (the app never read them at run time either). `collab_facts.json`
-    # (momentum constants) and the build-internal `fwci_ref.parquet`/
-    # `fwci_work.parquet` do NOT join this count -- all are DELIBERATELY
-    # excluded from `contract["files"]` by the contract's own documented design
-    # (not a parquet table this app/data/ directory ships with a column schema
-    # to check). `data/scenarios/` (the ranking engine's precomputed
-    # substrates) is ALSO not counted here -- it is validated separately via
-    # `contract["scenario_files"]`, since its members are not one-row-per-key
-    # tables.
-    assert len(contract["files"]) == 23, sorted(contract["files"])
+    # tree (the app never read them at run time either) -> 25 (contract v1.7):
+    # two new tables -- inst_topic_impact.parquet (institution x primary-topic
+    # impact) and star_works.parquet (the per-work star-paper table); none
+    # dropped. `collab_facts.json` (momentum constants) and the build-internal
+    # `fwci_ref.parquet`/`fwci_work.parquet` do NOT join this count -- all are
+    # DELIBERATELY excluded from `contract["files"]` by the contract's own
+    # documented design (not a parquet table this app/data/ directory ships
+    # with a column schema to check). `data/scenarios/` (the ranking engine's
+    # precomputed substrates) is ALSO not counted here -- it is validated
+    # separately via `contract["scenario_files"]`, since its members are not
+    # one-row-per-key tables.
+    assert len(contract["files"]) == 25, sorted(contract["files"])
 
 
 # ---------------------------------------------------------------------------

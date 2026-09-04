@@ -247,23 +247,27 @@ def test_fwci_taxa_ifremer_field11_anchor():
 
 
 def test_index_star_leader_fwci_columns_present():
-    """The 8 new columns (world leaders, star papers, institution
+    """The 6 new columns (world leaders, star papers, institution
     FWCI_EU) add to `index.parquet` -- present, correctly typed, and (for
     the two anchor institutions the upstream build itself verified) matching
-    reference values recorded during that verification."""
+    reference values recorded during that verification. v1.7: one ranking
+    pool, so `n_topics_led_edu`/`n_topics_led_fair` are retired -- only
+    `n_topics_led_all` (now rank<=20 across every institution type) survives."""
     idx = pd.read_parquet(DATA_DIR / "index.parquet")
     expected_dtypes = {
         "n_stars": "int32", "star_share": "float32",
-        "n_topics_led_all": "int16", "n_topics_led_edu": "int16", "n_topics_led_fair": "int16",
+        "n_topics_led_all": "int16",
         "fwci_eu_median": "float32", "fwci_eu_mean": "float32", "fwci_eu_n": "int32",
     }
     for col, dtype in expected_dtypes.items():
         assert col in idx.columns, f"index.parquet missing column {col!r}"
         assert str(idx[col].dtype) == dtype, f"index.{col}: expected {dtype}, got {idx[col].dtype}"
+    assert "n_topics_led_edu" not in idx.columns
+    assert "n_topics_led_fair" not in idx.columns
 
     ifremer = idx.loc[idx["institution_id"] == IFREMER].iloc[0]
     assert int(ifremer["n_stars"]) == 160, f"Ifremer n_stars: expected 160, got {ifremer['n_stars']}"
     assert abs(float(ifremer["fwci_eu_median"]) - 0.690692) < 1e-3, f"Ifremer fwci_eu_median: expected ~0.690692, got {ifremer['fwci_eu_median']}"
 
     cnrs = idx.loc[idx["institution_id"] == CNRS].iloc[0]
-    assert int(cnrs["n_topics_led_all"]) >= 500, f"CNRS n_topics_led_all sanity floor: expected >=500, got {cnrs['n_topics_led_all']}"
+    assert int(cnrs["n_topics_led_all"]) == 1609, f"CNRS n_topics_led_all: expected 1609, got {cnrs['n_topics_led_all']}"
