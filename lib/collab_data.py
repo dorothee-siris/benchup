@@ -430,7 +430,7 @@ MOMENTUM_EVIDENCE_SIG_STATES = ("significant", "not_significant", "no_test")
 
 
 def momentum_evidence(mom: dict, facts: dict) -> dict:
-    """The Relationship section's always-visible momentum EVIDENCE LINE (D27,
+    """The Relationship section's always-visible momentum EVIDENCE LINE (
     `compare_momentum_line`) -- a PURE classification over the pair's own
     RAW figures (`mom["c1"]`/`c2`/`mom_rr`/`mom_p`), never over `mom_class`.
     `facts` is `collab_facts.json` verbatim (`_load_collab_facts`'s own
@@ -573,7 +573,7 @@ def reciprocity_frame(ctx: dict, subs: dict, a: str, b: str) -> pd.DataFrame:
     here), `joint_vol` = the pair's CORE-AR joint volume in that field
     (`field_breakdown`'s own `vol`, the authoritative uncapped source, never
     the topic-rollup lower bound). `x`/`y`/`joint_vol` are UNCHANGED by the
-    D27 scatter-return (byte-identical formula, still the bubble's position
+    the scatter-return (byte-identical formula, still the bubble's position
     and area) -- everything below is a NEW per-field addition:
 
       fwci_mean, fwci_median, n_fwci -- `collab_pair_fields.parquet`'s own

@@ -72,7 +72,7 @@ THE BUILDERS IN THIS MODULE
                          (`reciprocity_bars`, retired with its own
                          `_add_centred_gutter`/`_rewrite_reciprocity_hover`
                          helpers) before returning to the original reading.
-  The topic-overlap scatter and balance bars (D31) draw from `lib.
+  The topic-overlap scatter and balance bars draw from `lib.
   charts_topics` instead -- a separate module by design, so a Compare-side
   edit here can never collide with a concurrently-edited topic-plane change
   (see that module's own docstring).
@@ -863,7 +863,7 @@ def two_tab_bars(
 # ---------------------------------------------------------------------------
 # 4. yearly_domain_stack -- the relationship section's yearly stack
 # ---------------------------------------------------------------------------
-YEARLY_STACK_HEIGHT_PX = 500  # C7/D27: doubled (and a little) from the pre-trim 320 px
+YEARLY_STACK_HEIGHT_PX = 500  # doubled (and a little) from the pre-trim 320 px
 YEARLY_STACK_TOP_MARGIN_PX = C.BASE_PX * 2
 # Room for the native horizontal legend ABOVE the plot area, on
 # top of the year-total annotations that already sit just above each bar

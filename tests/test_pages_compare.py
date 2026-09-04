@@ -130,7 +130,7 @@ def test_key_figure_cards_render_nine_tiles_per_institution_plus_three_relations
     assert not at.exception
     html = _markdown_text(at)
     n_tiles = html.count('class="benchup-kpi"')
-    # 8 single-value cards + 1 co-pub tile, x 2 institutions (18), plus D27's
+    # 8 single-value cards + 1 co-pub tile, x 2 institutions (18), plus this version's
     # three relationship tiles (Joint publications, Joint star papers,
     # Momentum) in their own row, one apiece.
     assert n_tiles == 21, n_tiles
@@ -170,7 +170,7 @@ def test_card_tip_placeholders_match_the_tooltip_spec(card_col, tip_key, tile_ke
 
 def test_card_fwci_tip_carries_the_spec_distinctive_phrases():
     """`compare_card_fwci_eu`'s own reasoning sentences, copied verbatim
-    (D23's four-line "?": n covered, median, PP10_WD, European median of
+    (the four-line "?": n covered, median, PP10_WD, European median of
     the mean)."""
     tip = copy.COMPARE["CARD_FWCI_TIP"]
     assert "covered works" in tip
@@ -187,7 +187,7 @@ def test_card_topics_led_tip_states_the_world_top_twenty_all_institution_types()
 
 
 def test_card_fwci_value_equals_index_fwci_eu_mean():
-    """D23: the FWCI card's own displayed value moved to the mean."""
+    """the FWCI card's own displayed value moved to the mean."""
     at = _app(PAIR).run()
     assert not at.exception
     ctx = SC.bundle()["ctx"]
@@ -209,7 +209,7 @@ def test_at_least_one_card_carries_the_leader_dot():
 # ---------------------------------------------------------------- tabs -----
 
 def test_shape_and_sdg_sections_each_offer_profile_and_impact_tabs():
-    """Bar-layout contract (D28/C3): the SDG section is now PROFILE ONLY --
+    """Bar-layout contract: the SDG section is now PROFILE ONLY --
     no tab strip at all -- so only the Thematic-shape section's own pair of
     tabs remains; both label counts drop from 2 to 1."""
     at = _app(PAIR).run()
@@ -376,7 +376,7 @@ def test_relationship_section_shows_momentum_and_joint_stars_link():
 
 
 def test_relationship_three_tiles_render_with_their_own_values():
-    """D27: Joint publications == core_total, Joint star papers == pair_stars
+    """Joint publications == core_total, Joint star papers == pair_stars
     (0 when absent), Momentum == momentum_display's own text -- all three in
     one row, none of them carrying a leader dot (there is no "higher wins"
     reading across three unrelated measures)."""
@@ -397,7 +397,7 @@ def test_relationship_three_tiles_render_with_their_own_values():
 
 
 def test_momentum_evidence_line_renders_for_the_anchor_pair():
-    """D27's always-visible evidence sentence -- filled from the SAME pair
+    """the always-visible evidence sentence -- filled from the SAME pair
     the momentum tile itself reads, present on the page regardless of
     which state the anchor pair happens to land in."""
     at = _app(PAIR).run()
@@ -549,7 +549,7 @@ def test_no_st_rerun_call_anywhere_in_views_compare():
     """The HARD RULE, source-level: `st.rerun` never appears as LIVE CODE
     in this file (a prose mention inside a docstring
     explaining the rule -- as this very test's own docstring does -- is not
-    a violation; only an AST `Call` node is). D31 retired this page's one
+    a violation; only an AST `Call` node is). this version retired this page's one
     `on_click` state-flip mechanism (`_toggle_frontier_show_all`, the
     "Show all" button) along with the section it belonged to -- every
     remaining control on this page (the topic-overlap selector included)
@@ -599,7 +599,7 @@ def test_format_percent_is_banned_in_this_streams_own_files():
 DELETED_NAMES = ("metric_frame", "erc_long", "frontier_pooled", "impact_index",
                  "impact_subfields", "coverage", "top_shared_subfields",
                  "UNAVAILABLE_REASON", "FRONTIER_POOLS",
-                 # D31: absorbed into the topic overlap (`lib.topic_data.
+                 # absorbed into the topic overlap (`lib.topic_data.
                  # pair_topics`) -- neither survives in views_compare.py.
                  "frontier_positioning", "shared_frontier", "mirror_frontier")
 

@@ -251,7 +251,7 @@ def test_sdg_vacuity_a_wrong_value_is_caught(ctx, subs, golden):
 
 
 # ===========================================================================
-# 4/5. frontier_positioning and shared_frontier -- DELETED (D31): both
+# 4/5. frontier_positioning and shared_frontier -- DELETED: both
 #    absorbed into Compare's topic overlap (`lib.topic_data.pair_topics`),
 #    tested in `tests/test_topic_data.py` on real seeds (Strasbourg x CNRS,
 #    Salento x Bamberg) rather than here, since the function no longer
@@ -367,7 +367,7 @@ def test_cards_eu_median_columns_present_and_population_wide(ctx, golden):
 
 @pytest.mark.parametrize("pair_name", PAIR_NAMES)
 def test_cards_fwci_eu_mean_equals_index_column(ctx, golden, pair_name):
-    """D23: the FWCI card's own DISPLAYED value moved from the median to
+    """the FWCI card's own DISPLAYED value moved from the median to
     the mean -- `cards`'s `fwci_eu_mean` column is `index.parquet`'s own
     `fwci_eu_mean`, read directly, on all three reference pairs."""
     a, b = _pair_ids(golden, pair_name)
@@ -400,7 +400,7 @@ def test_cards_fwci_eu_median_absent_is_nan_not_a_crash(ctx, golden):
 
 
 # ===========================================================================
-# 8. links helpers -- DELETED (D31): the topic-overlap `url_a`/`url_b`/
+# 8. links helpers -- DELETED: the topic-overlap `url_a`/`url_b`/
 #    `url_joint` well-formedness check lives in `tests/test_topic_data.py`
 #    (`pair_topics` builds them, not `compare_data.py`).
 # ===========================================================================

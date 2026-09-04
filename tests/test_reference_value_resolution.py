@@ -107,7 +107,7 @@ def test_eu_mean_share_matches_share_refs_parquet_independently(ctx, subs, share
 def test_a_zero_reference_survives_from_frame_to_chart():
     """A genuine 0.0 `ref_value` reaches `charts_compare.fig_metric_bars` as
     a drawn dashed-red reference TICK (a `go.Shape` line, `x0 == x1` at the
-    reference value -- the bar-layout contract's D28 replacement for the
+    reference value -- the bar-layout contract's this version replacement for the
     earlier diamond marker, `CHROME_CONTRACT.md` SS10.3) -- `_add_reference`'s
     own docstring promises `np.isfinite`, never truthiness. Synthetic frame
     (the SAME `two_tab_bars`/`fig_metric_bars` input contract the page

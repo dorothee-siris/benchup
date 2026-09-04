@@ -329,7 +329,7 @@ def test_two_tab_bars_sdg_hover_has_no_field_line(slots):
     assert not any(X.HOVER_FIELD_LABEL in h for h in hovers)
 
 # ---------------------------------------------------------------------------
-# mirror_frontier -- shared-frontier mirror. DELETED (D31): retired along
+# mirror_frontier -- shared-frontier mirror. DELETED: retired along
 # with `_render_shared_frontier`/`_render_frontier_positioning`, absorbed
 # into Compare's topic overlap (`lib.charts_topics.fig_plane_frontier`'s
 # `color_by="owner"` mode + `balance_bars`, tested in
@@ -372,7 +372,7 @@ def test_yearly_domain_stack_rejects_a_missing_column():
 
 # ---------------------------------------------------------------------------
 # reciprocity_scatter -- a port of an earlier SIRIS Streamlit tool's own
-# "Zoom partenaire" bubble scatter (D27 -- back from the institution-
+# "Zoom partenaire" bubble scatter (this version -- back from the institution-
 # coloured bar adaptation this page drew in between). One bubble per field:
 # y = share of A's own output, x = share of B's own output, area = joint
 # volume, colour = domain, a dotted equal-weight diagonal, square axes.
@@ -667,7 +667,7 @@ def test_deleted_builders_are_actually_gone():
                 "fig_impact_subfields", "fig_frontier_map", "fig_diverging_shared",
                 "fig_pulse", "LOW_VOLUME_PATTERN_SHAPE", "LOW_VOLUME_PATTERN_SOLIDITY",
                 "SELECTOR_METRICS", "DYNAMICS_CLAMP_PCT",
-                # D27: reciprocity is a scatter again -- the bar adaptation
+                # reciprocity is a scatter again -- the bar adaptation
                 # this page drew in between, and its two bespoke helpers,
                 # leave no live code (docstring credits are exempt, as for
                 # every other renamed builder in this same list).
@@ -688,7 +688,7 @@ def test_deleted_builders_are_actually_gone():
                 "MIRROR_MARGIN_CAP_PX", "MIRROR_THREE_LINE_FACTOR",
                 "_wrap_topic_label", "_mirror_row_height",
                 "BAR_GROUP_SPAN", "BAR_GROUP_FILL",
-                # D31: the shared-frontier mirror itself is retired, absorbed
+                # the shared-frontier mirror itself is retired, absorbed
                 # into Compare's topic overlap (`lib.charts_topics`, a
                 # separate module) -- the function and its own now-orphaned
                 # constants leave no live consumer here.

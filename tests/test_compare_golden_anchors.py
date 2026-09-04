@@ -24,10 +24,10 @@ from `index.parquet`/`topics_all.parquet` by hand:
   * `topic_data.pair_topics`'s `rank_a`/`stars_a` -- read by hand off
     `topic_leaders.parquet`/`star_works.parquet` for one named topic,
     bypassing `leaders_data.topic_rank`/`stars_for_topics` entirely
-    (D31: replaces the retired `shared_frontier`'s own version of this
+    (replaces the retired `shared_frontier`'s own version of this
     anchor -- same method, the new function).
   * `topic_data.pair_topics`'s own shared/A-only/B-only counts for the
-    Strasbourg x CNRS anchor, pinned to the measured value (D31: replaces
+    Strasbourg x CNRS anchor, pinned to the measured value (replaces
     the retired `frontier_positioning`'s `n_top25_topics_published`
     anchor, which has no direct successor -- see that test's own note).
 
@@ -150,7 +150,7 @@ def test_relationship_joint_stars_matches_a_hand_read_of_pair_stars_parquet(ctx,
 # ---------------------------------------------------------------------------
 
 def test_pair_topics_rank_and_stars_match_a_hand_read_of_the_raw_leader_tables(ctx, subs):
-    """D31: the topic-overlap frame's `rank_a`/`stars_a` are queried
+    """the topic-overlap frame's `rank_a`/`stars_a` are queried
     directly over `topic_leaders.parquet`/`star_works.parquet` (via
     `leaders_data.topic_rank`/`stars_for_topics`), independent of whichever
     institution's own n_ar>=3 floor a topic clears -- hand-read against the
@@ -191,7 +191,7 @@ def test_pair_topics_rank_and_stars_match_a_hand_read_of_the_raw_leader_tables(c
 
 
 def test_pair_topics_shared_count_strasbourg_cnrs_default_mode_pinned(ctx):
-    """The overlap anchor D31 replaces the retired frontier-positioning
+    """The overlap anchor this version replaces the retired frontier-positioning
     KPIs with: Universite de Strasbourg (I68947357) x CNRS (I1294671590),
     default mode ("Top by volume"), n=50 per institution -- pinned to the
     measured value so a future data refresh reports drift rather than
@@ -218,7 +218,7 @@ def test_pair_topics_shared_count_strasbourg_cnrs_default_mode_pinned(ctx):
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
-# reciprocity -- D27's new per-field columns, recomputed by hand off the raw
+# reciprocity -- the new per-field columns, recomputed by hand off the raw
 # collab_pair_fields.parquet / star_works.parquet / topics_dim.parquet /
 # collab_pairs.parquet tables `collab_data.reciprocity_frame` itself reads,
 # bypassing its own duckdb pushdowns and cache.
@@ -308,7 +308,7 @@ def test_reciprocity_rank_in_a_b_match_a_hand_read_of_collab_pairs_and_reorient_
     assert int(out["rank_in_b"].iloc[0]) == pulse["rank_in_b"]
 
 
-# frontier_positioning -- DELETED (D31), no direct replacement: its five
+# frontier_positioning -- DELETED, no direct replacement: its five
 # KPIs (share_top25, n_top25_topics_published, n_of_those_top_decile,
 # n_topics_led_fair, n_stars_in_frontier_topics) are retired outright, not
 # ported into `pair_topics` under a new name -- Compare's topic overlap

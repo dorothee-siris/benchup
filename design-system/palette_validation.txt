@@ -1450,7 +1450,7 @@ institution-coloured bars). No new hex; `palette.WARNING_CAPTION_COLOR` (==
 
 ================================================================================
 RUN 39 (2026-09-04) -- JOINT_TOPIC_COLOR: a dedicated hue for the balance-bars
-"joint" segment in Compare's topic overlap (D31), so it never doubles as
+"joint" segment in Compare's topic overlap, so it never doubles as
 palette.MOMENTUM_COLORS["up"] (one colour, one meaning) on a page where the
 scatter above the bars already uses SHARED_FRONTIER red for its own "shared"
 concept. Method unchanged: dataviz skill validate_palette.py, --mode light
@@ -1553,7 +1553,7 @@ Palette (light, surface #FFFFFF, categorical): 17 slots
   about as close as two hues get. Disclosed plainly, not minimised: the SDG
   panel's coloured squares are ROW-LABEL ACCENTS on a bar chart with no
   institution-vs-institution balance concept and no "joint" segment of its
-  own (D31/C3: SDG stays profile-only, no overlap machinery) -- the two
+  own (SDG stays profile-only, no overlap machinery) -- the two
   hues are never two MARKS in one figure, never in one legend, and the
   balance bars' own legend chip strip (A / B / joint / shared) carries no
   SDG chip at all. Same disposition class as every other same-page,

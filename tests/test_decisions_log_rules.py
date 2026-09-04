@@ -57,7 +57,7 @@ def subs():
 
 
 # ---------------------------------------------------------------------------
-# 1. joint segment absent below the qualifying floor (D31: `topic_data.
+# 1. joint segment absent below the qualifying floor (`topic_data.
 #    pair_topics`' own `vol_joint`, replacing the retired `shared_
 #    frontier.joint_known`/`vol_joint` pair -- same rule, new function)
 # ---------------------------------------------------------------------------
@@ -78,7 +78,7 @@ def test_pair_topics_vol_joint_is_known_for_a_qualifying_pair(ctx):
 def test_topic_overlap_bars_tip_names_the_joint_floor_in_words():
     """The bars' own caption states the rule in words -- `copy.COMPARE
     ["TOPIC_OVERLAP_BARS_TIP"]`, filled from `topic_data.PAIR_JOINT_FLOOR`,
-    never a hand-typed number (D31: replaces the retired `SHARED_FRONTIER_
+    never a hand-typed number (replaces the retired `SHARED_FRONTIER_
     TIP`'s version of this same rule)."""
     from lib import topic_data as TD
 

@@ -135,7 +135,7 @@ def test_compare_builders_margin_is_the_constant_label_and_gutter_columns(name):
     assert fig.layout.margin.l == expected, f"{name}: margin.l={fig.layout.margin.l}, expected {expected}"
 
 
-# test_mirror_frontier_margin_is_the_compare_label_column -- DELETED (D31):
+# test_mirror_frontier_margin_is_the_compare_label_column -- DELETED:
 # `mirror_frontier` itself is retired, absorbed into Compare's topic
 # overlap (`lib.charts_topics.balance_bars`, a separate module); that
 # builder's own margin-column test lives in tests/test_charts_topics.py
@@ -380,7 +380,7 @@ def test_every_compare_label_wraps_to_at_most_two_lines_at_the_view_wrap_px(labe
 
 
 def test_topic_names_ellipsis_share_is_under_one_percent_of_4516(label_universe):
-    """D28's own stated ceiling: topic names may fall back to an ellipsis for
+    """the stated ceiling: topic names may fall back to an ellipsis for
     at most 1% of the universe in the Compare column, else the column must
     widen. Measured at zero occurrences at the (now view-level) wrap width;
     this test is the standing regression guard."""

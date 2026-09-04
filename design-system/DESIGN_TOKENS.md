@@ -53,7 +53,7 @@ aspirational scale below for provenance only.
 | Page title (`st.title`) | 44px | 700 | Streamlit default — identical across Find/Compare/Methods (`CHROME_CONTRACT.md` §1) |
 | Subsection header (`st.subheader`) | 28px | 600 | Streamlit default (`h3`) — the level every chart/table section intro uses |
 | Figure-wide default font (`FONT_PX`, `lib/charts.py`) | 12px | 400 | chart layout font; the ratio-chart caption line and the `_note` reading line both use this |
-| Category tick labels, bar-layout contract (`TICK_FONT_PX`, `lib/charts.py`) | 13px | 400 | the row label on every bar-family chart — bigger than the figure's other chrome (§O4's "raise the font 1–2 pt"), applied via an explicit `tickfont` on the category axis |
+| Category tick labels, bar-layout contract (`TICK_FONT_PX`, `lib/charts.py`) | 13px | 400 | the row label on every bar-family chart — bigger than the figure's other chrome (§the "raise the font 1–2 pt"), applied via an explicit `tickfont` on the category axis |
 | Bar text / gutter numbers / "?" glyph (`GUTTER_FONT_PX`, `lib/charts.py`) | 12px | 400 | : 11 → 12, now equal to `FONT_PX` — one shared constant fixes the "gutter font size differs across charts" complaint by construction; ink `rgb(90,95,102)` = `INK_SECONDARY` |
 | Table header cell (`st.dataframe`) | 16px | 700 | Streamlit default — consistent app-wide |
 | Table body cell (`st.dataframe`) | 16px | 400 | Streamlit default |
@@ -344,7 +344,7 @@ the digit-ban makes that a mechanical requirement, not a style preference.
 | `DEFAULT_GROUP_SPAN` / `DEFAULT_GROUP_FILL` | 0.82 / 0.86 | the yearly-breakdown pair's own grouped-bar geometry, verbatim — `offsetgroup` is broken on plotly 5.24.1. The `fig_metric_bars` family (Compare) now uses its OWN pair, `PAIR_GROUP_SPAN`/`PAIR_GROUP_FILL`, §8.6 |
 | `SHARE_DECIMALS` / `SI_DECIMALS` | 1 / 2 | one precision level per measure (RULES §5); number formats are composed from these |
 
-### 8.6 The bar-layout contract's own tokens (D28; single-sourced in `lib/charts.py`, `lib/charts_compare.py` imports every one)
+### 8.6 The bar-layout contract's own tokens (this version; single-sourced in `lib/charts.py`, `lib/charts_compare.py` imports every one)
 
 Supersedes the earlier per-frame gutter margin (`GUTTER_FRACTION`/`GUTTER_INSET`,
 `_gutter_margin_px`, retired) with CONSTANTS derived once from the whole label

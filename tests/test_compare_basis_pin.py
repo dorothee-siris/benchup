@@ -46,7 +46,7 @@ APP_DIR = Path(__file__).resolve().parents[1]
 # ---------------------------------------------------------------------------
 
 PAGE_FUNCTIONS = ("cards", "top_subfields", "all_subfields", "sdg_frame", "relationship")
-# D31: frontier_positioning/shared_frontier are DELETED (absorbed into
+# frontier_positioning/shared_frontier are DELETED (absorbed into
 # Compare's topic overlap, `lib.topic_data.pair_topics`, which is not a
 # `compare_data.py` function at all and so is outside this file's own
 # "no compare_data function this page calls accepts tree/basis" scope).

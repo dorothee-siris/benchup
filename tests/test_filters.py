@@ -37,7 +37,7 @@ def test_exclude_own_country_removes_every_fr_row(engine):
 
 
 def test_scale_guard_ratio_is_flat_three():
-    """D25: config.yaml's scale_guard is a single flat ratio -- the old
+    """config.yaml's scale_guard is a single flat ratio -- the old
     two-tier size band and its own switchover threshold are gone."""
     assert CFG["scale_guard"] == {"ratio": 3}
 

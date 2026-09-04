@@ -376,7 +376,7 @@ def test_scenario_cycle():
 
 def test_compare_pairs_sweep():
     """NEW (a concurrency fix). Runs Compare's frame functions
-    (`cards`, `top_subfields`, `sdg_frame`, `relationship`, and D31's
+    (`cards`, `top_subfields`, `sdg_frame`, `relationship`, and this version's
     `topic_data.pair_topics`, which replaces the retired `frontier_
     positioning`/`shared_frontier` pair in this sweep) over 40 distinct
     qualifying pairs

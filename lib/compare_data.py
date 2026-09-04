@@ -327,7 +327,7 @@ _CARD_INDEX_COLS = {
     "vol_full": "total_full_2020_2024", "vol_frac": "total_frac_2020_2024",
     "sdg_share": "sdg_tagged_share", "frontier_top25_share": "frontier_top25_share",
     "pp": "pp_top10_frac", "intl_share": "intl_share", "company_share": "company_share",
-    # D23: the FWCI card's DISPLAYED value is the MEAN now (its "?" still
+    # the FWCI card's DISPLAYED value is the MEAN now (its "?" still
     # names the median); both are plain index.parquet columns, each carrying
     # its own `<col>_eu_median` population figure via the generic loop below
     # -- "fwci_eu_mean_eu_median" is literally "the European median of the
@@ -627,7 +627,7 @@ def relationship(ctx: dict, ids: list[str], subs: dict | None = None) -> dict:
                            vol_joint, share_a, share_b (`collab_data.
                            reciprocity_frame`'s `y`/`x` respectively --
                            EQUAL golden `reciprocity_frame` once relabelled,
-                           the one invariant D27's scatter-return kept
+                           the one invariant the scatter-return kept
                            byte-identical), plus fwci_mean/fwci_median/
                            n_fwci/n_top10/n_covered/n_stars_field (per-field)
                            and rank_in_a/rank_in_b (a per-PAIR fact, the

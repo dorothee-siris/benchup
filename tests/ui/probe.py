@@ -266,7 +266,7 @@ def _probe_compare(page) -> None:
     check(ok, f"Compare golden: Ifremer's recomputed Publications figure {formatted!r} renders on the page")
 
     # --- topic-overlap counts, recomputed off `topic_data.pair_topics`
-    #     (D31: the SAME frame the owner-coloured plane / balance bars /
+    #     (the SAME frame the owner-coloured plane / balance bars /
     #     table / xlsx sheet all read), matched against the perimeter
     #     caption's own rendered numbers. ---
     from lib import topic_data as TD

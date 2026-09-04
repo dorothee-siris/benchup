@@ -260,7 +260,7 @@ def test_pair_domain_year_empty_for_non_qualifying_pair(ctx):
 
 
 # ============================================================================
-# reciprocity_frame -- D27's new per-field columns (x/y/joint_vol are the
+# reciprocity_frame -- the new per-field columns (x/y/joint_vol are the
 # pre-existing, byte-identical invariant -- see tests/test_compare_data.py's
 # own golden-equal test).
 # ============================================================================
@@ -303,7 +303,7 @@ def test_reciprocity_frame_empty_below_floor(ctx, subs_bestfit):
 
 # ============================================================================
 # momentum_evidence -- the always-visible evidence line's value-driven
-# classification (D27), independent of `mom_class`. `FACTS` mirrors
+# classification, independent of `mom_class`. `FACTS` mirrors
 # `collab_facts.json`'s own shape (the real file's values, so a test here
 # reads exactly like the production call) -- every threshold `momentum_
 # evidence` uses comes from this dict, never a literal in the function body.

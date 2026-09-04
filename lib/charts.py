@@ -314,7 +314,7 @@ LABEL_COL_PX = {"find": 306, "compare": 261}
 # manager's own request, §3): of the families that still need two lines at
 # this WIDER budget, only the widest handful per family do -- see
 # `tests/test_chart_layout.py`'s own per-family count and
-# `progress/RR-A1.md`'s Follow-up section for the exact numbers.
+# the layout measurement record for the exact numbers.
 WRAP_PX = {"find": LABEL_COL_PX["find"] - COL_PAD_PX,
           "compare": LABEL_COL_PX["compare"] - COL_PAD_PX}
 

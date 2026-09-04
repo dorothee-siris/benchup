@@ -351,7 +351,7 @@ def test_viz_spec_has_rejected_alternative_per_compare_view_row():
 
 # ---------------------------------------------------------------------------
 # JOINT_TOPIC_COLOR -- the topic-overlap balance bars' own dedicated hue
-# (D31): a fresh identity, never re-derived from an already-meaningful
+#: a fresh identity, never re-derived from an already-meaningful
 # colour it must stay distinguishable from.
 # ---------------------------------------------------------------------------
 

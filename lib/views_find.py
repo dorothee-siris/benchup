@@ -1114,7 +1114,7 @@ def _scale_guard_removed_count(bundle: dict, rankings: dict, seed_row) -> int:
     """How many candidates the scale guard alone drops from the default
     lens's full ranking, independent of every other post-filter -- the
     number the "Filtered by..." strip names once the guard is switched on
-    (D25)."""
+   ."""
     ranking = rankings.get(CFG["lenses"]["default"][0])
     if ranking is None or ranking["undefined"]:
         return 0
@@ -1535,7 +1535,7 @@ def _render_aspirational(bundle: dict, rankings: dict, filters: dict, seed_row,
         if fallback_rows:
             fallback = True
             rows = fallback_rows
-    # D25: the aspirational tab is EXEMPT from the scale guard -- every
+    # the aspirational tab is EXEMPT from the scale guard -- every
     # other post-filter still applies.
     asp_filters = {**filters, "scale_guard": False}
     kept = apply_filters(rows, seed_row=seed_row, family_scores=None, **asp_filters)
@@ -1702,7 +1702,7 @@ def _aspirational_sheet_frame(bundle: dict, rankings: dict, filters: dict, seed_
         if fallback_rows:
             fallback = True
             rows = fallback_rows
-    # D25: the aspirational tab (and this, its workbook-sheet twin) is
+    # the aspirational tab (and this, its workbook-sheet twin) is
     # EXEMPT from the scale guard -- every other post-filter still applies.
     kept = apply_filters(rows, seed_row=seed_row, family_scores=None,
                          **{**filters, "scale_guard": False})

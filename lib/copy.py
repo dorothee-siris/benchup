@@ -759,7 +759,7 @@ COMPARE = {
     # ======================================================================
     # 4. Topic overlap -- the shared selector row, the perimeter caption,
     #    the owner-coloured plane + balance bars, and their shared table.
-    #    D31: absorbs the earlier Frontier positioning + "who holds the
+    #    absorbs the earlier Frontier positioning + "who holds the
     #    shared frontier" pair of sections into one.
     # ======================================================================
     "TOPIC_OVERLAP_HEADER": "Topic overlap",
@@ -807,7 +807,7 @@ COMPARE = {
     "RELATIONSHIP_HEADER": "The relationship",
     "RELATIONSHIP_NEVER": "These two institutions have no recorded joint publications.",
 
-    # -- three tiles, one row (D27) -- titles + "?" verbatim from
+    # -- three tiles, one row -- titles + "?" verbatim from
     #    docs/tooltip_spec.yaml's own compare_tile_* entries, each's 4-ish
     #    help_lines joined into one continuous sentence, the house's own
     #    convention for every tile "?" on this page.
@@ -832,7 +832,7 @@ COMPARE = {
         "level; otherwise the tile says so. Under {floor} joint publications in the first "
         "window the base is too thin for a rate and none is shown."),
 
-    # -- the always-visible momentum evidence line (D27, compare_momentum_line) --
+    # -- the always-visible momentum evidence line (compare_momentum_line) --
     #    one sentence, filled from the pair's own figures; the {significance}
     #    slot resolves to one of the four MOMENTUM_LINE_SIG_* clauses below.
     #    A colon, never a dash, precedes {pct} -- a signed value (a true

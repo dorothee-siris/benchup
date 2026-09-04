@@ -442,7 +442,7 @@ PAIR_N_MIN, PAIR_N_MAX = 10, 50   # Compare's own tighter per-institution
 # clamp (Find's `select_topics` clamps to [N_MIN, N_MAX] = [10, 100] on its
 # OWN combined display set; Compare clamps EACH institution's own cut to
 # [10, 50] BEFORE union, so two full-width cuts still land at or under the
-# D29 100-mark chart cap: `select_topics` itself is never edited for this,
+# the 100-mark chart cap: `select_topics` itself is never edited for this,
 # its own [10, 100] band still applies as a no-op upper pass-through here).
 
 PAIR_JOINT_FLOOR = 5   # collab_topic_vols'/collab_pairs' own joint-qualifying

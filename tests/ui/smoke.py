@@ -473,7 +473,7 @@ def check_compare_deeplink(page) -> None:
         shape_tabs.filter(has_text="Profile").first.click(timeout=ACTION_TIMEOUT_MS)
         _settle(page, 1500)
 
-    # --- topic overlap (D31): the shared selector, the owner-coloured
+    # --- topic overlap: the shared selector, the owner-coloured
     #     plane, the balance bars -- replaces the retired mirror chart and
     #     its "Show all" interaction entirely (no such button exists any
     #     more on this page).

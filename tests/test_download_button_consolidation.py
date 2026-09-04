@@ -82,7 +82,7 @@ def test_no_download_button_call_site_outside_the_three_view_modules():
 # ============================================================================
 
 def test_compare_workbook_builder_returns_exactly_six_sheets():
-    """Cards, subfields (all 252), SDG, topic overlap (D31: replaces the
+    """Cards, subfields (all 252), SDG, topic overlap (replaces the
     retired positioning + shared-frontier pair with one sheet), relationship
     yearly, reciprocity -- SIX, in that order, no Methods sheet this time.
     Called through the SAME `_workbook_sheets` the real page's cached

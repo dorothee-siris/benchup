@@ -84,7 +84,7 @@ def test_every_c1_builder_runs_and_agrees_internally(ctx, subs, a, b):
     assert sdg["sdg_idx"].nunique() == 16
     assert set(sdg.attrs["untagged_share"]) == set(ids)
 
-    # D31: frontier_positioning/shared_frontier are DELETED, absorbed into
+    # frontier_positioning/shared_frontier are DELETED, absorbed into
     # Compare's topic overlap (`lib.topic_data.pair_topics`, not
     # `compare_data.py` any more) -- this cell's own coverage of that area
     # moves to the new function, same "every builder, every pair" spirit.
@@ -123,7 +123,7 @@ def test_fields_long_still_exported_for_collab_data(ctx, subs):
     assert list(df.columns) == CD.FIELDS_LONG_COLS
     # exercised end to end through the real consumer, not just a direct call
     recip = COL.reciprocity_frame(ctx, subs, a, b)
-    assert set(recip.columns) == set(COL.RECIPROCITY_COLS)  # D27: fwci/pp10/stars/rank additions
+    assert set(recip.columns) == set(COL.RECIPROCITY_COLS)  # fwci/pp10/stars/rank additions
 
 
 def test_deleted_matrix_machinery_is_gone():

@@ -59,7 +59,7 @@ PVAL_FLOOR = 0.001          # below this, the significance line reads "< 0.001"
 
 TOPIC_N_DEFAULT = 50        # the "Topics per institution" slider's own default
 TOPIC_N_STEP = 10
-TOPIC_TABLE_CAP = 200       # O3: no topic table ever shows more than this many rows
+TOPIC_TABLE_CAP = 200       # no topic table ever shows more than this many rows
 
 TAB_KEYS = {"profile": ("share_full", "eu_mean_share"), "impact": ("pp10_wd", "eu_mean_pp10_wd")}
 
@@ -126,7 +126,7 @@ def _card_facts(ctx: dict, iid: str, row: pd.Series) -> list[tuple[str, str, str
     tile, rendered separately (`_copub_tile`) -- it carries no single
     "higher" reading, so it stays out of the leader-dot family.
 
-    D23: the FWCI card's own DISPLAYED value moved from the median to the
+    the FWCI card's own DISPLAYED value moved from the median to the
     mean (`row["fwci_eu_mean"]`, `compare_data.cards`'s own column now --
     no side lookup on `ctx["index_by_id"]` needed any more); its "?" states
     the median, the world-referenced PP10_WD share and the population's own
@@ -343,7 +343,7 @@ def _render_sdg(ctx: dict, subs: dict, ids: list[str], names: dict, slots: dict)
 
 # ---------------------------------------------------------------------------
 # 4. Topic overlap -- the shared selector, the owner-coloured plane, the
-#    balance bars, and their shared table (D31; absorbs the earlier
+#    balance bars, and their shared table (this version; absorbs the earlier
 #    Frontier positioning + "who holds the shared frontier" pair).
 # ---------------------------------------------------------------------------
 
@@ -371,7 +371,7 @@ def _pair_topic_mode_options() -> list[str]:
 
 @st.cache_data(show_spinner=False, max_entries=8, ttl=1800)
 def _pair_topics_frame(a: str, b: str, mode: str, n: int, fwci_stat: str) -> pd.DataFrame:
-    """Bounded per-(pair, mode, n, fwci_stat) cache (D26) -- `ctx` is read
+    """Bounded per-(pair, mode, n, fwci_stat) cache -- `ctx` is read
     from the process-wide scenario cache inside, never passed as an
     argument, so the cache key stays a small hashable tuple."""
     return TD.pair_topics(SC.bundle()["ctx"], a, b, mode, n, fwci_stat)
@@ -609,7 +609,7 @@ def _render_topic_overlap_table(ctx: dict, pairs: pd.DataFrame, ids: list[str], 
 # ---------------------------------------------------------------------------
 
 def _momentum_evidence_line(mom: dict, facts: dict) -> str:
-    """D27's always-visible evidence sentence, filled from the pair's own
+    """the always-visible evidence sentence, filled from the pair's own
     figures -- `collab_data.momentum_evidence`'s value-driven state (never
     `mom_class`) picked straight into ONE of `copy.COMPARE`'s
     `MOMENTUM_LINE_*` templates, per `docs/tooltip_spec.yaml`'s
@@ -644,7 +644,7 @@ def _momentum_evidence_line(mom: dict, facts: dict) -> str:
 
 
 def _render_relationship_tiles(ctx: dict, rel: dict) -> None:
-    """The relationship block's three tiles, one row (D27) -- the SAME
+    """The relationship block's three tiles, one row -- the SAME
     bordered-card visual the Key-figure cards above already use (`_card_html`,
     `lib.tiles`'s own type scale), just with no leader dot (there is no
     "higher is better" reading across three unrelated measures). "Joint star
@@ -772,7 +772,7 @@ def _workbook_sheets(ctx: dict, subs: dict, ids: list[str], mode: str, n: int,
         yearly_df = rel["pulse"]["yearly"].copy()
     else:
         yearly_df = pd.DataFrame(columns=["year", "copubs"])
-    # D27: the three relationship tiles' own values ride along on this sheet
+    # the three relationship tiles' own values ride along on this sheet
     # too (repeated on every row -- a pair-level fact, the same flat-table
     # convention `reciprocity_frame`'s own rank_in_a/rank_in_b already use),
     # since the workbook has no separate "tiles" sheet of its own.

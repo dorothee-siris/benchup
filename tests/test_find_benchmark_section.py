@@ -306,10 +306,10 @@ def test_rank_under_text_na_mark_when_absent():
     assert _rank_under_text({}) == NA_MARK
 
 
-# --------------------------------------------------- 6. scale guard (D25)
+# --------------------------------------------------- 6. scale guard
 
 def test_aspirational_sheet_frame_identical_with_guard_on_or_off(ctx, subs):
-    """D25: the aspirational tab (and its workbook-sheet twin) is EXEMPT
+    """the aspirational tab (and its workbook-sheet twin) is EXEMPT
     from the scale guard -- toggling it must never change that one frame."""
     from lib import views_find
 
@@ -327,7 +327,7 @@ def test_aspirational_sheet_frame_identical_with_guard_on_or_off(ctx, subs):
 
 
 def test_find_strip_names_the_ratio_and_a_removed_count_when_guard_is_on():
-    """Live AppTest (D25): switching the scale guard on must make the
+    """Live AppTest: switching the scale guard on must make the
     "Filtered by..." strip name the flat ratio and how many candidates it
     removed from the current lens."""
     pytest.importorskip("streamlit.testing.v1")

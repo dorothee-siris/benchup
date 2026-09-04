@@ -311,7 +311,7 @@ def test_world_rank_and_is_led_agree(frames):
 
 
 # ---------------------------------------------------------------------------
-# pair_topics -- Compare's topic overlap (D31). Two anchor pairs: Strasbourg
+# pair_topics -- Compare's topic overlap. Two anchor pairs: Strasbourg
 # x CNRS (well above the joint-publication floor) and Salento x Bamberg
 # (below it -- collab_topic_vols/collab_pairs carry no qualifying row).
 # ---------------------------------------------------------------------------
