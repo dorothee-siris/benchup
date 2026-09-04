@@ -106,11 +106,13 @@ def test_eu_mean_share_matches_share_refs_parquet_independently(ctx, subs, share
 
 def test_a_zero_reference_survives_from_frame_to_chart():
     """A genuine 0.0 `ref_value` reaches `charts_compare.fig_metric_bars` as
-    a drawn diamond reference marker -- `_add_reference`'s own docstring
-    promises `np.isfinite`, never truthiness. Synthetic frame (the SAME
-    `two_tab_bars`/`fig_metric_bars` input contract the page builds),
-    since the point under test is the CODE PATH, not any one real anchor's
-    own reference value on this snapshot."""
+    a drawn dashed-red reference TICK (a `go.Shape` line, `x0 == x1` at the
+    reference value -- the bar-layout contract's D28 replacement for the
+    earlier diamond marker, `CHROME_CONTRACT.md` SS10.3) -- `_add_reference`'s
+    own docstring promises `np.isfinite`, never truthiness. Synthetic frame
+    (the SAME `two_tab_bars`/`fig_metric_bars` input contract the page
+    builds), since the point under test is the CODE PATH, not any one real
+    anchor's own reference value on this snapshot."""
     from lib import charts_compare as X
     from lib import palette as P
 
@@ -125,14 +127,14 @@ def test_a_zero_reference_survives_from_frame_to_chart():
     fig = X.fig_metric_bars(df, "share", [iid], slots=slots, names=names, level="subfield",
                             value_col="value", label_col="row_label", key_col="row_id",
                             gutter=False)
-    diamonds = [tr for tr in fig.data
-               if tr.type == "scatter" and tr.marker.symbol == X.REF_MARKER_SYMBOL]
-    assert len(diamonds) == 1, "exactly one varying-reference diamond trace"
-    assert 0.0 in list(diamonds[0].x), "the zero reference must be one of the plotted diamonds"
+    ticks = [s for s in fig.layout.shapes
+            if s.line.color == P.WARNING_CAPTION_COLOR and s.line.dash == "dash"]
+    assert len(ticks) == 3, "one varying-reference tick per row"
+    assert 0.0 in [s.x0 for s in ticks], "the zero reference must be one of the plotted ticks"
 
     # VACUITY: blank OUT the zero row's own ref_value (None, genuinely
-    # missing, not zero) on the SAME multi-row frame -- the diamond trace
-    # must still exist (the OTHER row still varies) but must NO LONGER carry
+    # missing, not zero) on the SAME multi-row frame -- the reference ticks
+    # must still exist (the OTHER rows still vary) but must NO LONGER carry
     # a 0.0 point. Proves the membership check above reads the real per-row
     # reference data, not a coincidental property of the chart.
     blanked = df.copy()
@@ -140,10 +142,10 @@ def test_a_zero_reference_survives_from_frame_to_chart():
     fig2 = X.fig_metric_bars(blanked, "share", [iid], slots=slots, names=names, level="subfield",
                              value_col="value", label_col="row_label", key_col="row_id",
                              gutter=False)
-    diamonds2 = [tr for tr in fig2.data
-                if tr.type == "scatter" and tr.marker.symbol == X.REF_MARKER_SYMBOL]
-    assert len(diamonds2) == 1
-    assert 0.0 not in list(diamonds2[0].x)
+    ticks2 = [s for s in fig2.layout.shapes
+             if s.line.color == P.WARNING_CAPTION_COLOR and s.line.dash == "dash"]
+    assert len(ticks2) == 2, "the blanked row draws no tick at all -- two rows still vary"
+    assert 0.0 not in [s.x0 for s in ticks2]
 
 
 if __name__ == "__main__":  # pragma: no cover

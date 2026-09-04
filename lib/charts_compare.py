@@ -174,7 +174,8 @@ def _esc(s) -> str:
 def _y_axis(fig: go.Figure, n_rows: int, ticktext: Sequence[str], **kw) -> None:
     fig.update_yaxes(tickmode="array", tickvals=list(range(n_rows)),
                      ticktext=list(ticktext), range=[n_rows - 0.5, -0.5],
-                     showgrid=False, automargin=True, **kw)
+                     showgrid=False, automargin=True,
+                     tickfont=dict(size=C.TICK_FONT_PX), **kw)
 
 
 def _row_rules(fig: go.Figure, n_rows: int, boundaries: Sequence[int] = ()) -> None:
@@ -217,28 +218,21 @@ DOT_GAP_PX = 6
 CAPTION_FONT_WEIGHT = 400      # (CHROME_CONTRACT.md SS7): the basis caption
                               # is NEVER bold, in either colour state
 
-ACCENT_GLYPH = "\N{BLACK VERTICAL RECTANGLE}"
-# The row-label accent: a GLYPH in the taxonomy's OFFICIAL hue
-# through plotly's tick pseudo-html, sitting left of a label that names the
-# taxon in full -- colour is recognition, the text is the encoding. Never a
-# mark; see `palette.py`'s LABEL ACCENTS section.
-ACCENT_GAP = "\N{NO-BREAK SPACE}"
+# Row-label accent, gutter geometry and the bar-layout contract's other
+# shared numbers are SINGLE-SOURCED in `lib/charts.py` now (`ACCENT_GLYPH`/
+# `ACCENT_GAP`, `GUTTER_NEG_AXIS_FRAC`/`GUTTER_TIP_FRAC`/`GUTTER_PHANTOM_FILL`,
+# `LABEL_COL_PX`/`GUTTER_COL_PX`/`COL_PAD_PX`/`WRAP_PX`, `TICK_FONT_PX`,
+# `ROW_PITCH_PAIR`/`BAR_PX_PAIR`/`PAIR_GROUP_SPAN`/`PAIR_GROUP_FILL`) --
+# referenced here as `C.<name>` rather than kept as a second copy.
 
 LABEL_SHARED = "shared"
 NOTE_HELP_GLYPH = "?"
 
-# --- the bar-family contract (SS10): gutter column + diamond reference -----
+# --- the bar-family contract (CHROME_CONTRACT.md SS10): gutter column + a
+#     dashed red reference tick, never a diamond any more -----------------
 COMPARE_MAX_SERIES = 3        # headroom above Compare's fixed pair (two search
                               # slots) -- `_series_ids` refuses a
                               # figure rather than truncate past this
-BAR_PX = 13                   # target thickness of one institution's bar
-BAR_GROUP_SPAN = C.DEFAULT_GROUP_SPAN     # single-sourced with charts.py's
-BAR_GROUP_FILL = C.DEFAULT_GROUP_FILL     # own Find-panel geometry
-GUTTER_NEG_AXIS_FRAC = 0.16
-GUTTER_TIP_FRAC = 0.06
-REF_MARKER_SYMBOL = "diamond-tall"
-REF_MARKER_SIZE = 8
-GUTTER_PHANTOM_FILL = "rgba({0},{0},{0},{0})".format(0)   # fully transparent
 
 LOW_VOLUME_FLOOR = 10.0
 # A cell whose mean annual FULL volume is below this is drawn cautioned
@@ -258,9 +252,9 @@ HOVER_LOW_VOLUME = "rests on fewer than {floor} works over the counted window, r
 METRICS = ("share", "pp")
 LEVELS = ("field", "subfield", "sdg")
 REF_METRICS = ("share", "pp")
-# Both draw a per-row DIAMOND reference (`REF_MARKER_SYMBOL`) whenever the
+# Both draw a per-row dashed RED reference TICK (`_add_reference`) whenever the
 # frame carries a `ref_value` -- the European-mean share, or the world PP10
-# reference -- per.
+# reference -- spanning that row's own band, x0 == x1 at the reference value.
 SORT_MODES = ("taxonomy", "value")
 # `taxonomy` (the default) keeps the frame's OWN row order, grouped under a
 # domain separator when `domain_col` is present -- this is what "rows ordered
@@ -291,24 +285,25 @@ def _fmt_metric(v, metric: str) -> str:
     return _fmt_pct(v) if kind == "pct" else _fmt_vol(v)
 
 
-def metric_row_height(n_rows: int, n_series: int, n_wrapped: int = 0,
-                      minimum: int = C.MIN_HEIGHT) -> int:
-    """Figure height for `n_rows` grouped-bar rows, sized from `BAR_PX` so
-    "no bar thinner than target" is an arithmetic property of the builder
-    rather than a hope about the row count -- see `charts.row_height`, whose
-    base estimate this extends with the wrapped-row-pitch correction folded
-    into the fallback branch too."""
+def metric_row_height(n_rows: int, n_series: int, minimum: int = C.MIN_HEIGHT) -> int:
+    """Figure height under the bar-layout contract: margins + `n_rows` at
+    `ROW_PITCH_PAIR` (two-line labels are the norm that pitch already hosts,
+    so there is no `n_wrapped` correction to fold in any more). `n_series`
+    stays as a DEFENSIVE fallback only -- Compare's own fixed two-institution
+    page never exceeds two series, and `PAIR_GROUP_FILL`/`PAIR_GROUP_SPAN`
+    are solved so exactly two `BAR_PX_PAIR`-thick bars fit the pitch exactly
+    -- but `COMPARE_MAX_SERIES` allows headroom to three, so a THIRD series
+    (never exercised today) still gets a taller figure instead of a
+    silently-squeezed bar."""
     n_rows = max(int(n_rows), 1)
-    n_wrapped = min(max(int(n_wrapped), 0), n_rows)
-    base = C.row_height(n_rows, minimum=minimum, n_wrapped=n_wrapped)
-    chrome = C.BASE_PX + C.BASE_PX // 2
-    need = BAR_PX * max(int(n_series), 1) / (BAR_GROUP_SPAN * BAR_GROUP_FILL)
-    if n_wrapped > 0:
-        need *= C.WRAP_ROW_FACTOR
-    have = max(base - chrome, 0) / n_rows
-    if have >= need:
+    n_series = max(int(n_series), 1)
+    base = C.row_height_pair(n_rows, minimum=minimum)
+    if n_series <= 2:
         return base
-    return int(round(need * n_rows)) + chrome
+    chrome = C.BASE_PX + C.BASE_PX // 2
+    need = C.BAR_PX_PAIR * n_series / (C.PAIR_GROUP_SPAN * C.PAIR_GROUP_FILL)
+    have = max(base - chrome, 0) / n_rows
+    return base if have >= need else max(minimum, int(round(need * n_rows)) + chrome)
 
 
 def _series_ids(d: pd.DataFrame, slots: Mapping, ids: Sequence | None) -> list:
@@ -328,19 +323,23 @@ def _series_ids(d: pd.DataFrame, slots: Mapping, ids: Sequence | None) -> list:
 
 def _accent_ticktext(rows: pd.DataFrame, level: str, label_col: str,
                      accent_col: str | None) -> tuple[list[str], list[str]]:
-    """`(plain, styled)` tick strings, with the taxonomy accent glyph.
-    `plain` is what `charts._gutter_margin_px` measures; `styled` is what
-    plotly draws. No accent is invented when the level has no official
-    palette, or the frame carries no accent key."""
+    """`(plain, styled)` tick strings, pixel-wrapped to <= two lines at
+    `charts.WRAP_PX["compare"]` -- ONE wrap budget for the whole view, not
+    one per taxonomy level (a per-level budget wrapped short labels far
+    too early relative to the column they actually sit in; see `charts.
+    WRAP_PX`'s own module-header note) -- with the taxonomy accent glyph,
+    single-sourced now through `charts._tick_label` (Find's SDG panel uses
+    the identical function for its own accent square). No accent is
+    invented when the level has no official palette, or the frame carries
+    no accent key."""
     family = _LEVEL_ACCENT_FAMILY.get(level)
+    wrap_px = C.WRAP_PX["compare"]
     plain, styled = [], []
     for _, r in rows.iterrows():
-        text_plain, text_styled = C._tick_display(str(r[label_col]), None)
+        accent_hex = None
         if family and accent_col and accent_col in rows.index.names + list(rows.columns):
-            hexcol = P.label_accent_color(family, r[accent_col])
-            text_plain = f"{ACCENT_GLYPH}{ACCENT_GAP}{text_plain}"
-            text_styled = (f'<span style="color:{hexcol}">{ACCENT_GLYPH}</span>'
-                           f"{ACCENT_GAP}{text_styled}")
+            accent_hex = P.label_accent_color(family, r[accent_col])
+        text_plain, text_styled = C._tick_label(str(r[label_col]), wrap_px=wrap_px, accent_hex=accent_hex)
         plain.append(text_plain)
         styled.append(text_styled)
     return plain, styled
@@ -453,19 +452,25 @@ def _metric_hover(r, iid, names, label_col, value_col, metric, ref_col,
 
 
 def _ref_line(fig: go.Figure, x: float) -> None:
-    """The heavier/darker rule for a CONSTANT reference (a value the same in
-    every row): a repeated marker on a value that never changes would be
-    visual noise, not a benchmark, so the constant case stays a rule."""
-    fig.add_vline(x=x, line=dict(color=P.INK, width=C.LINE_PX, dash="dash"))
+    """ONE full-height dashed RED rule for a CONSTANT reference (a value the
+    same in every row, e.g. SI/ESI = 1): a repeated tick on a value that
+    never changes would be visual noise, not a benchmark, so the constant
+    case stays a single rule spanning the whole panel (`add_vline`'s own
+    default span)."""
+    fig.add_vline(x=x, line=dict(color=P.WARNING_CAPTION_COLOR, width=C.LINE_PX, dash="dash"))
 
 
 def _add_reference(fig: go.Figure, rows: pd.DataFrame, ref_col: str,
                    ref_value: float | None) -> None:
-    """ONE heavier/darker rule for a CONSTANT reference (`_ref_line`), a
-    `REF_MARKER_SYMBOL` diamond MARKER per row for a VARYING one: an
-    index reference is a different number in every taxon, and drawing either
-    a single line or a single row's worth of markers across the whole panel
-    would assert a benchmark that does not exist for the other rows."""
+    """ONE full-height dashed RED rule for a CONSTANT reference (`_ref_line`),
+    a dashed RED vertical TICK per row for a VARYING one -- `x0 == x1` at the
+    reference value, spanning exactly that row's own band (`ri - 0.5` to
+    `ri + 0.5`, the category-axis unit every row occupies): an index
+    reference is a different number in every taxon, and drawing either a
+    single line or a single row's worth of markers across the whole panel
+    would assert a benchmark that does not exist for the other rows. A
+    `go.Shape` line, not a marker trace -- no diamond, no hover of its own
+    (the fact is already on the row's own hover line, `HOVER_REFERENCE`)."""
     if ref_value is not None:
         _ref_line(fig, float(ref_value))
         return
@@ -476,13 +481,13 @@ def _add_reference(fig: go.Figure, rows: pd.DataFrame, ref_col: str,
             if float(finite.max()) - float(finite.min()) <= 1e-12:
                 _ref_line(fig, float(finite.iloc[0]))
             else:
-                xs = [float(v) for v in series.tolist() if np.isfinite(v)]
-                ys = [ri for ri, v in enumerate(series.tolist()) if np.isfinite(v)]
-                fig.add_trace(go.Scatter(
-                    x=xs, y=ys, mode="markers",
-                    marker=dict(symbol=REF_MARKER_SYMBOL, size=REF_MARKER_SIZE,
-                               color=P.INK, line=dict(width=0)),
-                    hoverinfo="skip", showlegend=False))
+                for ri, v in enumerate(series.tolist()):
+                    if not np.isfinite(v):
+                        continue
+                    fig.add_shape(type="line", x0=float(v), x1=float(v),
+                                 y0=ri - 0.5, y1=ri + 0.5, xref="x", yref="y",
+                                 line=dict(color=P.WARNING_CAPTION_COLOR,
+                                           width=C.LINE_PX, dash="dash"))
 
 
 # ---------------------------------------------------------------------------
@@ -510,7 +515,6 @@ def fig_metric_bars(
     metric_label: str | None = None,
     gutter: bool = True,
     gutter_col: str = "vol_display",
-    gutter_header: str | None = None,
     low_vol_col: str = "vol_full_annual_mean",
     domain_col: str = "domain_id",
     domain_order_col: str = "domain_order",
@@ -527,16 +531,18 @@ def fig_metric_bars(
     where a `domain_col` value changes. `sort="value"` re-ranks by the value
     summed over the compared institutions.
 
-    THE GUTTER COLUMN (CHROME_CONTRACT.md SS10.1). `gutter=True` (the
-    default) draws a dedicated LEFT column: one phantom, zero-visible-fill
-    `go.Bar` trace per institution, in the SAME lane as its real bar, at a
-    small negative x (`GUTTER_NEG_AXIS_FRAC` of the data span) with its own
-    raw `gutter_col` value as text, pushed further left by
-    `textposition="outside"`. `gutter_header` names the basis (the caller's
-    word, this module never invents one). Below roughly 600 px of plot width
-    the column has nowhere to go (a wrapped first-row label alone can need
-    most of a 390 px figure); pass `gutter=False` and the raw value stays in
-    hover alone -- never a horizontal scroll either way.
+    THE GUTTER COLUMN (bar-layout contract, CHROME_CONTRACT.md SS10.1).
+    `gutter=True` (the default) draws a dedicated LEFT column: one phantom,
+    zero-visible-fill `go.Bar` trace per institution, in the SAME lane as its
+    real bar, at a small negative x (`charts.GUTTER_NEG_AXIS_FRAC` of the
+    data span) with its own raw `gutter_col` value as text, pushed further
+    left by `textposition="outside"`. **No header above the column any more**
+    -- the earlier per-chart basis label ("Publications, full count") is
+    retired; the basis is stated once, in the section's own caption, not
+    repeated over every chart. Below roughly 600 px of plot width the column
+    has nowhere to go (a wrapped first-row label alone can need most of a
+    390 px figure); pass `gutter=False` and the raw value stays in hover
+    alone -- never a horizontal scroll either way.
 
     THE CAUTION CHANNEL (CHROME_CONTRACT.md SS10.2). Every bar is SOLID,
     in the institution's own colour. A cell `_is_low_volume` flags switches
@@ -550,10 +556,12 @@ def fig_metric_bars(
     field/subfield) it carries a glyph in the taxonomy's official colour -- taxonomy colour on labels,
     institution colour on marks, never the reverse.
 
-    REFERENCE (CHROME_CONTRACT.md SS10.3). Only `REF_METRICS` (`share`,
-    `pp`) draw one, from the frame's OWN `ref_value` column. A reference that
-    VARIES by row is a dark `REF_MARKER_SYMBOL` diamond MARKER per row; one
-    that is the SAME for every row stays ONE rule across the panel.
+    REFERENCE (bar-layout contract, CHROME_CONTRACT.md SS10.3). Only
+    `REF_METRICS` (`share`, `pp`) draw one, from the frame's OWN `ref_value`
+    column. A reference that VARIES by row is a dashed RED vertical TICK per
+    row (`x0 == x1` at the reference value, spanning that row's own band --
+    replaces the earlier diamond marker); one that is the SAME for every row
+    stays ONE full-height dashed red rule across the panel.
 
     EMPTY STATE (n/a never zero). An institution with no row for a taxon gets
     NO bar and NO label. A genuine zero gets no visible bar either (a
@@ -600,8 +608,8 @@ def fig_metric_bars(
     gutter_x = 0.0
     if gutter_active:
         basis = vmax if vmax > 0 else (abs(vmin) if vmin < 0 else 1.0)
-        neg_extent = basis * GUTTER_NEG_AXIS_FRAC
-        gutter_x = -neg_extent * GUTTER_TIP_FRAC
+        neg_extent = basis * C.GUTTER_NEG_AXIS_FRAC
+        gutter_x = -neg_extent * C.GUTTER_TIP_FRAC
 
     fig = go.Figure()
     _row_rules(fig, n, boundaries)
@@ -609,8 +617,8 @@ def fig_metric_bars(
         _add_reference(fig, rows, ref_col, ref_value)
 
     for k, iid in enumerate(series):
-        offset, bar_w = C._series_offset_width(len(series), k, BAR_GROUP_SPAN,
-                                               BAR_GROUP_FILL)
+        offset, bar_w = C._series_offset_width(len(series), k, C.PAIR_GROUP_SPAN,
+                                               C.PAIR_GROUP_FILL)
         slot = _slot_of(slots, iid)
         color = P.institution_color(slot)
         ink = P.institution_ink(slot)
@@ -640,28 +648,23 @@ def fig_metric_bars(
             x=xs, y=ys, orientation="h", offset=offset, width=bar_w,
             marker=dict(color=[color] * len(xs), line=dict(color=color, width=C.HAIRLINE_PX)),
             text=texts, textposition="outside", cliponaxis=False,
-            textfont=dict(size=C.GUTTER_FONT_PX, color=inks),
+            textfont=dict(size=C.GUTTER_FONT_PX, color=inks), constraintext="none",
             customdata=hovers, hovertemplate="%{customdata}<extra></extra>",
             showlegend=False))
         if gy:
             fig.add_trace(go.Bar(
                 x=[gutter_x] * len(gy), y=gy, orientation="h", offset=offset, width=bar_w,
-                marker=dict(color=[GUTTER_PHANTOM_FILL] * len(gy), line=dict(width=0)),
+                marker=dict(color=[C.GUTTER_PHANTOM_FILL] * len(gy), line=dict(width=0)),
                 text=gtexts, textposition="outside", cliponaxis=False,
-                textfont=dict(size=C.GUTTER_FONT_PX, color=ginks),
+                textfont=dict(size=C.GUTTER_FONT_PX, color=ginks), constraintext="none",
                 customdata=[""] * len(gy), hoverinfo="skip", showlegend=False))
 
     fig.update_layout(barmode="overlay", bargap=0)
-
-    if gutter_active and gutter_header:
-        fig.add_annotation(x=gutter_x, xref="x", y=1.0, yref="y domain",
-                           xanchor="right", yanchor="bottom",
-                           text=gutter_header, showarrow=False,
-                           font=dict(size=C.GUTTER_FONT_PX, color=P.INK_SECONDARY))
+    # No header above the gutter column (bar-layout contract) -- the basis
+    # is stated once in the section's own caption, never repeated per chart.
 
     plain, styled = _accent_ticktext(rows, level, label_col, accent_col)
     _y_axis(fig, n, styled)
-    n_wrapped = sum(1 for s in styled if "<br>" in s)
     lo = min(vmin, 0.0)
     hi = max(vmax, 0.0)
     span = (hi - lo) or (abs(hi) or 1.0)
@@ -676,10 +679,12 @@ def fig_metric_bars(
         fig.update_xaxes(tickmode="array", tickvals=C._nice_ticks(hi))
     if signed:
         _bold_axes(fig, y=None)
-    plain_lines = [s.replace("<br>", "\n") for s in plain]
-    return C._base_layout(fig, metric_row_height(n, len(series), n_wrapped=n_wrapped),
-                          margin=dict(t=C.BASE_PX // 2,
-                                      l=C._gutter_margin_px(plain_lines),
+    # bar-layout contract: a CONSTANT margin -- the whole label universe,
+    # never this frame's own longest name -- so every Compare bar chart
+    # starts its bars at the identical pixel (`fig_share_si`'s own note).
+    margin_l = C.LABEL_COL_PX["compare"] + C.GUTTER_COL_PX["compare"] + C.COL_PAD_PX
+    return C._base_layout(fig, metric_row_height(n, len(series)),
+                          margin=dict(t=C.BASE_PX // 2, l=margin_l,
                                       r=C.BASE_PX, b=C.BASE_PX))
 
 
@@ -687,7 +692,6 @@ def fig_metric_bars(
 # 2. two_tab_bars -- the Thematic-shape and SDG-profile charts
 # ---------------------------------------------------------------------------
 TWO_TAB_TABS = ("profile", "impact")
-GUTTER_HEADER_FULL = "Publications, full count"
 
 
 def two_tab_bars(
@@ -717,13 +721,14 @@ def two_tab_bars(
       value -- the row's SHARE OF OWN OUTPUT, 0-1 (`tab="profile"`)
                        or its PP10_WD -- share of publications in the world
                        top decile, 0-1 (`tab="impact"`)
-      ref_value -- the diamond reference: the European-mean share
-                       (profile) or the world PP10 reference (impact);
-                       omit the column, or leave a row's cell null, for no
-                       diamond on that row
+      ref_value -- the reference: the European-mean share (profile) or the
+                       world PP10 reference (impact), drawn as a dashed red
+                       vertical tick spanning its row; omit the column, or
+                       leave a row's cell null, for no reference on that row
       vol_full -- full-counted publication count, int -- drawn in the
-                       LEFT gutter column (header names the pinned basis:
-                       bestfit + full counting)
+                       LEFT gutter column (the pinned basis -- bestfit + full
+                       counting -- is named once in the section's own
+                       caption, not repeated as a per-chart header any more)
       n_covered -- covered-works denominator for the impact tab; a
                        row with `n_covered` under `palette.RATIO_HATCH_FLOOR`
                        (fifty) gets the red dagger caution -- ignored on the
@@ -755,7 +760,7 @@ def two_tab_bars(
         slots=colors, names=names, level=level, sort="taxonomy",
         value_col="value", label_col="row_label", key_col="row_id",
         ref_col="ref_value", denom_value_col="n_covered",
-        gutter=gutter, gutter_col="vol_full", gutter_header=GUTTER_HEADER_FULL,
+        gutter=gutter, gutter_col="vol_full",
         domain_col=domain_col, domain_order_col="__ungrouped_order__",
     )
 
@@ -771,141 +776,26 @@ HOVER_JOINT_UNAVAILABLE = "joint count not available under {floor} joint publica
 TOP_DECILE_GLYPH = "\N{BLACK DIAMOND}"
 MIRROR_LINK_TARGET = "_blank"
 
-MIRROR_LABEL_WRAP_WIDTH = 20
-# Streamlit gives Python no viewport
-# width, so this chart cannot offer a caller-decided `gutter=False`-style
-# narrow-width switch the way `fig_metric_bars` does -- a topic name has to
-# fit SOME fixed budget at every width.
-# **Measured, not estimated** (`yaxis.automargin=True` GROWS the configured
-# margin to fit whatever text arrives, so it -- not a character-count
-# formula -- is the real ceiling that decides the plot area's width): a
-# character-length sweep against the live Playwright render found the plot
-# area collapses toward zero above ~26 chars/line at 390 px and plateaus at
-# its `MIRROR_MARGIN_CAP_PX`-bound maximum at 22 chars/line and below. Twenty
-# keeps comfortable headroom under that knee for glyphs wider than the
-# probe's own monospaced test characters -- UNCHANGED by the three-line
-# widening below, because automargin cares about the WIDEST
-# LINE, not how many lines a label has.
-MIRROR_LABEL_MAX_LINES = 3
-# Raised from two -- real OpenAlex
-# topic names run 25-60 chars ("Geological and Geochemical Analysis") and
-# were losing their meaning cut to two 20-char lines. Verified this does
-# NOT reopen the 390 px fix above: `MIRROR_LABEL_WRAP_WIDTH` (the widest any
-# ONE line can be) is unchanged, and automargin's left-margin need is driven
-# by line WIDTH, not line COUNT -- re-measured on the live render after this
-# change.
-MIRROR_LABEL_CHAR_BUDGET = 60
-# The ellipsis decision is keyed on the ORIGINAL name's own
-# character count, never on how many lines greedy word-wrap happens to need
-# a <= 60 char name that still does not fit `MIRROR_LABEL_MAX_LINES`
-# lines under strict word-boundary wrapping (word lengths tile imperfectly)
-# gets its overflow MERGED into the last line instead (never a lost
-# character, `charts.wrap_label`'s own "two lines, not truncation" rule);
-# only a name that is ACTUALLY longer than the budget is cut, with
-# `ELLIPSIS` marking the cut.
-MIRROR_MARGIN_CAP_PX = 180
-# The CONFIGURED left margin -- NOT a hard ceiling on the RENDERED one:
-# `yaxis.automargin=True` (`_y_axis`, unchanged) GROWS the actual margin
-# past this value whenever the tick text still needs more room, so this
-# number only binds once `MIRROR_LABEL_WRAP_WIDTH` has already kept the
-# text short enough that it does not need to (measured together on the live
-# render as one system, not two
-# independent settings). At 390 px total viewport width, minus the render
-# harness's own 16 px page padding on both sides and the chart's `r`/`b`
-# margins, 180 px of left margin leaves > 120 px for the bars -- the
-# acceptance floor set for this fix. Re-confirmed unchanged after the
-# three-line widening (three lines, still 20 chars wide each).
-ELLIPSIS = "\N{HORIZONTAL ELLIPSIS}"
-
-MIRROR_THREE_LINE_FACTOR = 3.0
-# A genuine, real-topic-name overlap survived
-# to the live page ("Ocean Acidification / Effects and / Responses" running
-# into the next row) at both 1280 and 390 px -- found on the REAL render,
-# not the synthetic harness. Measured directly (Playwright, `.ytick`
-# bounding boxes against the real Compare page, an anchor institution pair,
-# "Show all"):
-# a 3-line row's own rendered text is 47.2 px tall; `_mirror_row_height`'s
-# OLD formula (linearly extrapolating `charts.WRAP_ROW_FACTOR`'s 2-line
-# increment, +0.7x ROW_PX per additional line) gave a pitch of ~42.2 px
-# a 5.0 px deficit. Plotly CENTRES each row's text in its uniform slot, so
-# two ADJACENT 3-line rows each overflow 2.5 px toward the other -- exactly
-# the measured 5.0 px overlap, at every 3-line-then-3-line boundary in the
-# real 44-topic render (16 such rows in the anchor pair set). The 2-line
-# case is UNCHANGED and was never the problem (measured 31.6 px text against
-# a ~30.6 px pitch, comfortably positive gaps throughout) -- this constant
-# governs ONLY the 3-line pitch, calibrated to the SAME live measurement
-# with real headroom (18 px x 3.0 = 54 px pitch against a measured 47.2 px
-# need, ~6.8 px margin) rather than a formula extrapolated from a different
-# case's own increment.
+# --- mirror_frontier's own label geometry -- RETIRED under the bar-layout
+# contract (`docs/VIZ_SPEC.md` bar-layout section): this chart's margin and
+# topic-name wrap now use the SAME constants the rest of Compare's bar
+# charts do (`charts.LABEL_COL_PX["compare"]`, `charts.WRAP_PX["compare"]`,
+# `charts.wrap_label_px`) instead of a bespoke character-count budget and a
+# margin CAP -- both retired below, not kept as dead code (a reversed
+# decision is worth being explicit about, this module's own established
+# convention). Two consequences, both measured: (1) the fixed pixel column
+# is WIDER than the old 20-char/line budget (it is sized from the real
+# rendered font over the whole 4,516-topic universe, not guessed), so the
+# three-line escape hatch this section used to need is no longer live --
+# `charts.wrap_label_px` caps at two lines, with the SAME ellipsis fallback
+# `charts.LABEL_COL_PX["compare"]` was itself derived to need for < 1 % of
+# topics (measured at zero occurrences on today's data); (2) row pitch
+# simplifies to `charts.row_height_single` (the ONE-bar-per-row pitch that
+# chart's own composite floating segments already are, structurally --
+# `mirror_frontier`'s row is not a bar-family or dot-family row, but its
+# label geometry now converges on the single, not the paired, form).
 
 
-def _wrap_topic_label(text, width: int = MIRROR_LABEL_WRAP_WIDTH,
-                      max_lines: int = MIRROR_LABEL_MAX_LINES,
-                      char_budget: int = MIRROR_LABEL_CHAR_BUDGET) -> list[str]:
-    """Greedy word-wrap (never splits a word), up to `max_lines` (three)
-    the ONE place in this module that can shorten a label, and even then
-    ONLY past `char_budget` (sixty) characters of the ORIGINAL name (real
-    OpenAlex topic names run 25-60 chars and must survive
-    whole). There is no Streamlit-side viewport width to condition a
-    per-width switch on here (`mirror_frontier`'s own docstring) -- see
-    `CHROME_CONTRACT.md` SS13.8. Returns a LIST of raw (unescaped) lines, so
-    the caller can HTML-escape each line before joining with `<br>` (escaping
-    the whole wrapped string first risks splitting an entity mid-way).
-
-    Two distinct "too long" cases, handled differently on purpose:
-      * the name is <= `char_budget` chars but strict word-boundary
-        wrapping still needs MORE than `max_lines` lines (word lengths tile
-        imperfectly against `width`) -- the overflow is MERGED into the
-        last line instead of cut, so no character is ever lost under the
-        budget (`charts.wrap_label`'s own "cap is the line count, not the
-        text" rule, applied here at three lines instead of two);
-      * the name is actually longer than `char_budget` -- cut to `max_lines`
-        lines and the last one gets `ELLIPSIS`."""
-    words = str(text).split()
-    if not words:
-        return [str(text)]
-    lines = [words[0]]
-    for w in words[1:]:
-        candidate = f"{lines[-1]} {w}"
-        if len(candidate) <= width:
-            lines[-1] = candidate
-        else:
-            lines.append(w)
-    if len(lines) <= max_lines:
-        return lines
-    if len(str(text)) <= char_budget:
-        return lines[: max_lines - 1] + [" ".join(lines[max_lines - 1:])]
-    kept = lines[:max_lines]
-    trimmed = kept[-1][: max(width - len(ELLIPSIS), 1)].rstrip()
-    kept[-1] = f"{trimmed}{ELLIPSIS}"
-    return kept
-
-
-def _mirror_row_height(n_rows: int, max_lines_used: int, minimum: int = C.MIN_HEIGHT) -> int:
-    """mirror_frontier's own row-pitch formula -- generalises `charts.
-    row_height`'s BINARY `n_wrapped` (its own one-vs-two-line case only) to
-    however many lines (one to `MIRROR_LABEL_MAX_LINES`) a row's label
-    actually wrapped onto: plotly spaces a categorical axis UNIFORMLY, so
-    once ANY row needs `max_lines_used` lines, EVERY row gets that pitch.
-
-    The two-line case reproduces `charts.WRAP_ROW_FACTOR` exactly (the
-    identical number every other wrapped chart in the app already uses)
-    UNCHANGED, and never the problem (measured live at 31.6 px of text
-    against a ~30.6 px pitch, comfortably positive row-to-row gaps
-    throughout the real page). The three-line case does NOT linearly
-    extrapolate from the two-line increment any more (that extrapolation
-    undershot a REAL measurement by 5 px, see `MIRROR_THREE_LINE_FACTOR`'s
-    own comment) -- it uses that directly calibrated constant instead."""
-    n_rows = max(int(n_rows), 1)
-    max_lines_used = min(max(int(max_lines_used), 1), MIRROR_LABEL_MAX_LINES)
-    if max_lines_used <= 1:
-        factor = 1.0
-    elif max_lines_used == 2:
-        factor = C.WRAP_ROW_FACTOR
-    else:
-        factor = MIRROR_THREE_LINE_FACTOR
-    pitch = C.ROW_PX * factor
-    return max(minimum, int(round(pitch * n_rows)) + C.BASE_PX)
 
 
 def mirror_frontier(
@@ -946,7 +836,9 @@ def mirror_frontier(
     {glyph}</a>` via plotly's own pseudo-html tick text (already exploited
     elsewhere in this file for `<span style>`; verified here by rendering and
     clicking through the page). A long name wraps onto
-    at most two lines (`_wrap_topic_label`, ellipsis beyond); **measured
+    at most two lines (`charts.wrap_label_px` at `charts.WRAP_PX["compare"]`,
+    the same budget the Compare label column was itself sized against);
+    **measured
     fact:** plotly renders each WRAPPED LINE as its own SVG `<tspan>`, and
     re-wraps this module's ONE `<a>.</a>` source markup into ONE anchor
     PER LINE at draw time (both carrying the identical `href` this module
@@ -1033,7 +925,7 @@ def mirror_frontier(
     plain, styled = [], []
     for i in range(n):
         glyph = f" {TOP_DECILE_GLYPH}" if top[i] else ""
-        lines = _wrap_topic_label(str(d.at[i, "topic_name"]))
+        lines = C.wrap_label_px(str(d.at[i, "topic_name"]), C.WRAP_PX["compare"])
         plain.append("\n".join(lines) + glyph)
         styled_lines = "<br>".join(_esc(ln) for ln in lines)
         # ONE <a>.</a> wraps the whole (possibly two-line) label in THIS
@@ -1056,24 +948,14 @@ def mirror_frontier(
                   + [_fmt_vol(t) for t in ticks]),
         title_text=C.AX_WORKS, gridcolor=P.GRID, zerolinecolor=P.GRID, linecolor=P.BORDER)
     _bold_axes(fig, y=None)
-    # `plain` already holds the WRAPPED (<= two-line) text, so
-    # `_gutter_margin_px` measures the longest WRAPPED line, not the whole
-    # un-wrapped name -- `MIRROR_MARGIN_CAP_PX` is a belt-and-braces ceiling
-    # on top of that (mirror_frontier@390px was unusable before this fix).
-    margin_l = min(C._gutter_margin_px(plain), MIRROR_MARGIN_CAP_PX)
-    # A SECOND part of that same fix, found while reading the FIXED render:
-    # a wrapped row needs MORE than one row's worth of vertical space, same
-    # reasoning every other builder's `n_wrapped` term already carries
-    # (`charts.row_height`'s own rule) -- omitting it here left every
-    # wrapped row's later lines overlapping the row below it, still visibly
-    # broken even after the margin/wrap-width fix alone. A further fix:
-    # `_mirror_row_height` (this module) replaces the plain `metric_row_
-    # height(n, 1, n_wrapped=.)` call used previously -- that binary
-    # term could not tell a two-line row from THREE, and under-allocated
-    # height once three-line wrapping existed (found on this fix's own
-    # first render, the same discovery pattern as the earlier fix's two bugs).
-    max_lines_used = max((s.count("\n") + 1 for s in plain), default=1)
-    return C._base_layout(fig, _mirror_row_height(n, max_lines_used),
+    # bar-layout contract: the label column is a CONSTANT (`LABEL_COL_PX
+    # ["compare"]`, the same one every other Compare bar chart uses) --
+    # no more per-frame margin measurement or margin CAP, and no more a
+    # three-line pitch escape hatch (`wrap_label_px` above already keeps
+    # every topic name to <= 2 lines, `row_height_single` already hosts
+    # that as the norm; see the module note above this function).
+    margin_l = C.LABEL_COL_PX["compare"]
+    return C._base_layout(fig, C.row_height_single(n),
                           margin=dict(t=C.BASE_PX // 2, l=margin_l,
                                       r=C.BASE_PX, b=C.BASE_PX))
 
@@ -1174,7 +1056,6 @@ def yearly_domain_stack(frame: pd.DataFrame) -> go.Figure:
 # 5. reciprocity_bars -- "strategic reciprocity by field", adapted from an
 #    earlier iteration's views_collab._reciprocity_chart + collab_data.reciprocity_frame
 # ---------------------------------------------------------------------------
-GUTTER_HEADER_JOINT = "Joint publications"
 AX_RECIPROCITY = "Share of each institution's own output in the field"
 RECIPROCITY_HOVER_BASE = ("{field}: {share_a} of {name_a}'s output, {share_b} of {name_b}'s; "
                           "{joint} joint publications")
@@ -1254,37 +1135,35 @@ def reciprocity_bars(frame: pd.DataFrame, names: Sequence, colors: Sequence) -> 
         value_col="value", label_col="row_label", key_col="row_id",
         gutter=False, metric_label=AX_RECIPROCITY,
     )
-    _add_centred_gutter(fig, d, GUTTER_HEADER_JOINT)
+    _add_centred_gutter(fig, d)
     _rewrite_reciprocity_hover(fig, d, name_a, name_b, colors, has_rank)
     return fig
 
 
-def _add_centred_gutter(fig: go.Figure, rows: pd.DataFrame, gutter_header: str) -> None:
+def _add_centred_gutter(fig: go.Figure, rows: pd.DataFrame) -> None:
     """ONE phantom gutter column, centred on each row (not one per
     institution lane): `reciprocity_bars`'s own `vol_joint` is a FIELD fact,
     the SAME number on both of a row's bars, so this draws it
     once rather than `fig_metric_bars`'s per-series repeat -- built
     here, on `fig_metric_bars(gutter=False,.)`'s own output, rather than
     inside that shared primitive (`two_tab_bars` still needs the per-series
-    form unchanged)."""
+    form unchanged). No header above the column (bar-layout contract) -- the
+    joint-publications meaning is in the row's own hover sentence."""
     vmax = float(pd.concat([rows["share_a"], rows["share_b"]]).max())
     vmax = vmax if np.isfinite(vmax) and vmax > 0 else 1.0
-    neg_extent = vmax * GUTTER_NEG_AXIS_FRAC
-    gutter_x = -neg_extent * GUTTER_TIP_FRAC
+    neg_extent = vmax * C.GUTTER_NEG_AXIS_FRAC
+    gutter_x = -neg_extent * C.GUTTER_TIP_FRAC
     pad = vmax * AXIS_PAD_FRAC
     n = len(rows)
     fig.add_trace(go.Bar(
         x=[gutter_x] * n, y=list(range(n)), orientation="h",
-        marker=dict(color=[GUTTER_PHANTOM_FILL] * n, line=dict(width=0)),
+        marker=dict(color=[C.GUTTER_PHANTOM_FILL] * n, line=dict(width=0)),
         text=[_gutter_value(v) for v in rows["vol_joint"]],
         textposition="outside", cliponaxis=False,
-        textfont=dict(size=C.GUTTER_FONT_PX, color=P.INK_SECONDARY),
+        textfont=dict(size=C.GUTTER_FONT_PX, color=P.INK_SECONDARY), constraintext="none",
         customdata=[""] * n, hoverinfo="skip", showlegend=False))
     fig.update_xaxes(range=[-neg_extent, vmax + pad], tickmode="array",
                      tickvals=C._nice_ticks(vmax))
-    fig.add_annotation(x=gutter_x, xref="x", y=1.0, yref="y domain",
-                       xanchor="right", yanchor="bottom", text=gutter_header,
-                       showarrow=False, font=dict(size=C.GUTTER_FONT_PX, color=P.INK_SECONDARY))
 
 
 def _rewrite_reciprocity_hover(fig: go.Figure, rows: pd.DataFrame, name_a: str, name_b: str,

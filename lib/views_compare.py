@@ -225,19 +225,41 @@ def _shape_long(df: pd.DataFrame, tab: str, *, grouped: bool, id_col: str, label
 
 def _render_two_tab_section(header: str, basis_caption: str, note_profile: str, note_impact: str,
                             df: pd.DataFrame, ids: list[str], names: dict, slots: dict, *,
-                            grouped: bool, id_col: str, label_col: str, key_prefix: str) -> None:
+                            grouped: bool, id_col: str, label_col: str, key_prefix: str,
+                            tabs: bool = True, accent_key_col: str | None = None) -> None:
+    """`tabs=False` (the SDG section, below) renders the profile chart alone,
+    no `st.tabs()` at all -- the thematic-shape section (unedited call site,
+    `_render_shape`) keeps the default and therefore keeps both tabs.
+    `accent_key_col` copies one extra column from the caller's own `df`
+    straight through onto the frame `two_tab_bars` draws, unchanged by
+    `_shape_long` (row order is untouched, a positional copy aligns): the
+    SDG section passes its own `sdg_number` so the chart's accent-square
+    mechanism (already wired for subfields via `domain_id`) has an SDG
+    colour key to find -- `_shape_long`'s `grouped=False` branch otherwise
+    carries no such column at all, which is why the square was missing."""
     st.subheader(header)
     st.markdown(X.legend_strip(ids, slots=slots, names=names), unsafe_allow_html=True)
     st.markdown(X.basis_caption(basis_caption), unsafe_allow_html=True)
+
+    def _frame(tab: str) -> pd.DataFrame:
+        frame = _shape_long(df, tab, grouped=grouped, id_col=id_col, label_col=label_col)
+        if accent_key_col and accent_key_col in df.columns:
+            frame[accent_key_col] = df[accent_key_col].to_numpy()
+        return frame
+
+    if not tabs:
+        fig = X.two_tab_bars(_frame("profile"), "profile", names, slots, grouped_by_field=grouped)
+        st.plotly_chart(fig, width="stretch", key=f"fig_{key_prefix}_profile")
+        st.markdown(X.chart_note(note_profile), unsafe_allow_html=True)
+        return
+
     tab_profile, tab_impact = st.tabs([copy.COMPARE["TAB_PROFILE"], copy.COMPARE["TAB_IMPACT"]])
     with tab_profile:
-        frame = _shape_long(df, "profile", grouped=grouped, id_col=id_col, label_col=label_col)
-        fig = X.two_tab_bars(frame, "profile", names, slots, grouped_by_field=grouped)
+        fig = X.two_tab_bars(_frame("profile"), "profile", names, slots, grouped_by_field=grouped)
         st.plotly_chart(fig, width="stretch", key=f"fig_{key_prefix}_profile")
         st.markdown(X.chart_note(note_profile), unsafe_allow_html=True)
     with tab_impact:
-        frame = _shape_long(df, "impact", grouped=grouped, id_col=id_col, label_col=label_col)
-        fig = X.two_tab_bars(frame, "impact", names, slots, grouped_by_field=grouped)
+        fig = X.two_tab_bars(_frame("impact"), "impact", names, slots, grouped_by_field=grouped)
         st.plotly_chart(fig, width="stretch", key=f"fig_{key_prefix}_impact")
         st.markdown(X.chart_note(note_impact.format(floor=int(P.RATIO_HATCH_FLOOR))), unsafe_allow_html=True)
 
@@ -254,12 +276,20 @@ def _render_shape(ctx: dict, subs: dict, ids: list[str], names: dict, slots: dic
 
 
 def _render_sdg(ctx: dict, subs: dict, ids: list[str], names: dict, slots: dict) -> pd.DataFrame:
+    """SDG profile -- PROFILE ONLY, no Impact tab and no tab UI at all: the
+    section states one shape (each institution's own SDG-tagged mass), the
+    world top-decile read the Impact tab would otherwise carry stays out of
+    scope here, matching the thematic section's own reasoning for keeping
+    two tabs in reverse (that section actively wants both views; this one
+    does not). `accent_key_col="sdg_number"` is the fix for the missing
+    colour square: `sdg_frame` already carries the goal's own 1-based number,
+    this just lets it reach the chart."""
     df = CD.sdg_frame(ctx, subs, ids)
     _render_two_tab_section(
         copy.COMPARE["SDG_HEADER"], copy.COMPARE["SDG_BASIS_CAPTION"],
         copy.COMPARE["SDG_NOTE_PROFILE"], copy.COMPARE["SDG_NOTE_IMPACT"],
         df, ids, names, slots, grouped=False, id_col="sdg_idx", label_col="sdg_label",
-        key_prefix="sdg")
+        key_prefix="sdg", tabs=False, accent_key_col="sdg_number")
     untagged = df.attrs.get("untagged_share", {})
     lines = [copy.COMPARE["SDG_UNTAGGED"].format(name=names[iid], share=_pct(untagged.get(iid)))
             for iid in ids]

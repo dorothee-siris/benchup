@@ -117,11 +117,19 @@ def _bar_traces(fig: go.Figure) -> list[go.Bar]:
 
 def _real_bars(fig: go.Figure) -> list[go.Bar]:
     """The visible bars only -- the phantom gutter column is also a `go.Bar`
-    trace, drawn with `X.GUTTER_PHANTOM_FILL` (fully transparent) as its
-    marker colour, never an institution hex."""
+    trace, drawn with `C.GUTTER_PHANTOM_FILL` (fully transparent, single-
+    sourced in `lib/charts.py` now) as its marker colour, never an
+    institution hex."""
     return [t for t in _bar_traces(fig)
            if not (isinstance(t.marker.color, (list, tuple))
-                   and set(t.marker.color) == {X.GUTTER_PHANTOM_FILL})]
+                   and set(t.marker.color) == {C.GUTTER_PHANTOM_FILL})]
+
+
+def _reference_shapes(fig: go.Figure) -> list:
+    """The bar-layout contract's dashed RED reference shapes -- a `go.Shape`
+    line, never a marker trace any more (the diamond is retired)."""
+    return [s for s in fig.layout.shapes
+           if s.line.color == P.WARNING_CAPTION_COLOR and s.line.dash == "dash"]
 
 
 # ---------------------------------------------------------------------------
@@ -147,26 +155,35 @@ def test_two_tab_bars_profile_trace_count_and_institution_colour(slots):
     assert not (colours & set(P.OA_DOMAIN_COLORS.values())), "colour must be institution, not domain"
 
 
-def test_two_tab_bars_gutter_names_the_full_count_basis(slots):
+def test_two_tab_bars_gutter_has_no_header_annotation(slots):
+    """Bar-layout contract: the gutter column carries no header any more
+    (the earlier per-chart basis label -- 'Publications, full count' -- is
+    retired; the basis is stated once in the section's own caption)."""
     df = two_tab_frame(IDS, grouped_by_field=True)
     fig = X.two_tab_bars(df, "profile", NAMES, slots, grouped_by_field=True)
     gutters = [t for t in _bar_traces(fig) if t not in _real_bars(fig)]
     assert len(gutters) == len(IDS)
-    headers = [a for a in fig.layout.annotations if a.text == X.GUTTER_HEADER_FULL]
-    assert len(headers) == 1
+    assert not fig.layout.annotations, "no header annotation above the gutter, ever"
     fig_off = X.two_tab_bars(df, "profile", NAMES, slots, grouped_by_field=True, gutter=False)
     assert len(_real_bars(fig_off)) == len(IDS)
     assert len(_bar_traces(fig_off)) == len(IDS), "gutter=False draws no phantom column"
 
 
-def test_two_tab_bars_diamond_reference_on_a_varying_ref_value(slots):
+def test_two_tab_bars_dashed_red_reference_tick_on_a_varying_ref_value(slots):
+    """Bar-layout contract: a per-row VARYING reference is a dashed RED
+    vertical TICK -- x0 == x1 at the reference value, spanning that row's
+    own band -- never a diamond marker any more."""
     df = two_tab_frame(IDS, grouped_by_field=True)
     df.loc[df["row_id"] == 1, "ref_value"] = 0.12   # make ref_value vary by row
     fig = X.two_tab_bars(df, "profile", NAMES, slots, grouped_by_field=True)
-    diamonds = [t for t in fig.data if isinstance(t, go.Scatter)
-               and t.marker.symbol == X.REF_MARKER_SYMBOL]
-    assert len(diamonds) == 1
-    assert diamonds[0].marker.color == P.INK
+    ticks = _reference_shapes(fig)
+    assert len(ticks) == df["row_id"].nunique(), "one reference tick per taxon row"
+    assert not [t for t in fig.data if isinstance(t, go.Scatter)], "no diamond marker trace any more"
+    for s in ticks:
+        assert s.x0 == s.x1, "a reference tick is a VERTICAL line, x0 == x1"
+        assert s.y1 - s.y0 == pytest.approx(1.0), "spans exactly one row's own band"
+    values = sorted(s.x0 for s in ticks)
+    assert values == sorted(df.drop_duplicates("row_id")["ref_value"])
 
 
 def test_two_tab_bars_impact_cautions_under_fifty_covered_never_the_profile_tab(slots):
@@ -222,7 +239,7 @@ def test_two_tab_bars_grouped_by_field_draws_a_domain_accent_glyph(slots):
     df = two_tab_frame(IDS, grouped_by_field=True)
     fig = X.two_tab_bars(df, "profile", NAMES, slots, grouped_by_field=True)
     styled = list(fig.layout.yaxis.ticktext)
-    assert all(X.ACCENT_GLYPH in t for t in styled)
+    assert all(C.ACCENT_GLYPH in t for t in styled)
     assert any(P.domain_color(d) in "".join(styled) for d in P.OA_DOMAIN_ORDER)
 
 
@@ -232,7 +249,7 @@ def test_two_tab_bars_sdg_rows_draw_no_domain_accent(slots):
     df = two_tab_frame(IDS, grouped_by_field=False)
     fig = X.two_tab_bars(df, "profile", NAMES, slots, grouped_by_field=False)
     styled = list(fig.layout.yaxis.ticktext)
-    assert not any(X.ACCENT_GLYPH in t for t in styled)
+    assert not any(C.ACCENT_GLYPH in t for t in styled)
 
 
 def test_two_tab_bars_grouped_by_field_hover_names_the_field_first(slots):
@@ -340,8 +357,14 @@ def test_mirror_frontier_rejects_a_missing_column():
 
 
 # ---------------------------------------------------------------------------
-# mirror_frontier -- wrap + ellipsis + margin cap,
-# fixing the 390 px "zero visible bars" defect found in a screenshot at that width.
+# mirror_frontier -- bar-layout contract: the bespoke character-count wrap
+# (`_wrap_topic_label`, up to three lines) and the margin CAP
+# (`MIRROR_MARGIN_CAP_PX`) are RETIRED, not adapted -- this chart's topic
+# labels and left margin now use the SAME pixel-wrap and the SAME constant
+# Compare column every other bar-family chart in this module uses
+# (`charts.wrap_label_px`/`WRAP_PX["compare"]`, `charts.LABEL_COL_PX["compare"]`,
+# `charts.row_height_single`). `test_deleted_builders_are_actually_gone`
+# below pins the old names' removal.
 # ---------------------------------------------------------------------------
 LONG_TOPIC_NAME = ("A realistically long OpenAlex topic name that runs well "
                    "past the wrap width on purpose, to prove the ellipsis path")
@@ -354,84 +377,38 @@ def _long_mirror_frame() -> pd.DataFrame:
         is_top_decile=True)])
 
 
-def test_wrap_topic_label_never_splits_a_word_and_caps_at_three_lines():
-    lines = X._wrap_topic_label(LONG_TOPIC_NAME)
-    assert len(lines) <= X.MIRROR_LABEL_MAX_LINES
-    original_words = LONG_TOPIC_NAME.split()
-    # every line EXCEPT a possible trailing ellipsis cut is word-boundary-safe
-    clean_lines = [ln for ln in lines if X.ELLIPSIS not in ln]
-    joined_words = " ".join(clean_lines).split()
-    assert joined_words == original_words[: len(joined_words)], "no kept word is split or reordered"
-
-
-def test_wrap_topic_label_a_name_that_fits_never_truncates():
-    fitting = "Short words need two lines"  # 27 chars, fits inside MIRROR_LABEL_WRAP_WIDTH x lines
-    lines = X._wrap_topic_label(fitting)
-    assert len(lines) <= X.MIRROR_LABEL_MAX_LINES
-    assert X.ELLIPSIS not in " ".join(lines)
-    assert " ".join(lines).split() == fitting.split(), "every word survives when it fits the budget"
-
-
-def test_wrap_topic_label_ellipsis_only_past_the_character_budget():
-    """The ellipsis decision is keyed on the ORIGINAL
-    name's own character count (60), never on how many lines greedy wrap
-    happens to want."""
-    short = X._wrap_topic_label("Short topic")
-    assert short == ["Short topic"]
-    assert X.ELLIPSIS not in short[0]
-    long = X._wrap_topic_label(LONG_TOPIC_NAME)
-    assert len(LONG_TOPIC_NAME) > X.MIRROR_LABEL_CHAR_BUDGET
-    assert X.ELLIPSIS in long[-1]
-
-
-def test_wrap_topic_label_real_openalex_name_survives_whole():
-    """A realistic example (CHROME_CONTRACT.md SS13.8): a realistic
-    25-60 char OpenAlex topic name must render in full, never ellipsised."""
-    name = "Geological and Geochemical Analysis"
-    assert len(name) <= X.MIRROR_LABEL_CHAR_BUDGET
-    lines = X._wrap_topic_label(name)
-    assert len(lines) <= X.MIRROR_LABEL_MAX_LINES
-    assert X.ELLIPSIS not in " ".join(lines)
-    assert " ".join(lines).split() == name.split()
-
-
-def test_wrap_topic_label_under_budget_merges_overflow_instead_of_truncating():
-    """A name at or under the 60-char budget that still needs a FOURTH
-    greedy-wrap line (word lengths tile imperfectly against the 20-char
-    width) gets the overflow MERGED into the last kept line -- never cut,
-    never ellipsised, unlike the over-budget case above."""
-    name = "Complex Network Structures and Dynamics in Social Systems"  # 59 chars
-    assert len(name) <= X.MIRROR_LABEL_CHAR_BUDGET
-    lines = X._wrap_topic_label(name)
-    assert len(lines) == X.MIRROR_LABEL_MAX_LINES
-    assert X.ELLIPSIS not in " ".join(lines)
-    assert " ".join(lines).split() == name.split(), "every word survives, just a longer last line"
-
-
-def test_mirror_row_height_grows_with_the_lines_a_row_actually_needs():
-    h1 = X._mirror_row_height(20, 1)
-    h2 = X._mirror_row_height(20, 2)
-    h3 = X._mirror_row_height(20, 3)
-    assert h1 < h2 < h3, "three-line rows must get more room than two, which must get more than one"
-    # the two-line case must reproduce charts.row_height's OWN calibrated
-    # two-line pitch exactly -- not a new, independently-guessed number
-    assert h2 == C.row_height(20, n_wrapped=20)
-
-
-def test_mirror_frontier_long_label_wraps_to_at_most_three_lines_glyph_on_the_last():
+def test_mirror_frontier_wraps_topic_names_to_at_most_two_lines_glyph_on_the_last():
     fig = X.mirror_frontier(_long_mirror_frame(), ["A", "B"], [0, 1])
     tick = fig.layout.yaxis.ticktext[0]
-    assert tick.count("<br>") <= X.MIRROR_LABEL_MAX_LINES - 1
+    assert tick.count("<br>") <= 1, "at most two lines under the shared pixel-wrap contract"
     assert tick.startswith("<a href=") and tick.endswith("</a>")
     assert tick.removesuffix("</a>").endswith(X.TOP_DECILE_GLYPH), (
         "the glyph must sit on the LAST line, inside the single <a>")
-    # the href still wraps the WHOLE (possibly three-line) label, not just one line
+    # the href still wraps the WHOLE (possibly two-line) label, not just one line
     assert tick.count("<a href") == 1 and tick.count("</a>") == 1
 
 
-def test_mirror_frontier_row_height_follows_the_tallest_wrapped_row():
-    # enough rows that MIN_HEIGHT (the 300 px floor) does not mask the
-    # per-row pitch difference between a one-line and a three-line frame
+def test_mirror_frontier_real_openalex_name_survives_whole():
+    """A realistic example (CHROME_CONTRACT.md SS13.8): a realistic
+    25-60 char OpenAlex topic name must render in full, never ellipsised,
+    inside `charts.WRAP_PX["compare"]` -- the SAME budget every other
+    Compare bar-family label wraps at."""
+    name = "Geological and Geochemical Analysis"
+    df = pd.DataFrame([dict(topic_id=1, topic_name=name, url_joint="https://openalex.org/works?x",
+                            vol_a=10.0, vol_b=8.0, vol_joint=6.0, expansion=0.1, acceleration=0.1,
+                            is_top_decile=False)])
+    fig = X.mirror_frontier(df, ["A", "B"], [0, 1])
+    tick = fig.layout.yaxis.ticktext[0]
+    assert tick.count("<br>") <= 1
+    inner = tick.removeprefix('<a href="https://openalex.org/works?x" target="_blank">').removesuffix("</a>")
+    assert inner.replace("<br>", " ") == name
+
+
+def test_mirror_frontier_row_height_is_the_constant_single_pitch_whatever_the_wrap():
+    """Bar-layout contract: `row_height_single` is a CONSTANT pitch per row --
+    a frame whose longest label wraps to two lines is EXACTLY as tall as one
+    whose labels fit on one line, reversing the earlier "taller for more
+    wrapped lines" behaviour (no `n_wrapped`-style correction survives)."""
     short_df = pd.concat([mirror_frame(n_rows=1)] * 20, ignore_index=True)
     short_df["topic_id"] = range(20)
     short_df["url_joint"] = [f"https://openalex.org/works?x{i}" for i in range(20)]
@@ -439,17 +416,17 @@ def test_mirror_frontier_row_height_follows_the_tallest_wrapped_row():
     long_df["topic_id"] = range(20)
     long_df["url_joint"] = [f"https://openalex.org/works?y{i}" for i in range(20)]
     one_line = X.mirror_frontier(short_df, ["A", "B"], [0, 1])
-    three_line = X.mirror_frontier(long_df, ["A", "B"], [0, 1])
-    assert one_line.layout.height < three_line.layout.height, (
-        "a frame whose longest label needs three lines must be taller than one whose labels fit on one")
+    two_line = X.mirror_frontier(long_df, ["A", "B"], [0, 1])
+    assert one_line.layout.height == two_line.layout.height == C.row_height_single(20)
 
 
-def test_mirror_frontier_left_margin_is_capped():
+def test_mirror_frontier_left_margin_is_the_constant_compare_column():
+    """Bar-layout contract: `margin.l` is the SAME `LABEL_COL_PX["compare"]`
+    constant every other Compare bar chart uses -- no per-frame measurement,
+    no cap, whatever the frame's own longest label."""
     fig = X.mirror_frontier(_long_mirror_frame(), ["A", "B"], [0, 1])
-    assert fig.layout.margin.l <= X.MIRROR_MARGIN_CAP_PX
     short_fig = X.mirror_frontier(mirror_frame(), ["A", "B"], [0, 1])
-    assert short_fig.layout.margin.l < fig.layout.margin.l, (
-        "a short label must still reserve less room than a capped long one")
+    assert fig.layout.margin.l == short_fig.layout.margin.l == C.LABEL_COL_PX["compare"]
 
 
 # ---------------------------------------------------------------------------
@@ -511,8 +488,7 @@ def test_reciprocity_bars_gutter_drawn_once_per_row_centred_institution_colour_i
     assert len(gutters) == 1
     assert list(gutters[0].text) == [X._gutter_value(v) for v in df.sort_values(
         "vol_joint", ascending=False)["vol_joint"]]
-    headers = [a for a in fig.layout.annotations if a.text == X.GUTTER_HEADER_JOINT]
-    assert len(headers) == 1
+    assert not fig.layout.annotations, "no header above the gutter (bar-layout contract)"
     real = _real_bars(fig)
     colours = {c for t in real for c in t.marker.color}
     assert colours == {P.institution_color(s) for s in RECIP_SLOTS}
@@ -610,7 +586,7 @@ def test_every_builder_takes_every_colour_from_a_palette_constant(name, slots):
     known = (set(P.INSTITUTION_COLORS) | set(P.OA_DOMAIN_COLORS.values())
             | {P.SHARED_FRONTIER, P.SURFACE, P.INK, P.INK_SECONDARY, P.BORDER,
                P.GRID, P.WARNING_CAPTION_COLOR, P.FRONTIER_SHARED_HALO["color"],
-               X.GUTTER_PHANTOM_FILL})
+               C.GUTTER_PHANTOM_FILL})
     found = set()
     for tr in fig.data:
         mc = getattr(getattr(tr, "marker", None), "color", None)
@@ -708,5 +684,20 @@ def test_deleted_builders_are_actually_gone():
                 "fig_frontier_small_multiples", "fig_impact_intervals",
                 "fig_impact_subfields", "fig_frontier_map", "fig_diverging_shared",
                 "fig_pulse", "LOW_VOLUME_PATTERN_SHAPE", "LOW_VOLUME_PATTERN_SOLIDITY",
-                "SELECTOR_METRICS", "DYNAMICS_CLAMP_PCT"):
+                "SELECTOR_METRICS", "DYNAMICS_CLAMP_PCT",
+                # bar-layout contract: the diamond marker, the per-chart
+                # gutter headers, and mirror_frontier's own bespoke
+                # character-wrap/margin-cap machinery -- all retired in
+                # favour of the shared pixel-wrap contract in lib/charts.py.
+                # (`GUTTER_NEG_AXIS_FRAC`/`GUTTER_TIP_FRAC`/`GUTTER_PHANTOM_FILL`
+                # are NOT in this list -- they are single-sourced in
+                # charts.py now and legitimately still appear here as
+                # `C.<name>`; this list is bare names with NO live consumer
+                # at all any more, local or imported.)
+                "REF_MARKER_SYMBOL", "REF_MARKER_SIZE", "GUTTER_HEADER_FULL",
+                "GUTTER_HEADER_JOINT", "MIRROR_LABEL_WRAP_WIDTH",
+                "MIRROR_LABEL_MAX_LINES", "MIRROR_LABEL_CHAR_BUDGET",
+                "MIRROR_MARGIN_CAP_PX", "MIRROR_THREE_LINE_FACTOR",
+                "_wrap_topic_label", "_mirror_row_height",
+                "BAR_GROUP_SPAN", "BAR_GROUP_FILL"):
         assert not re.search(rf"\b{name}\b", code_only), f"{name} should have been deleted"

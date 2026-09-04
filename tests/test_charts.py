@@ -56,7 +56,15 @@ SEEDS_2BR = {
     "employment_agency": "I4210167358",  # 2nd-longest subfield, high volume
     "henley_college": "I2801915933",     # 2nd-longest subfield
 }
-MAX_PANEL_HEIGHT_PX = 900   #  acceptance: one desktop screen at 1280 px
+MAX_PANEL_HEIGHT_PX = 1100  # : 900 -> 1100. `ROW_PITCH_SINGLE` grew
+                            # 27 -> 34 (a manager follow-up fix for real
+                            # two-line-label collisions at 27 px), so the
+                            # one-screen budget this ceiling checks widens
+                            # with it: 30 rows (the top-30 subfields/topics
+                            # cut) * 34 + 50 = 1,070, comfortably inside 1,100.
+                            # A collapsed panel scrolling past one screen was
+                            # never the acceptance bar here -- only "does not
+                            # runaway unboundedly" is.
 
 
 # ---------------------------------------------------------------------------
@@ -150,7 +158,16 @@ def erc_df(seed_id) -> pd.DataFrame:
 # Builders render on real frames
 # ---------------------------------------------------------------------------
 def _bar_traces(fig: go.Figure) -> list[go.Bar]:
-    return [t for t in fig.data if isinstance(t, go.Bar)]
+    """The REAL bar trace(s), excluding the bar-layout contract's own gutter
+    phantom trace -- also a `go.Bar`, at zero visible fill, no hover of its
+    own (`hoverinfo="skip"`), which every builder now draws alongside the
+    real bar (`_add_gutter_column`)."""
+    return [t for t in fig.data if isinstance(t, go.Bar) and t.hoverinfo != "skip"]
+
+
+def _gutter_trace(fig: go.Figure) -> go.Bar | None:
+    hits = [t for t in fig.data if isinstance(t, go.Bar) and t.hoverinfo == "skip"]
+    return hits[0] if hits else None
 
 
 def test_fig_share_si_fields_two_panels_and_colour_source(fields_df):
@@ -167,16 +184,17 @@ def test_fig_share_si_fields_two_panels_and_colour_source(fields_df):
     assert "xaxis2" in fig.layout
     assert fig.layout.xaxis2.title.text == C.AX_SI
     assert fig.layout.paper_bgcolor == P.SURFACE and fig.layout.plot_bgcolor == P.SURFACE
-    # : the Find panels never wrap (default `wrap=False`), so height is
-    # the plain per-row pitch whatever the longest label's length would have
-    # wrapped to under the retired rule.
-    assert fig.layout.height == C.row_height(len(fields_df), n_wrapped=0)
+    # bar-layout contract: figure height = margins + n rows at ROW_PITCH_SINGLE,
+    # a CONSTANT pitch (two-line labels are the norm it already hosts).
+    assert fig.layout.height == C.row_height_single(len(fields_df))
     assert fig.layout.height <= MAX_PANEL_HEIGHT_PX
-    # the volume gutter (fix X3): folded into the y ticktext, one string per
-    # row, no separate annotation left to collide with it
+    # the volume gutter is its OWN column now (a phantom bar trace), never a
+    # header annotation and never folded into the tick text
     assert len(fig.layout.annotations) == 0
     assert len(fig.layout.yaxis.ticktext) == len(fields_df)
-    assert all(P.INK_SECONDARY in t for t in fig.layout.yaxis.ticktext)
+    gutter = [t for t in fig.data if isinstance(t, go.Bar) and t.hoverinfo == "skip"]
+    assert len(gutter) == 1, "one phantom gutter trace, separate from the real share bar"
+    assert len(gutter[0].text) == len(fields_df)
 
 
 def test_fig_share_si_sort_taxonomy_reorders_but_keeps_entity_colour(fields_df):
@@ -204,8 +222,11 @@ def test_fig_share_si_nan_si_draws_no_mark(subfields_df):
     assert len(dots) == 1
     assert len(dots[0].x) == n_defined
     assert np.isfinite(np.asarray(dots[0].x, dtype=float)).all()
+    # the connecting STEM (neutral value -> dot) is RETIRED under the
+    # bar-layout contract -- the panel-wide red reference line (below) makes
+    # a per-row connector back to it redundant.
     stems = [t for t in fig.data if isinstance(t, go.Scatter) and t.mode == "lines"]
-    assert len(stems) == n_defined
+    assert len(stems) == 0
     # the n/a rows are still on the y axis of the share panel
     assert len(_bar_traces(fig)[0].y) == len(subfields_df)
     # and their hover names the missing value explicitly
@@ -250,7 +271,7 @@ def test_fig_share_si_si_status_solid_thin_none_mark_counts_match_the_frame(subf
     n_solid = int((d["si_status"] == "solid").sum())
     n_thin = int((d["si_status"] == "thin").sum())
     assert len(dots.x) == n_solid + n_thin, "none rows draw no mark at all"
-    assert len(stems) == n_solid + n_thin, "none rows draw no lollipop stem either"
+    assert len(stems) == 0, "the connecting stem is retired under the bar-layout contract"
 
     fills = list(dots.marker.color)
     line_colors = list(dots.marker.line.color)
@@ -489,19 +510,19 @@ def test_invalid_family_and_sort_raise(fields_df):
 
 
 # ---------------------------------------------------------------------------
-# The label/gutter collision at narrow width, fixed:
-# `lib/charts.py:fig_share_si` / `fig_topics` fold the volume into the y
-# ticktext as ONE right-anchored string per row instead of a separate
-# annotation, so there is nothing left for it to collide with -- that
-# mechanism is unchanged here. What changed (reversing the earlier ellipsis
-# rule): a label longer than
-# `wrap_label`'s width WRAPS onto at most two lines at a word boundary
-# instead of being cut short. `MAX_LABEL_CHARS` / `_truncate_label` /
-# `ELLIPSIS` are gone, so `test_truncate_label_never_cuts_from_the_left` (the
-# test of the retired ellipsis rule) is REMOVED, not adapted -- there is no
-# truncation left to test. The replacement coverage below is `wrap_label`
-# itself, the folded tick text it feeds, and the row-height/margin
-# consequences of a wrapped (two-line) row.
+# Bar-layout contract: the label column is now a CONSTANT per view
+# (`LABEL_COL_PX`), derived from the whole label universe on disk, never the
+# current frame -- so a long label WRAPS (pixel-measured, at most two lines,
+# `wrap_label_px`/`WRAP_PX`) instead of forcing the margin to grow. This
+# section replaces the retired "never wrap, widen the gutter instead" tests
+# (`test_fig_share_si_default_never_wraps_widens_gutter_instead` and
+# neighbours) -- REMOVED, not adapted, since that priority is reversed.
+# `wrap_label` (character-based) and `row_height`/`_gutter_margin_px` stay as
+# general-purpose utilities other callers (`mirror_frontier`'s history) once
+# used; their own tests below are UNCHANGED. Systematic cross-builder
+# coverage of the new contract (margin formula, tick/gutter fonts, pitch,
+# bar thickness, reference shapes, the label-universe wrap itself) lives in
+# `tests/test_chart_layout.py`; this file keeps the per-builder render checks.
 # ---------------------------------------------------------------------------
 def test_wrap_label_never_splits_a_word_and_preserves_the_full_text():
     assert C.wrap_label("Mathematics") == "Mathematics", "within budget -> untouched, no <br>"
@@ -532,15 +553,35 @@ def test_wrap_label_merges_a_third_overflow_line_into_the_second():
         assert w in wrapped, "no word split by the merge either"
 
 
-def test_fig_share_si_default_never_wraps_widens_gutter_instead(fields_df):
-    """ REVERSES L35 in turn for the Find panels: "full label on one
-    row wins over bar length" -- small bars are an acceptable cost. Uses the
-    REAL long field name from the I-4 screenshot ("Biochemistry, Genetics and
-    Molecular Biology", 46 chars) straight out of the fixture `fields_df`
-    already builds from the deployed parquet -- no synthetic data."""
+def test_wrap_label_px_never_splits_a_word_and_preserves_the_full_text():
+    """The pixel-measured sibling `wrap_label_px` obeys the SAME "never split
+    a word, never drop a character" rule as the character-based `wrap_label`
+    -- generous budgets (a few glyph-widths per character) exercise the
+    ordinary path; a tiny budget exercises the "one word alone exceeds the
+    budget" case, still kept whole."""
+    long_name = "Biochemistry, Genetics and Molecular Biology"
+    lines = C.wrap_label_px(long_name, C.WRAP_PX["find"])
+    assert len(lines) <= 2
+    assert " ".join(lines) == long_name
+    words = set(long_name.split())
+    for line in lines:
+        for word in line.split():
+            assert word in words
+
+    tiny_budget = C.text_width_px("Bio") - 1  # narrower than even the shortest word
+    lines_tiny = C.wrap_label_px("Biochemistry Genetics", tiny_budget)
+    assert " ".join(lines_tiny) == "Biochemistry Genetics", "a lone long word is kept whole, never split"
+
+
+def test_fig_share_si_wraps_long_labels_to_at_most_two_lines(fields_df):
+    """Bar-layout contract: a label over its family's `WRAP_PX` budget WRAPS
+    (pixel-measured) to at most two lines -- the reversed-again priority from
+    the retired "never wrap, widen the gutter" rule. Uses the REAL long field
+    name ("Biochemistry, Genetics and Molecular Biology") straight out of the
+    fixture `fields_df` already builds from the deployed parquet."""
     fig = C.fig_share_si(fields_df, family="oa", sort="volume", gutter=True)
-    long_name = next(n for n in fields_df["field_name"] if "<br>" in C.wrap_label(n))
-    assert long_name == "Biochemistry, Genetics and Molecular Biology"
+    long_name = "Biochemistry, Genetics and Molecular Biology"
+    assert long_name in set(fields_df["field_name"])
 
     names = list(fig.data[0].y)  # identity axis: FULL names, always untouched
     idx = names.index(long_name)
@@ -549,33 +590,16 @@ def test_fig_share_si_default_never_wraps_widens_gutter_instead(fields_df):
     tickvals = list(fig.layout.yaxis.tickvals)
     ticktext = list(fig.layout.yaxis.ticktext)
     shown = ticktext[tickvals.index(long_name)]
-    assert "<br>" not in shown, "no chart-builder default wraps a label onto a second line"
-    assert long_name in shown, "the full name is drawn on its ONE row, never shortened"
-    assert P.INK_SECONDARY in shown, "the volume rides in the secondary ink, inside the tick text"
+    assert shown.count("<br>") <= 1, "at most two lines"
+    assert shown.replace("<br>", " ") == long_name, "full text survives, nothing truncated or ellipsised"
+    assert P.INK_SECONDARY not in shown, "the volume no longer rides inside the tick text at all"
 
 
-def test_fig_share_si_wrap_true_opt_in_still_wraps_for_charts_compare(fields_df):
-    """`wrap=True` is kept as an explicit opt-in
-    so `lib/charts_compare.py`'s own geometry -- which calls `_tick_display`,
-    `wrap_label` and `row_height`'s `n_wrapped` directly, unaffected by this
-    stream -- is never broken by the Find panels' default flipping."""
-    fig = C.fig_share_si(fields_df, family="oa", sort="volume", wrap=True)
-    long_name = next(n for n in fields_df["field_name"] if "<br>" in C.wrap_label(n))
-    tickvals = list(fig.layout.yaxis.tickvals)
-    ticktext = list(fig.layout.yaxis.ticktext)
-    shown = ticktext[tickvals.index(long_name)]
-    assert "<br>" in shown, "wrap=True reproduces the earlier two-line behaviour"
-    assert all(w in shown for w in long_name.replace(",", "").split())
-
-
-def test_fig_share_si_automargin_and_reserved_margin_grow_for_long_labels(fields_df):
-    # A deliberately tiny frame, not a filtered slice of fields_df: filtering
-    # out the one wrapped row does NOT guarantee a shorter longest-LINE any
-    # more (unlike the old whole-string truncation), because some OTHER row's
-    # short label plus its OWN volume can still tie the wrapped row's longest
-    # line -- exactly the "measure by longest LINE, not longest STRING" change
-    # made here. A frame with genuinely short everything isolates the
-    # comparison instead.
+def test_fig_share_si_margin_is_the_constant_label_and_gutter_columns(fields_df):
+    """Bar-layout contract: `margin.l` is a CONSTANT -- `LABEL_COL_PX["find"]
+    + GUTTER_COL_PX["find"] + COL_PAD_PX` -- identical whatever the frame's
+    OWN longest label happens to be, reversing the earlier per-frame
+    `_gutter_margin_px` measurement."""
     tiny = pd.DataFrame({
         "field_id": [1, 2], "field_name": ["Ab", "Cd"], "domain_id": [1, 1],
         "domain_name": ["Life", "Life"], "vol_full": [1, 1], "vol_frac": [1.0, 1.0],
@@ -583,28 +607,30 @@ def test_fig_share_si_automargin_and_reserved_margin_grow_for_long_labels(fields
     })
     fig_tiny = C.fig_share_si(tiny, family="oa")
     fig_long = C.fig_share_si(fields_df, family="oa")  # includes the 46-char Biochemistry row
-    assert fig_tiny.layout.yaxis.automargin is True
-    assert fig_long.layout.yaxis.automargin is True
-    assert fig_long.layout.margin.l > fig_tiny.layout.margin.l, (
-        "a frame containing a long (wrapped) label must reserve more left margin than a tiny-label one"
+    expected = C.LABEL_COL_PX["find"] + C.GUTTER_COL_PX["find"] + C.COL_PAD_PX
+    assert fig_tiny.layout.margin.l == expected
+    assert fig_long.layout.margin.l == expected, (
+        "a long (wrapped) label must NOT change the margin -- it is a constant now"
     )
-    assert fig_long.layout.margin.l > C.GUTTER_MARGIN_MIN_PX
 
 
-def test_fig_share_si_row_height_no_longer_pays_the_wrap_penalty(fields_df):
-    """: since the Find panels never wrap by default, a frame with one
-    extra (however long) row is exactly ONE row pitch taller than the same
-    frame without it -- never the old `WRAP_ROW_FACTOR` penalty every other
-    row used to pay the moment any one label wrapped."""
-    long_name = next(n for n in fields_df["field_name"] if "<br>" in C.wrap_label(n))
+def test_fig_share_si_row_height_is_the_constant_pitch(fields_df):
+    """Bar-layout contract: one extra row is exactly one `ROW_PITCH_SINGLE`
+    taller, whatever that row's own label length -- no `n_wrapped` penalty,
+    since two-line labels are the norm the pitch already hosts."""
+    long_name = "Biochemistry, Genetics and Molecular Biology"
     without = fields_df[fields_df["field_name"] != long_name].reset_index(drop=True)
     fig_with = C.fig_share_si(fields_df, family="oa")
     fig_without = C.fig_share_si(without, family="oa")
     grown_by = fig_with.layout.height - fig_without.layout.height
-    assert grown_by == C.ROW_PX, "exactly one plain row's pitch -- no wrap penalty applies"
+    assert grown_by == C.ROW_PITCH_SINGLE, "exactly one row's pitch, wrapped label or not"
 
 
 def test_row_height_n_wrapped_matches_the_documented_factor():
+    """`row_height` (character-based, the pre-contract idiom) is UNCHANGED --
+    kept as a general-purpose utility (`fig_breakdown_global` still uses it
+    unmodified); it is no longer live on any bar-family panel's own height
+    call (`row_height_single`/`row_height_pair`, tested elsewhere)."""
     base = C.row_height(10)
     grown = C.row_height(10, n_wrapped=3)
     assert C.row_height(10, n_wrapped=0) == base, "default reproduces the single-line formula exactly"
@@ -617,58 +643,43 @@ def test_row_height_n_wrapped_matches_the_documented_factor():
     assert C.row_height(10, n_wrapped=1) == grown, "any wrapped label -> the same uniform pitch"
 
 
-def test_gutter_margin_px_measures_the_longest_line_not_the_whole_string():
-    """A wrapped tick's `plain` text uses `\\n` between lines (see
-    `_tick_display`); the margin must be sized off the single longest LINE,
-    not the sum of every line's characters -- a two-line string with short
-    lines must not out-reserve a one-line string that is itself longer than
-    either of those lines."""
-    two_short_lines = "aa\nbbbbbbbbbb"          # longest line = 10 chars
-    one_longer_line = "ccccccccccccccc"          # 15 chars, one line
-    m_two = C._gutter_margin_px([two_short_lines])
-    m_one = C._gutter_margin_px([one_longer_line])
-    assert m_one > m_two, "the longer SINGLE line must reserve more than the two SHORT lines"
+def test_row_height_single_and_pair_are_the_constant_pitch_formulas():
+    assert C.row_height_single(0) == C.MIN_HEIGHT
+    assert C.row_height_single(30) == C.ROW_PITCH_SINGLE * 30 + C.BASE_PX
+    assert C.row_height_pair(0) == C.MIN_HEIGHT
+    assert C.row_height_pair(30) == C.ROW_PITCH_PAIR * 30 + C.BASE_PX
 
 
-def test_fig_topics_never_wraps_the_longest_labels_in_the_app(topics_df):
-    """: topic names are the app's longest labels, so this panel is the
-    hardest test of "full label on one row, gutter widens instead of
-    wrapping"."""
-    long_names = [str(n) for n in topics_df["topic_name"] if "<br>" in C.wrap_label(str(n))]
-    assert long_names, "fixture must include a real long topic name (topics are the app's longest labels)"
+def test_fig_topics_wraps_the_longest_labels_in_the_app_to_at_most_two_lines(topics_df):
+    """Topic names are the app's longest labels, so this panel is the
+    hardest test of the pixel-wrap contract: every label -- wrapped or not --
+    survives in full, at most two lines, inside the CONSTANT Find column."""
     fig = C.fig_topics(topics_df, sort="volume")
-    assert fig.layout.yaxis.automargin is True
     tickvals = list(fig.layout.yaxis.tickvals)
     ticktext = list(fig.layout.yaxis.ticktext)
-    assert not any("<br>" in t for t in ticktext), "no topic label may wrap under the default"
-
-    long_hit = long_names[0]
-    # the row's identity (`y=`) is the full, untouched name (glyph-prefixed if
-    # flagged catch-all) -- find it by substring, then read ITS OWN drawn tick
-    # text off the same tickvals/ticktext pairing `fig_topics` builds.
-    row_name = next(y for y in fig.data[0].y if long_hit in y)
-    row_idx = list(fig.data[0].y).index(row_name)
-    assert long_hit in fig.data[0].customdata[row_idx], "full label survives in hover"
-    shown = ticktext[tickvals.index(row_name)]
-    assert long_hit in shown, "the full, un-truncated name is drawn on its ONE row"
-    # a wide-enough gutter is reserved to hold it (belt-and-braces alongside
-    # test_fig_share_si_automargin_and_reserved_margin_grow_for_long_labels)
-    assert fig.layout.margin.l > C.GUTTER_MARGIN_MIN_PX
+    for name in fig.data[0].y:
+        shown = ticktext[tickvals.index(name)]
+        assert shown.count("<br>") <= 1, f"{name!r} wrapped past two lines"
+        assert shown.replace("<br>", " ") == name, f"{name!r} lost text or gained an ellipsis"
+    assert fig.layout.margin.l == C.LABEL_COL_PX["find"] + C.GUTTER_COL_PX["find"] + C.COL_PAD_PX
 
 
-def test_fig_erc_reuses_the_same_folded_gutter_mechanism(erc_df):
-    """ERC panel labels run up to 66 chars in the real app (`panel_label` here
-    is the short `panel_code` since `erc_panels.csv` is a different module's,
-    but the mechanism under test is family-agnostic: `fig_erc` delegates to
-    `fig_share_si`, so whatever labels arrive get the same treatment)."""
+def test_fig_erc_uses_the_same_pixel_wrap_and_gutter_mechanism(erc_df):
+    """ERC panel labels run up to ~68 chars in the real app; `fig_erc`
+    delegates to `fig_share_si`, so whatever labels arrive get the identical
+    pixel-wrap + fixed-column treatment. `sort="taxonomy"` (the default)
+    REORDERS rows by domain/panel, so each label is matched by its OWN
+    identity (`fig.data[0].y`, the row order the chart actually drew) rather
+    than assumed to align with the fixture's own raw row order."""
     fig = C.fig_erc(erc_df)
-    assert fig.layout.yaxis.automargin is True
     assert len(fig.layout.yaxis.ticktext) == len(erc_df)
-    assert all(P.INK_SECONDARY in t for t in fig.layout.yaxis.ticktext)
-    # ERC/SDG delegate to fig_share_si without passing `wrap`, so they inherit
-    # its default -- no chart drawn by this module wraps a label any more
-    # unless a future caller explicitly opts back in.
-    assert not any("<br>" in t for t in fig.layout.yaxis.ticktext)
+    tickvals = list(fig.layout.yaxis.tickvals)
+    ticktext = list(fig.layout.yaxis.ticktext)
+    for name in fig.data[0].y:
+        shown = ticktext[tickvals.index(name)]
+        assert shown.count("<br>") <= 1
+        assert shown.replace("<br>", " ") == str(name)
+    assert fig.layout.margin.l == C.LABEL_COL_PX["find"] + C.GUTTER_COL_PX["find"] + C.COL_PAD_PX
 
 
 # ---------------------------------------------------------------------------
@@ -799,7 +810,13 @@ def _seed_topics(iid: str, dim: pd.DataFrame) -> pd.DataFrame:
     return out.sort_values("share", ascending=False).head(30).reset_index(drop=True)
 
 
-def test_2br_measured_acceptance_eight_seeds_no_wrap_no_truncation_height_budget(dim, capsys):
+def test_2br_measured_acceptance_eight_seeds_full_text_two_line_cap_height_budget(dim, capsys):
+    """Bar-layout contract, the reversed-again priority: every label survives
+    IN FULL -- pixel-wrapped to AT MOST TWO LINES, never truncated and never
+    ellipsised -- inside the CONSTANT Find column, across the 8 hardest real
+    seeds (the two seeds carrying the longest actual subfield/topic names
+    shipped in the data are the hardest test of the fixed-width column,
+    same seed set the pre-contract version of this test already used)."""
     rows = []
     for label, iid in SEEDS_2BR.items():
         fields = _seed_fields(iid, dim)
@@ -815,15 +832,22 @@ def test_2br_measured_acceptance_eight_seeds_no_wrap_no_truncation_height_budget
             if frame.empty:
                 continue
             fig = builder(frame)
+            tickvals = list(fig.layout.yaxis.tickvals)
             ticktext = list(fig.layout.yaxis.ticktext)
             label_col = "field_name" if panel_name == "fields" else (
                 "subfield_name" if panel_name == "subfields" else "topic_name")
-            for name in frame[label_col].astype(str):
-                # no wrap: the full name (bare, before the gutter's volume
-                # suffix) is present, verbatim, inside its own drawn tick
-                hit = next((t for t in ticktext if name in t), None)
-                assert hit is not None, f"{label}/{panel_name}: {name!r} not found in ticktext at all"
-                assert "<br>" not in hit, f"{label}/{panel_name}: {name!r} wrapped"
+            expected_margin = C.LABEL_COL_PX["find"] + C.GUTTER_COL_PX["find"] + C.COL_PAD_PX
+            assert fig.layout.margin.l == expected_margin, f"{label}/{panel_name}: margin.l drifted"
+            for row_id in fig.data[0].y:
+                shown = ticktext[tickvals.index(row_id)]
+                assert shown.count("<br>") <= 1, f"{label}/{panel_name}: {row_id!r} wrapped past two lines"
+                # the row's OWN identity may carry the catch-all glyph
+                # (fig_topics); the drawn text must still reduce, one-line
+                # rejoin, to that exact identity -- no character lost,
+                # nothing cut to an ellipsis.
+                assert shown.replace("<br>", " ") == row_id, (
+                    f"{label}/{panel_name}: {row_id!r} lost text or gained an ellipsis (drew {shown!r})"
+                )
             rows.append((label, panel_name, len(frame), fig.layout.height))
             assert fig.layout.height <= MAX_PANEL_HEIGHT_PX, (
                 f"{label}/{panel_name}: height {fig.layout.height} exceeds the one-screen budget"

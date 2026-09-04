@@ -1,21 +1,19 @@
-"""tests/test_gutter_and_caution_channel.py --, cross-cutting
+"""tests/test_gutter_and_caution_channel.py -- cross-cutting
 guard for the caution channel (no more hatch/hollow, solid bars +
-WARNING_CAPTION_COLOR text + dagger) and the left-gutter column (a
-phantom trace + header annotation replacing the earlier bar-end "(N)" text),
-.
+WARNING_CAPTION_COLOR text + dagger) and the left-gutter column (a phantom
+trace, NO header any more -- the bar-layout contract retires the per-chart
+basis label; the basis is stated once in the section's own caption).
 
-`tests/test_hatch_rule.py` (re-pinned, the ONE granted full-module
-rewrite exception) already exercises the caution FORK in depth
-deliberately with `gutter=False`, to isolate the caution assertions from the
-gutter feature entirely (its own docstring says so explicitly). This module
-is the one that turns the gutter ON and checks the two features TOGETHER
-(the header annotation text, the phantom trace's OWN caution colour --
-`test_hatch_rule.py`'s own
-docstring promises the flag reaches "its VALUE text AND its gutter-column
-text", a claim `test_hatch_rule.py` never has the gutter live to check),
-plus the module-wide "no marker.pattern anywhere" ban and the wide/narrow
-dual-variant contract `views_compare._metric_chart` builds for every
-section (the caller-decides idiom).
+`tests/test_hatch_rule.py` (re-pinned, the ONE granted full-module rewrite
+exception) already exercises the caution FORK in depth deliberately with
+`gutter=False`, to isolate the caution assertions from the gutter feature
+entirely (its own docstring says so explicitly). This module is the one that
+turns the gutter ON and checks the two features TOGETHER (the phantom
+trace's OWN caution colour -- `test_hatch_rule.py`'s own docstring promises
+the flag reaches "its VALUE text AND its gutter-column text", a claim
+`test_hatch_rule.py` never has the gutter live to check), plus the
+module-wide "no marker.pattern anywhere" ban and the gutter-on/gutter-off
+value-agreement contract every bar-family chart honours.
 
 VACUITY, per module: every assertion is followed by an in-memory mutation
 that makes the identical check fail.
@@ -65,56 +63,52 @@ def _frame() -> pd.DataFrame:
 
 
 def _phantom(fig) -> list:
-    return [tr for tr in fig.data if set(tr.marker.color) == {X.GUTTER_PHANTOM_FILL}]
+    return [tr for tr in fig.data if set(tr.marker.color) == {C.GUTTER_PHANTOM_FILL}]
 
 
 def _bars(fig) -> list:
-    return [tr for tr in fig.data if set(tr.marker.color) != {X.GUTTER_PHANTOM_FILL}]
+    return [tr for tr in fig.data if set(tr.marker.color) != {C.GUTTER_PHANTOM_FILL}]
 
 
 # ============================================================================
-# the gutter column: phantom trace + header annotation
+# the gutter column: a phantom trace, and NO header annotation any more
 # ============================================================================
 
-def test_gutter_true_emits_the_phantom_trace_and_header_annotation():
+def test_gutter_true_emits_the_phantom_trace_with_no_header_annotation():
     """`gutter=True` must draw ONE phantom `go.Bar` trace alongside the real
-    bar, and the header text must land in a layout annotation VERBATIM
-    charts_compare's own docstring: 'the caller supplies the word, this
-    module never invents one'."""
-    header = "Publications"
+    bar -- and, under the bar-layout contract, NO header annotation above it
+    at all (the earlier per-chart basis label is retired; the basis is
+    stated once in the section's own caption)."""
     fig = X.fig_metric_bars(_frame(), "share", [IID], slots=_slots(), names=NAMES,
-                            level="field", gutter=True, gutter_header=header)
+                            level="field", gutter=True)
     assert len(fig.data) == 2, "one real bar trace + one phantom gutter trace"
     assert len(_phantom(fig)) == 1
-    ann_texts = [a.text for a in fig.layout.annotations]
-    assert header in ann_texts, ann_texts
+    assert not fig.layout.annotations, "no header annotation above the gutter, ever"
 
-    # VACUITY: a figure built WITHOUT a header carries no such annotation at
-    # all -- proves the check above is not trivially true of every figure
-    # `fig_metric_bars` can draw.
+    # VACUITY: a figure with the gutter OFF has neither the phantom trace NOR
+    # (trivially) any annotation -- proves the phantom-trace count above is
+    # the gutter's own effect, not a count every figure happens to produce.
     bare = X.fig_metric_bars(_frame(), "share", [IID], slots=_slots(), names=NAMES,
-                             level="field", gutter=True, gutter_header=None)
+                             level="field", gutter=False)
     with pytest.raises(AssertionError):
-        assert header in [a.text for a in bare.layout.annotations]
+        assert len(_phantom(bare)) == 1
 
 
-def test_gutter_false_drops_both_the_phantom_trace_and_the_header():
-    """The narrow-viewport variant VC4 renders below the breakpoint:
-    'gutter=False' means the column is entirely ABSENT, not merely
-    unlabelled -- no phantom trace, no annotation, whatever `gutter_header`
-    was passed."""
+def test_gutter_false_drops_the_phantom_trace():
+    """The narrow-viewport variant renders below the breakpoint:
+    `gutter=False` means the column is entirely ABSENT -- no phantom trace,
+    no annotation."""
     fig = X.fig_metric_bars(_frame(), "share", [IID], slots=_slots(), names=NAMES,
-                            level="field", gutter=False, gutter_header="Publications")
+                            level="field", gutter=False)
     assert len(fig.data) == 1
     assert not fig.layout.annotations
 
-    # VACUITY: the SAME frame with gutter=True DOES carry both -- proves
-    # `gutter=False`'s absence above is the flag's own effect, not an
+    # VACUITY: the SAME frame with gutter=True DOES carry the phantom trace --
+    # proves `gutter=False`'s absence above is the flag's own effect, not an
     # artefact of this particular frame shape.
     fig_on = X.fig_metric_bars(_frame(), "share", [IID], slots=_slots(), names=NAMES,
-                               level="field", gutter=True, gutter_header="Publications")
+                               level="field", gutter=True)
     assert len(fig_on.data) == 2
-    assert fig_on.layout.annotations
 
 
 def test_below_floor_row_cautions_its_gutter_text_too_not_only_the_bar():
@@ -122,7 +116,7 @@ def test_below_floor_row_cautions_its_gutter_text_too_not_only_the_bar():
     texts the docstring above promises -- the bar's value text AND its
     gutter-column text -- with the gutter ACTUALLY ON this time."""
     fig = X.fig_metric_bars(_frame(), "share", [IID], slots=_slots(), names=NAMES,
-                            level="field", gutter=True, gutter_header="Publications")
+                            level="field", gutter=True)
     bar, gutter = _bars(fig)[0], _phantom(fig)[0]
     ink = _ink()
     # row order is taxon order: ROW_LOW (taxon 1, cautioned) then ROW_OK (not)
@@ -138,7 +132,7 @@ def test_below_floor_row_cautions_its_gutter_text_too_not_only_the_bar():
     flipped.loc[0, "vol_full_annual_mean"] = 40.0
     flipped.loc[1, "vol_full_annual_mean"] = 2.0
     fig2 = X.fig_metric_bars(flipped, "share", [IID], slots=_slots(), names=NAMES,
-                             level="field", gutter=True, gutter_header="Publications")
+                             level="field", gutter=True)
     bar2 = _bars(fig2)[0]
     assert list(bar2.textfont.color) == [ink, P.WARNING_CAPTION_COLOR]
 
@@ -156,7 +150,7 @@ def test_no_marker_pattern_anywhere_in_a_rendered_metric_bars_figure():
     assert set(X.METRICS) == {"share", "pp"}
     for metric in X.METRICS:
         fig = X.fig_metric_bars(_frame(), metric, [IID], slots=_slots(), names=NAMES,
-                                level="field", gutter=True, gutter_header="Publications")
+                                level="field", gutter=True)
         for tr in fig.data:
             assert not any(tr.marker.pattern.shape or ()), (metric, tr.marker.pattern.shape)
 
@@ -191,11 +185,10 @@ def test_gutter_true_and_false_agree_on_every_bar_value():
     LEFT column's presence differs."""
     df = _frame()
     wide = X.fig_metric_bars(df, "pp", [IID], slots=_slots(), names=NAMES,
-                             level="field", gutter=True, gutter_header="Publications")
+                             level="field", gutter=True)
     narrow = X.fig_metric_bars(df, "pp", [IID], slots=_slots(), names=NAMES,
                                level="field", gutter=False)
     assert len(wide.data) == 2 * len(narrow.data)
-    assert wide.layout.annotations and not narrow.layout.annotations
     assert list(_bars(wide)[0].x) == list(narrow.data[0].x)
 
     # VACUITY: a frame with NO gutter column at all collapses the wide
@@ -204,7 +197,7 @@ def test_gutter_true_and_false_agree_on_every_bar_value():
     # presence, not an unconditional doubling this builder always performs.
     bare = df.drop(columns=["vol_display"])
     wide_bare = X.fig_metric_bars(bare, "pp", [IID], slots=_slots(), names=NAMES,
-                                  level="field", gutter=True, gutter_header="Publications")
+                                  level="field", gutter=True)
     assert len(wide_bare.data) == len(narrow.data)
     with pytest.raises(AssertionError):
         assert len(wide_bare.data) == 2 * len(narrow.data)

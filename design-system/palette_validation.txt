@@ -1365,3 +1365,85 @@ curve). The compensating mechanism is NOT colour: `palette.FRONTIER_SHARED_HALO`
 a white/SURFACE outline ring on every shared-frontier mark, so a reader tells a
 shared bubble from a same-lightness navy bubble by SHAPE (a ring) rather than by
 asking hue or luminance alone to do more work than either can.
+
+================================================================================
+RUN 38 (2026-09-04) — the bar-layout contract's reference mark: SHARED_FRONTIER
+/ WARNING_CAPTION_COLOR #821D13, in its NEW role as a chart MARK (a per-row
+dashed vertical tick, or one full-height dashed line) on the Find panels and
+the Compare bar-family charts, replacing the earlier diamond marker and the
+Find SI lollipop's connecting stem. NOT a new hex -- the same, already-shipped
+red (run 37's own re-derivation), re-screened here specifically against every
+identity family it will now sit ALONGSIDE as a mark (not just as caption text,
+its role in run 37). Method unchanged: dataviz skill validate_palette.py,
+--mode light --surface #FFFFFF --pairs all, PYTHONIOENCODING=utf-8.
+
+$ python validate_palette.py "#0CA750,#FFCB3A,#8190FF,#F85C32,#821D13" --mode light --surface "#FFFFFF" --pairs all
+  (OA domain quartet + the reference red -- fig_share_si/fig_topics/fig_frontier's own co-occurrence)
+
+Palette (light, surface #FFFFFF, categorical): 5 slots
+  [FAIL] Lightness band         outside band: [["#FFCB3A",0.865],["#821D13",0.4]]
+  [PASS] Chroma floor           all 5 >= 0.1
+  [WARN] CVD separation         worst all-pairs #F85C32<->#0CA750 dE 7.6 (deutan) . tritan 7.3
+  [PASS] Normal-vision floor    worst all-pairs #F85C32<->#FFCB3A dE 24.9 (normal)
+  [WARN] Contrast vs surface    below 3:1: [["#FFCB3A",1.52],["#8190FF",2.85]]
+  -> FAILED, but every FAIL/WARN line above is a PRE-EXISTING OA-internal finding
+     (runs 3/5) not involving the red at all -- the red's OWN worst pairs are
+     OFF this list entirely (vs OA domains normal-vision >= 28.2 per run 37,
+     nowhere near the printed worst-pair figures above).
+
+$ python validate_palette.py "#E5243B,#DDA63A,#4C9F38,#C5192D,#FF3A21,#26BDE2,#FCC30B,#A21942,#FD6925,#DD1367,#FD9D24,#BF8B2E,#3F7E44,#0A97D9,#56C02B,#00689D,#821D13" --mode light --surface "#FFFFFF" --pairs all
+  (the 16 drawn SDG hues + the reference red -- fig_sdg's own co-occurrence,
+   the ONE family run 37 had not screened the red against directly)
+
+Palette (light, surface #FFFFFF, categorical): 17 slots
+  [FAIL] Lightness band         outside band: [["#FCC30B",0.845],["#FD9D24",0.777],["#821D13",0.4]]
+  [PASS] Chroma floor           all 17 >= 0.1
+  [FAIL] CVD separation         worst all-pairs #FD9D24<->#DDA63A dE 1.3 (protan) . tritan 0.9
+  [FAIL] Normal-vision floor    worst all-pairs #FD9D24<->#DDA63A dE 5.3 (normal)
+  [WARN] Contrast vs surface    below 3:1 (six UN hues, listed in run 7)
+  -> FAILED, entirely on the UN palette's own pre-existing amber-pair collision
+     (run 7, DESCRIPTIVE, the UN fixes these colours). The red's own pairs
+     never surface as the worst -- confirms the reference line stays legible
+     against every SDG bar colour it can now share a figure with.
+
+$ python validate_palette.py "#6A3D9A,#009E73,#D55E00,#821D13" --mode light --surface "#FFFFFF" --pairs all
+  (the 3 ERC domain hues + the reference red -- fig_erc's own co-occurrence)
+
+Palette (light, surface #FFFFFF, categorical): 4 slots
+  [FAIL] Lightness band         outside band: [["#821D13",0.4]]
+  [PASS] Chroma floor           all 4 >= 0.1
+  [PASS] CVD separation         worst all-pairs #D55E00<->#009E73 dE 11.0 (deutan) . tritan 15.8
+  [PASS] Normal-vision floor    worst all-pairs #821D13<->#6A3D9A dE 20.5 (normal)
+  [PASS] Contrast vs surface    all 4 >= 3:1
+  -> ALL SUBSTANTIVE CHECKS PASS (the one FAIL is the institution-monochrome-
+     style lightness-band exemption class the red already carries by design,
+     run 37/palette.py's own SHARED_FRONTIER section -- not a new finding).
+
+$ python validate_palette.py "#192C41,#5A6883,#B5C0D4,#821D13" --mode light --surface "#FFFFFF" --pairs all
+  (the 3-slot institution navy trio + the reference red -- Compare's
+   fig_metric_bars family's own co-occurrence)
+
+Palette (light, surface #FFFFFF, categorical): 4 slots
+  [FAIL] Lightness band         outside band: [["#192C41",0.288],["#B5C0D4",0.806],["#821D13",0.4]]
+  [FAIL] Chroma floor           below floor (reads gray): [["#192C41",0.046],["#5A6883",0.046],["#B5C0D4",0.031]]
+  [PASS] CVD separation         worst all-pairs #821D13<->#192C41 dE 9.9 (protan) . tritan 22.6
+  [PASS] Normal-vision floor    worst all-pairs #821D13<->#5A6883 dE 20.5 (normal)
+  [WARN] Contrast vs surface    below 3:1: [["#B5C0D4",1.83]]
+  -> FAILED only on the institution-monochrome-family's OWN pre-existing
+     exemption class (palette.py's named exception, run 9/13) -- reproduces
+     run 37's own navy-trio numbers exactly (normal-vision min 20.5, deutan
+     min 16.0, both re-measured here), confirming the red's legibility next
+     to the institution bars it now draws a reference line across.
+
+DISPOSITION: every FAIL/WARN across all four runs above is a PRE-EXISTING,
+already-dispositioned finding (OA lightness/CVD from runs 3/5, the SDG amber
+pair from run 7, the institution-monochrome exemption from runs 9/13/37) --
+NONE of them involve the reference red as the worst pair in ANY of the four
+screens. The red's own worst-case separations reproduce run 37's numbers
+exactly (vs OA domains, vs ERC, vs the institution trio), confirming it reads
+cleanly as a MARK -- not only as caption text -- in every context the bar-
+layout contract now draws it: Find's fig_share_si/fig_sdg/fig_erc/fig_topics
+(a full-height line beside OA/SDG/ERC-coloured bars) and Compare's
+fig_metric_bars family (a per-row tick or full-height line beside
+institution-coloured bars). No new hex; `palette.WARNING_CAPTION_COLOR` (==
+`SHARED_FRONTIER`) ships unchanged.

@@ -76,24 +76,26 @@ collapsed fields/subfields/topics/frontier/SDG/ERC panels), none of them
 touching the Compare-page geometry `lib/charts_compare.py` borrows this
 module's private helpers for:
 
-  * **No more wrapping -- widen the gutter instead.** The change above
-    replaced truncation with a two-line wrap; REVERSES that for the Find
-    panels in turn: "full label on one row wins over bar length" is now the
-    stated priority, small bars being an acceptable cost. `fig_share_si` and
-    `fig_topics` gain a `wrap: bool = False` keyword (default OFF -- the new
-    behaviour needs no caller change) that reaches `_tick_display` through
-    its own new `wrap` keyword (default `True`, UNCHANGED for any call that
-    doesn't pass it). That default matters: `lib/charts_compare.py` calls
-    `_tick_display`, `wrap_label`, `row_height`'s `n_wrapped`, `WRAP_WIDTH`
-    and `WRAP_ROW_FACTOR` directly, for the Compare page's own geometry,
-    which does not touch -- so none of that machinery is retired,
-    only defaulted OFF for this module's own two Find builders. With
-    `wrap=False` a label is never split with `<br>`, `_gutter_margin_px`
-    measures the full single-line string (its "longest LINE" is now the
-    whole label), and `row_height`'s `n_wrapped` count is always zero, which
-    is also most of why this refinement compresses panel height: the old
-    "every row pays the two-line pitch the moment ONE row wraps" penalty
-    (`row_height`'s note above) never fires once wrapping itself never fires.
+  * **A later pass ("the bar-layout contract") REVERSES the widen-the-gutter
+    call above and unifies Find's and Compare's geometry instead of keeping
+    them apart.** Both views' bar charts now share ONE set of layout rules:
+    a fixed-width LABEL column and a fixed-width GUTTER column PER VIEW,
+    sized once from the whole label universe (every field, subfield, ERC
+    panel, SDG goal and topic name on disk -- never the current frame), so a
+    bar starts at the identical pixel on every chart of a view whatever seed
+    or pair is loaded. A label always wraps -- pixel-measured, never a
+    character count (`wrap_label_px`, `WRAP_PX`) -- to at most two lines,
+    which the new taller row pitch (`ROW_PITCH_SINGLE`/`ROW_PITCH_PAIR`,
+    below) is sized to host as the NORM, not an exception: `row_height`'s
+    `n_wrapped` correction (and the `wrap=False`/no-wrap escape hatch this
+    paragraph used to describe) has no live caller left in this file. The
+    volume gutter moves into its OWN column (`_add_gutter_column`, a phantom
+    bar trace) for BOTH views -- Find's fold-into-the-tick-string mechanism
+    (`_tick_display`) and its per-frame margin measurement (`_gutter_margin_px`)
+    are RETIRED, not kept as dead code, for the same "a reversed decision is
+    worth being explicit about" reason the truncation-to-wrap reversal above
+    already states. `lib/charts_compare.py` imports every constant this
+    contract introduces rather than keeping its own copies.
   * **The SI unit grid is retired for an outer-end value label.** The old
     per-integer vertical gridline set was a second thing to cross-reference
     against the dashed neutral line; now each row's own SI marker carries its
@@ -126,6 +128,8 @@ module's private helpers for:
 """
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Mapping, Sequence
 
 import numpy as np
@@ -160,52 +164,33 @@ SCATTER_HEIGHT = 520
 BAR_GAP = 0.25              # : 0.3 -> 0.25, tighter inter-row gap to
                             # match the compressed pitch above
 
-# --- Volume-gutter collision fix --------------------------------------------
+# --- Volume-gutter collision fix (superseded by the bar-layout contract below,
+# kept as the historical record of the mechanism this module moved away from)
+# --------------------------------------------------------------------------
 # The volume gutter used to be a SEPARATE `add_annotation` sitting in a
 # negative-x sliver reserved left of the zero baseline (`GUTTER_FRACTION`/
 # `GUTTER_INSET`, retired by this fix), drawn independently of the y-axis
 # category label. At a narrow plot width the two
 # text elements are laid out by two different systems with no shared
 # knowledge of each other's extent, so they can (and at 390 px, did) end up
-# with zero space between them, reading as one garbled word.
+# with zero space between them, reading as one garbled word. The fix folded
+# the volume INTO the y tick text as one right-anchored string and reserved a
+# left margin measured off the frame's own longest label. **That per-frame
+# measurement is GONE** (see the bar-layout contract below): a margin sized
+# off the CURRENT seed's labels means two charts of the same family start
+# their bars at two different pixels depending which institution loaded --
+# exactly the inconsistency a later pass asked to fix. The gutter volume now
+# draws in its OWN column (a phantom bar trace, `_add_gutter_column`,
+# unchanged in spirit from the mechanism `lib/charts_compare.py` already
+# proved at 1920/1280 px), and the label column's width is a CONSTANT derived
+# from the whole label universe, not the current frame.
 #
-# Measured on plotly 5.24.1: `yaxis.automargin`
-# does NOT reserve room away from the plot's own bars for a long tick label
-# it only stops a label being clipped by the OUTER edge of the figure. A
-# label longer than the current margin simply draws on top of the plot area
-# instead. So automargin alone cannot be the fix; it stays on as a backstop
-# for a container narrower than our own estimate, below.
-#
-# The fix (STILL the mechanism -- only the treatment of an over-length label
-# changed, see the note below): fold the volume INTO the y tick text as one
-# right-anchored string (`_tick_display`) -- there is then only ONE text
-# element per row, so there is nothing left for it to collide with -- and
-# reserve the left margin ourselves from the longest resulting LINE
-# (`_gutter_margin_px`) rather than assume automargin will do it.
-#
-# --- Wrap instead of truncate -------------------------
-# The gutter fix originally ellipsised a label past `MAX_LABEL_CHARS` from
-# the right (`_truncate_label`). That approach was reversed: no chart may
-# ever shorten a name, so `MAX_LABEL_CHARS`/`_truncate_label`/`ELLIPSIS` are
-# GONE (not left as dead code -- a reversed decision is worth being explicit
-# about).
-# `wrap_label` replaces truncation: a label over `WRAP_WIDTH` chars wraps onto
-# at most two lines at a word boundary instead of losing any text, and the row
-# grows taller to fit (`row_height`'s `n_wrapped` term, `WRAP_ROW_FACTOR`).
-# `_gutter_margin_px` now measures the longest LINE of a (possibly two-line)
-# tick string, not the longest whole string, since a wrapped label's second
-# line usually holds the trailing words plus the folded-in volume.
-TICK_LABEL_GAP = "  "       # between the (possibly wrapped) label and its
-                            # volume inside one right-anchored tick string
-CHAR_WIDTH_EM = 0.6         # empirical average glyph width, as a fraction of
-                            # font size, for the shipped sans stack -- used
-                            # ONLY to reserve a left margin big enough that a
-                            # long label never overlaps the bars (verified by
-                            # `tests/ui/smoke.py`'s bounding-box check, not by
-                            # this estimate alone)
-GUTTER_MARGIN_PAD_PX = 12   # extra breathing room beyond the estimated width
-GUTTER_MARGIN_MIN_PX = 8    # the old fixed margin, kept as the floor when
-                            # there is nothing long enough to reserve room for
+# `wrap_label`/`WRAP_WIDTH`/`WRAP_ROW_FACTOR`/`row_height` below are KEPT,
+# character-based, for the one caller that still wants a per-frame character
+# budget (`charts_compare.mirror_frontier`'s own topic-name geometry moved
+# off them too, see its own module) -- no live caller of THIS module still
+# reads `WRAP_WIDTH` for a bar-family panel; the constant survives as a
+# documented default for `wrap_label`'s own signature.
 WRAP_WIDTH = 40             # `wrap_label` default -- a label longer than this
                             # many characters wraps at the last word boundary
                             # before it, never mid-word
@@ -216,9 +201,146 @@ MARKER_PX = 10
 LINE_PX = 2
 HAIRLINE_PX = 1
 FONT_PX = 12
-GUTTER_FONT_PX = 11
+GUTTER_FONT_PX = 12         # : 11 -> 12, now equal to FONT_PX -- the
+                            # "gutter font size differs across charts"
+                            # complaint is fixed by every consumer reading
+                            # the SAME constant, not a per-chart tweak
 BUBBLE_MIN_PX = 6
 BUBBLE_MAX_PX = 34
+
+# ---------------------------------------------------------------------------
+# Bar-layout contract: ONE label column, ONE gutter column, ONE row pitch
+# per view, whatever seed or pair is loaded. Single source -- `lib/
+# charts_compare.py` imports every name in this block rather than keeping
+# its own copies.
+# ---------------------------------------------------------------------------
+TICK_FONT_PX = 13           # y-axis category tick labels (the row names) --
+                            # BIGGER than the figure's other chrome (raises
+                            # the font on every bar-family panel); axis
+                            # titles, hover text and the gutter numbers stay
+                            # at GUTTER_FONT_PX above.
+
+ROW_PITCH_SINGLE = 34       # : 27 -> 34. One-bar-per-row charts (Find's
+                            # fields / top subfields / topics / SDG / ERC
+                            # panels): the vertical budget one category row
+                            # gets. A manager render-read found real two-line
+                            # labels colliding with their neighbour at 27 px
+                            # ("Biochemistry, Genetics and / Molecular
+                            # Biology" over "Materials Science"): a wrapped
+                            # label's own TWO lines at TICK_FONT_PX (13 px)
+                            # render at roughly 15 px of line height each
+                            # (measured), so two lines need ~30 px before any
+                            # row-to-row breathing room at all. 34 keeps a
+                            # 4 px margin above that -- the invariant
+                            # `tests/test_chart_layout.py` checks on every
+                            # frame the tests build: `max_lines * 15 + 4 <=
+                            # pitch`. Bar thickness (`BAR_PX_SINGLE`) is
+                            # UNCHANGED; only the pitch around it grows.
+BAR_PX_SINGLE = 20          # target bar thickness at that pitch (unchanged)
+BAR_GAP_SINGLE = 1.0 - (BAR_PX_SINGLE / ROW_PITCH_SINGLE)
+                            # solved, not guessed: with exactly one bar per
+                            # category and no explicit width, plotly's own
+                            # `bargap` is the ONLY handle on bar thickness
+                            # (bar fraction of the row == 1 - bargap), so this
+                            # is the bargap that makes BAR_PX_SINGLE exact at
+                            # ROW_PITCH_SINGLE (~0.259)
+
+ROW_PITCH_PAIR = 40         # two-institutions-per-row charts (Compare's
+                            # `fig_metric_bars` family: thematic shape, SDG
+                            # profile, reciprocity)
+BAR_PX_PAIR = 16            # target bar thickness at that pitch, per series
+PAIR_GROUP_FILL = 0.86      # unchanged from the app's existing grouped-bar
+                            # fill ratio (`DEFAULT_GROUP_FILL`) -- kept
+                            # identical on purpose, only the SPAN below moves
+PAIR_GROUP_SPAN = (BAR_PX_PAIR * 2) / (ROW_PITCH_PAIR * PAIR_GROUP_FILL)
+                            # solved so two PAIR_GROUP_FILL-filled bars at
+                            # ROW_PITCH_PAIR pitch are EXACTLY BAR_PX_PAIR
+                            # thick (~0.930): row-to-row separation is
+                            # carried by the explicit hairline rule between
+                            # rows (`charts_compare._row_rules`), not by
+                            # margin alone, so this can sit tighter than the
+                            # yearly-breakdown pair's own DEFAULT_GROUP_SPAN
+
+COL_PAD_PX = 12             # the ONE pad after the gutter column, before the
+                            # bar origin (x = 0) -- same value, every chart,
+                            # every view: margin.l == LABEL_COL_PX[view] +
+                            # GUTTER_COL_PX[view] + COL_PAD_PX, always. Also
+                            # the safety margin WRAP_PX[view] subtracts from
+                            # LABEL_COL_PX[view] (below) -- reusing the one
+                            # small pad this contract already defines rather
+                            # than inventing a second.
+
+# LABEL_COL_PX -- a CONSTANT per view, derived from the WHOLE label universe
+# of every family that view draws (26 fields, 245 distinct subfield names
+# over 252 subfield ids, 28 ERC panels, 16 drawn SDG goals, 4,516 topics --
+# read from `app/data/topics_dim.parquet`, `lib/engine/resources/
+# openalex_subfield_codebook_v1.csv`, `erc_panels.csv`, `sdg_labels.csv`),
+# never from the current frame -- so a bar starts at the SAME pixel on every
+# chart of a view whatever seed or pair is loaded.
+#
+# Derivation (offline, reproducible, no browser needed at chart-build time):
+# the real rendered tick font -- family read once, live, off a y-tick <text>
+# element's computed style -- at TICK_FONT_PX, summed per-character from the
+# committed pixel-width table (`lib/resources/glyph_widths.json`, measured
+# with the SAME font via canvas `measureText`), through a pixel-accurate
+# greedy word-wrap capped at two lines (`wrap_label_px`). LABEL_COL_PX[view]
+# is THE SMALLEST WIDTH AT WHICH EVERY LABEL OF EVERY FAMILY THAT VIEW DRAWS
+# fits in <= 2 lines with no rendered line wider than the column itself -- a
+# fixed point per family (widen once from that family's own longest single
+# word, remeasure, repeat), then the MAX across families (Find: {field,
+# subfield, erc, sdg}, a coloured accent square charged to sdg's own first
+# line since Find's SDG panel carries one; Compare: {subfield, sdg, topic},
+# every family there carries the accent square), +8% safety over that
+# figure to absorb the gap between a canvas measurement and plotly's own SVG
+# text layout. ERC decides Find's column (282.5 px raw); subfields decide
+# Compare's (241.0 px raw) -- topics fit inside it with ZERO of the 4,516
+# needing an ellipsis fallback (measured, well under the 1% ceiling;
+# `wrap_label_px` still carries the fallback as a standing safety net).
+LABEL_COL_PX = {"find": 306, "compare": 261}
+
+# WRAP_PX -- ONE wrap budget PER VIEW, not per family. A family-by-family
+# wrap budget (this module's own first version) wrapped SHORT families far
+# too early relative to the column they actually sit in -- a manager
+# render-read measured Fields wrapping at 170 px inside a 306 px column,
+# leaving most of the reserved width visibly unused above a needlessly
+# two-line label. The wrap decision now uses the SAME width the column
+# itself was solved to (LABEL_COL_PX[view]), less COL_PAD_PX as a small
+# safety margin so wrapped text never touches the gutter's own edge -- since
+# LABEL_COL_PX is already "the smallest width at which every family's
+# labels fit in <= 2 lines" (the fixed-point definition above), a label only
+# wraps now if it genuinely needs close to the FULL column, and most
+# shorter-family labels render on ONE line. Measured consequence (the
+# manager's own request, §3): of the families that still need two lines at
+# this WIDER budget, only the widest handful per family do -- see
+# `tests/test_chart_layout.py`'s own per-family count and
+# `progress/RR-A1.md`'s Follow-up section for the exact numbers.
+WRAP_PX = {"find": LABEL_COL_PX["find"] - COL_PAD_PX,
+          "compare": LABEL_COL_PX["compare"] - COL_PAD_PX}
+
+# The gutter column holds the row's raw volume, right-aligned, GUTTER_FONT_PX,
+# immediately left of the bar origin. Sized off the widest volume that can
+# ever appear in that role -- an institution's own OpenAlex-scenario total
+# (`index.total_full_2020_2024`/`total_frac_2020_2024`, since no single
+# taxon's volume can exceed the institution's own grand total), formatted by
+# `_fmt_vol` exactly as the chart prints it (thin-space thousands; Find's
+# fractional basis can print one decimal, Compare's `vol_full` is always an
+# integer), +8% safety. Two views, two widths, because Find's frac-basis
+# decimal is the wider string.
+GUTTER_COL_PX = {"find": 44, "compare": 41}
+
+GUTTER_NEG_AXIS_FRAC = 0.16  # the gutter phantom-bar trace's own x, as a
+                             # fraction of the panel's data span, negative of
+                             # the zero baseline -- single-sourced here so
+                             # `charts_compare.py` no longer keeps its own copy
+GUTTER_TIP_FRAC = 0.06
+GUTTER_PHANTOM_FILL = "rgba({0},{0},{0},{0})".format(0)   # fully transparent
+
+ACCENT_GLYPH = "\N{BLACK VERTICAL RECTANGLE}"
+# The row-label taxonomy accent: a small glyph in the taxon's OFFICIAL hue,
+# through plotly's tick pseudo-html, sitting left of a label that names the
+# taxon in full -- colour is recognition, the text is the encoding (single-
+# sourced here; `charts_compare.py` imported its own copy before).
+ACCENT_GAP = "\N{NO-BREAK SPACE}"
 
 DEFAULT_GROUP_SPAN = 0.82   # "bar-group span": was 0.8/0.9, matches the
                             # grouped-bar geometry `charts_compare.py`
@@ -395,44 +517,178 @@ def wrap_label(text, width: int = WRAP_WIDTH) -> str:
     return "<br>".join(lines)
 
 
-def _tick_display(label: str, vol_text: str | None, *, wrap: bool = True) -> tuple[str, str]:
-    """One right-anchored tick string carrying BOTH the (possibly wrapped)
-    label and its volume, so there is a single text element per row instead
-    of two independently-laid-out ones (the X3 fix, unchanged mechanism).
-    Returns `(plain, styled)`: `plain` uses a bare `\\n` line break (never
-    `<br>`) so `_gutter_margin_px` can split on it to find the longest LINE;
-    `styled` is what plotly actually draws, wrapped label lines joined by
-    `<br>` and the volume in the secondary ink and gutter font size via
-    plotly's limited tick pseudo-html (`<span style=".">`, verified to
-    render as a coloured, resized `<tspan>` on the pinned plotly 5.24.1).
+# ---------------------------------------------------------------------------
+# Pixel-accurate label measurement -- reproducible OFFLINE (no browser at
+# chart-build time): a per-character width table measured ONCE, live, off the
+# real rendered tick font (`lib/resources/glyph_widths.json`; see its own
+# header for the method). `text_width_px`/`wrap_label_px` are what
+# `LABEL_COL_PX`/`WRAP_PX` above were themselves derived with, and what every
+# bar-family builder below uses to lay a label out -- the SAME arithmetic,
+# so a column sized for the whole label universe and a single chart's own
+# wrap can never disagree.
+# ---------------------------------------------------------------------------
+_GLYPH_WIDTHS_PATH = Path(__file__).resolve().parent / "resources" / "glyph_widths.json"
+ELLIPSIS = "\N{HORIZONTAL ELLIPSIS}"
 
-    `wrap`: `False` skips `wrap_label` entirely and keeps the label on
-    its one line, whatever its length -- the Find panels' new priority ("full
-    label on one row wins over bar length"), which pushes the cost onto
-    `_gutter_margin_px` reserving a wider margin instead."""
-    wrapped = wrap_label(label) if wrap else str(label)
-    plain = wrapped.replace("<br>", "\n")
-    if vol_text is None:
-        return plain, wrapped
-    plain = f"{plain}{TICK_LABEL_GAP}{vol_text}"
-    styled = (f"{wrapped}{TICK_LABEL_GAP}"
-              f'<span style="color:{P.INK_SECONDARY};font-size:{GUTTER_FONT_PX}px">{vol_text}</span>')
+# Digit-ban note (module docstring): the glyph table's own JSON keys embed
+# TICK_FONT_PX/GUTTER_FONT_PX ("widths_13px", "fallback_width_13px", .) --
+# COMPOSED from those int constants via an f-string, never typed as a digit
+# -bearing literal, the identical idiom `_PCT_FMT`/`_SI_FMT` above already use.
+_UTF_ENCODING_NUM = 8
+_JSON_ENCODING = f"utf-{_UTF_ENCODING_NUM}"
+_WIDTHS_KEY = {TICK_FONT_PX: f"widths_{TICK_FONT_PX}px", GUTTER_FONT_PX: f"widths_{GUTTER_FONT_PX}px"}
+_FALLBACK_KEY = {TICK_FONT_PX: f"fallback_width_{TICK_FONT_PX}px",
+                GUTTER_FONT_PX: f"fallback_width_{GUTTER_FONT_PX}px"}
+
+
+def _load_glyph_widths() -> dict:
+    with open(_GLYPH_WIDTHS_PATH, "r", encoding=_JSON_ENCODING) as f:
+        return json.load(f)
+
+
+_GLYPHS = _load_glyph_widths()   # module-level: one file read, one process
+
+
+def text_width_px(text: str, size_px: int = TICK_FONT_PX) -> float:
+    """The rendered width of `text`, in px, at `size_px` -- summed per
+    character from the committed table (13 px for a label, 12 px for a
+    gutter number), a character missing from the table (a glyph outside
+    today's label universe) falls back to that size's own measured AVERAGE
+    rather than raising, so a future label with one unseen character degrades
+    gracefully instead of crashing. A `size_px` that is neither table (any
+    future caller) scales the 13 px table linearly -- an approximation, but
+    the +8 % safety already baked into every column constant absorbs it."""
+    if size_px in _WIDTHS_KEY:
+        table = _GLYPHS[_WIDTHS_KEY[size_px]]
+        fallback = _GLYPHS[_FALLBACK_KEY[size_px]]
+        return sum(table.get(ch, fallback) for ch in str(text))
+    table = _GLYPHS[_WIDTHS_KEY[TICK_FONT_PX]]
+    fallback = _GLYPHS[_FALLBACK_KEY[TICK_FONT_PX]]
+    scale = size_px / TICK_FONT_PX
+    return scale * sum(table.get(ch, fallback) for ch in str(text))
+
+
+def wrap_label_px(text, wrap_px: float, *, max_chars: int = 80) -> list[str]:
+    """Greedy word-wrap by MEASURED PIXEL width (never a character count),
+    at most two lines, never splitting a word, never dropping a character --
+    the same algorithm `wrap_label` uses, `len()` swapped for `text_width_px`.
+    A word already wider than `wrap_px` on its own is kept whole (words never
+    split outranks the width target). Needing a third line merges every line
+    past the first into ONE second line, same as `wrap_label`; if that merged
+    line is STILL wider than `wrap_px` (a genuinely long name past what the
+    column was sized for -- measured at zero occurrences across today's
+    4,516 topic names, kept as a standing safety net, not a live path) it is
+    cut at `max_chars` and marked with `ELLIPSIS`, the one place this function
+    may shorten text."""
+    words = str(text).split()
+    if not words:
+        return [str(text)]
+    lines: list[str] = [words[0]]
+    for w in words[1:]:
+        candidate = f"{lines[-1]} {w}"
+        if text_width_px(candidate) <= wrap_px:
+            lines[-1] = candidate
+        else:
+            lines.append(w)
+    if len(lines) > 2:
+        lines = [lines[0], " ".join(lines[1:])]
+    if len(lines) == 2 and text_width_px(lines[1]) > wrap_px and len(lines[1]) > max_chars:
+        lines[1] = lines[1][: max(max_chars - len(ELLIPSIS), 1)].rstrip() + ELLIPSIS
+    return lines
+
+
+def _tick_label(label: str, *, wrap_px: float, accent_hex: str | None = None,
+                prefix: str = "") -> tuple[str, str]:
+    """ONE right-anchored tick string: the label, pixel-wrapped to at most two
+    lines. Returns `(plain, styled)` -- `plain` joins lines with a bare `\\n`
+    (used only by the label-universe test, never by a live chart any more:
+    the column WIDTH is a constant now, nothing measures a frame's own text
+    to size a margin); `styled` is what plotly actually draws, `<br>`-joined,
+    with an optional taxonomy-coloured accent square (`ACCENT_GLYPH`) placed
+    before the FIRST line only via plotly's tick pseudo-html -- the SAME
+    accent idiom `lib/charts_compare.py` already uses for Compare's rows, now
+    single-sourced so Find's SDG panel can carry the identical glyph.
+
+    `prefix` (e.g. `fig_topics`'s catch-all glyph + a thin space) is applied
+    to the ALREADY-WRAPPED label, never fed into the wrap itself: a prefix
+    character can be Unicode whitespace (the catch-all marker's own thin
+    space is exactly this), and Python's plain word-split would otherwise
+    treat it as a separate "word" -- wrapping it away from the label it
+    belongs to, and losing the EXACT space character on any re-join. Prefix,
+    accent and body compose in that fixed order; prepending to the whole
+    (possibly two-line) string lands the prefix before the FIRST line only,
+    since a `\\n`/`<br>` only ever follows it."""
+    lines = wrap_label_px(label, wrap_px)
+    plain = "\n".join(lines)
+    styled = "<br>".join(lines)
+    if accent_hex:
+        square = f'<span style="color:{accent_hex}">{ACCENT_GLYPH}</span>{ACCENT_GAP}'
+        plain = f"{ACCENT_GLYPH}{ACCENT_GAP}{plain}"
+        styled = f"{square}{styled}"
+    if prefix:
+        plain = f"{prefix}{plain}"
+        styled = f"{prefix}{styled}"
     return plain, styled
 
 
-def _gutter_margin_px(plain_texts: Sequence[str], font_px: int = FONT_PX) -> int:
-    """The left margin to RESERVE for the longest tick LINE actually shown,
-    since automargin will not do this on its own (see the fix note above).
-    `plain_texts` may hold `\\n`-separated lines (a wrapped label): the margin
-    is sized off the single longest line across every row, not off a whole
-    (possibly two-line) string's total character count, which would reserve
-    far more margin than either line alone needs. A generous per-character
-    estimate plus padding; the real proof that this is enough is
-    `tests/ui/smoke.py`'s bounding-box check on the real app, not this
-    estimate."""
-    lines = [ln for t in plain_texts for ln in str(t).split("\n")]
-    longest = max((len(ln) for ln in lines), default=0)
-    return max(GUTTER_MARGIN_MIN_PX, int(round(longest * font_px * CHAR_WIDTH_EM)) + GUTTER_MARGIN_PAD_PX)
+def _add_gutter_column(fig: go.Figure, *, names: Sequence[str], values: Sequence[str],
+                       xmax: float, row: int | None = None, col: int | None = None,
+                       colors: Sequence[str] | str | None = None) -> None:
+    """The gutter column (bar-layout contract): one phantom, zero-visible-
+    fill `go.Bar` trace at a small negative x (a fixed FRACTION of the
+    panel's own data span, `GUTTER_NEG_AXIS_FRAC`/`GUTTER_TIP_FRAC` --
+    unchanged from the mechanism `lib/charts_compare.fig_metric_bars` already
+    proved at 1920/1280/390 px), its own pre-formatted `values` as text,
+    pushed further left by `textposition="outside"`. ONE mechanism for both
+    views now -- Find's panels used to fold the volume into the y-tick
+    string instead; that folding is retired (see the module note above).
+
+    `row`/`col` default to `None`: `fig_topics` builds a plain single-axes
+    `go.Figure` (plotly refuses a `row=`/`col=` kwarg on one of those, "you
+    must first use make_subplots"), while `fig_share_si` always builds
+    through `make_subplots` even for its one-panel case -- passing `None`
+    calls `add_trace`/`update_xaxes` WITHOUT the grid kwargs at all, legal on
+    both figure shapes; a caller on a real grid passes explicit ints.
+
+    `constraintext="none"` is load-bearing, not decorative: plotly shrinks
+    `textposition="outside"` text to fit the trace's own bar-group LANE
+    under the default `constraintext="both"` -- measured live (a manager
+    render-read caught this at ~8 px against the declared `GUTTER_FONT_PX`
+    12 px) once a SECOND bar trace (this one) shares the category axis with
+    the real bar and the figure's own `barmode` is not `"overlay"` (plotly's
+    un-set default is `"group"`, which halves each trace's own lane). Both
+    callers now force `barmode="overlay"` too (see their own call sites) --
+    the two fixes are one system: `constraintext="none"` stops ANY future
+    lane-width change from silently re-shrinking this text again."""
+    n = len(names)
+    basis = xmax if xmax > 0 else 1.0
+    neg_extent = basis * GUTTER_NEG_AXIS_FRAC
+    gutter_x = -neg_extent * GUTTER_TIP_FRAC
+    ink = colors if isinstance(colors, list) else [colors or P.INK_SECONDARY] * n
+    grid_kw = {} if row is None else {"row": row, "col": col}
+    fig.add_trace(go.Bar(
+        x=[gutter_x] * n, y=list(names), orientation="h",
+        marker=dict(color=GUTTER_PHANTOM_FILL, line=dict(width=0)),
+        text=list(values), textposition="outside", cliponaxis=False,
+        textfont=dict(size=GUTTER_FONT_PX, color=ink), constraintext="none",
+        customdata=[""] * n, hoverinfo="skip", showlegend=False,
+    ), **grid_kw)
+    fig.update_xaxes(range=[-neg_extent, xmax * 1.02], **grid_kw)
+
+
+def row_height_single(n: int, minimum: int = MIN_HEIGHT) -> int:
+    """Figure height under the bar-layout contract for a ONE-bar-per-row
+    chart: margins + `n` rows at `ROW_PITCH_SINGLE`. Two-line labels are the
+    norm the pitch already hosts, so there is no `n_wrapped` correction any
+    more (contrast `row_height` above, which the one caller still measuring
+    its own frame -- `fig_breakdown_global` -- keeps using unchanged)."""
+    return max(minimum, int(round(ROW_PITCH_SINGLE * int(n))) + BASE_PX)
+
+
+def row_height_pair(n: int, minimum: int = MIN_HEIGHT) -> int:
+    """Figure height under the bar-layout contract for a TWO-institutions-
+    per-row chart: margins + `n` rows at `ROW_PITCH_PAIR`."""
+    return max(minimum, int(round(ROW_PITCH_PAIR * int(n))) + BASE_PX)
 
 
 def _first_col(df: pd.DataFrame, candidates: Sequence[str]) -> str | None:
@@ -508,10 +764,10 @@ def _ordered(df: pd.DataFrame, family: str, sort: str, value_col: str) -> pd.Dat
     return out.sort_values(keys, kind="mergesort").reset_index(drop=True)
 
 
-def _base_layout(fig: go.Figure, height: int, *, margin: dict) -> go.Figure:
+def _base_layout(fig: go.Figure, height: int, *, margin: dict, bargap: float = BAR_GAP) -> go.Figure:
     fig.update_layout(
         height=height,
-        bargap=BAR_GAP,
+        bargap=bargap,
         showlegend=False,
         paper_bgcolor=P.SURFACE,
         plot_bgcolor=P.SURFACE,
@@ -526,6 +782,12 @@ def _base_layout(fig: go.Figure, height: int, *, margin: dict) -> go.Figure:
 # 1. share + SI -- the paired form (A/B #3 winner), with the volume gutter
 #    (A/B #4 winner). Used by the Fields, Top subfields, SDG and ERC panels.
 # ---------------------------------------------------------------------------
+# WRAP_PX is now ONE value PER VIEW (module header) -- every Find panel
+# (fields/subfields/erc/sdg/topics) wraps at `WRAP_PX["find"]`, whatever
+# family its own labels belong to; a per-family lookup (this section's
+# earlier `_wrap_px_for`/`_WRAP_FAMILY_BY_LABEL_COL`) is retired with it.
+
+
 def fig_share_si(
     df: pd.DataFrame,
     *,
@@ -540,6 +802,7 @@ def fig_share_si(
     si_hover_label: str = HOVER_SI,
     stacked: bool = False,
     wrap: bool = False,
+    label_accent: bool = False,
 ) -> go.Figure:
     """Two aligned panels of ONE figure, sharing the y (category) axis.
 
@@ -573,11 +836,18 @@ def fig_share_si(
     then panel; SDG number). Colours never move with the sort: they follow the
     entity (dataviz non-negotiable "colour follows the entity, never its rank").
 
-    `wrap`: the Find panels never wrap a label onto
-    a second line any more -- the left gutter widens to fit the full name on
-    ONE row instead (`_tick_display`'s own `wrap` keyword). Pass `wrap=True`
-    to get the pre- two-line-wrap behaviour back; nothing in this app
-    does, today.
+    `wrap`: RETAINED for signature compatibility only -- under the bar-layout
+    contract every label pixel-wraps to at most two lines at the family's own
+    `WRAP_PX` regardless of this flag (the fixed-width label column needs it
+    to, on every chart, whatever the seed); nothing in this app passes
+    `wrap=True` any more, and no caller needs to change.
+
+    `label_accent=True` prefixes each row's label with a small square in the
+    row's OWN colour (`colors[i]`, already computed for the bar) -- the same
+    taxonomy-accent idiom `lib/charts_compare.py` uses for Compare's rows,
+    single-sourced here (`_tick_label`). Only the SDG panel passes this
+    (`fig_sdg`, below): Fields/Subfields/ERC already show identity on the bar
+    itself and a caller has not asked for the glyph there too.
     """
     if share_col not in df.columns:
         raise ValueError(f"missing column {share_col!r}")
@@ -587,6 +857,7 @@ def fig_share_si(
     if label_col is None:
         raise ValueError("no label column found; pass label_col=")
     volume_col = volume_col or _first_col(d, _VOLUME_COLS)
+    wrap_px = WRAP_PX["find"]
 
     names = [str(v) for v in d[label_col]]
     colors = _colors_for(d, family)
@@ -647,35 +918,34 @@ def fig_share_si(
         showlegend=False,
     ), row=1, col=1)
 
-    # Volume gutter (A/B #4): folded into the y tick text as ONE right-anchored
-    # string per row -- see the fix note above. Wrapping applies to every
-    # row's label whether or not `gutter` is on, because a long category name
-    # can overrun the plot on its own.
-    if gutter and vol is not None:
-        pairs = [_tick_display(names[i], _fmt_vol(vol[i]), wrap=wrap) for i in range(n)]
-    else:
-        pairs = [_tick_display(names[i], None, wrap=wrap) for i in range(n)]
+    # The tick text is now JUST the (pixel-wrapped, optionally accented)
+    # label -- the volume moves to its own gutter column below (bar-layout
+    # contract: ONE mechanism for both views, no more folding a second
+    # number into the category-axis text).
+    pairs = [_tick_label(names[i], wrap_px=wrap_px,
+                         accent_hex=(colors[i] if label_accent else None))
+             for i in range(n)]
     plain_display = [p for p, _ in pairs]
     styled_display = [s for _, s in pairs]
-    n_wrapped = sum(1 for s in styled_display if "<br>" in s)
-    fig.update_yaxes(tickmode="array", tickvals=names, ticktext=styled_display)
+    fig.update_yaxes(tickmode="array", tickvals=names, ticktext=styled_display, row=1, col=1)
 
     xmax = float(np.nanmax(share)) if n and np.isfinite(share).any() else 1.0
     xmax = xmax if xmax > 0 else 1.0
     if gutter and vol is not None:
+        _add_gutter_column(fig, names=names, values=[_fmt_vol(v) for v in vol],
+                           xmax=xmax, row=1, col=1)
         fig.add_shape(type="line", x0=0, x1=0, y0=-0.5, y1=n - 0.5,
                       xref="x", yref="y", line=dict(color=P.BORDER, width=HAIRLINE_PX))
-    fig.update_xaxes(range=[0, xmax * 1.02], tickvals=_nice_ticks(xmax), row=1, col=1)
+    else:
+        fig.update_xaxes(range=[0, xmax * 1.02], row=1, col=1)
+    fig.update_xaxes(tickvals=_nice_ticks(xmax), row=1, col=1)
 
     if has_si:
-        for i, nm in enumerate(names):
-            if not ok[i]:
-                continue
-            fig.add_trace(go.Scatter(
-                x=[SI_NEUTRAL, si[i]], y=[nm, nm], mode="lines",
-                line=dict(color=colors[i], width=LINE_PX),
-                hoverinfo="skip", showlegend=False,
-            ), row=si_row, col=si_col)
+        # The below-floor DOT keeps its own value, anchored beside itself
+        # (below); the STEM connecting it back to the neutral reference is
+        # RETIRED -- the reference is now one unmistakable RED line the whole
+        # panel shares (below), so a per-row connector back to it is a
+        # redundant second read of the same fact.
         # solid -> filled dot (family colour fill, SURFACE outline, as before);
         # thin -> HOLLOW dot (SURFACE fill, family-colour outline at
         #          OUTLINE_WIDTH) -- a below-the-old-floor cell is disclosed,
@@ -707,8 +977,13 @@ def fig_share_si(
             # (the share bars nearest the SI panel are the shortest rows).
             cliponaxis=False,
         ), row=si_row, col=si_col)
+        # The neutral reference is CONSTANT across every row (SI/ESI = 1
+        # means "matches the reference population", the same target for
+        # every taxon) -- the bar-layout contract draws that case as ONE
+        # full-height red dashed line, replacing the earlier secondary-ink
+        # hairline (`add_vline` already spans the whole panel by default).
         fig.add_vline(x=SI_NEUTRAL, row=si_row, col=si_col,
-                      line=dict(color=P.INK_SECONDARY, width=HAIRLINE_PX, dash="dash"))
+                      line=dict(color=P.WARNING_CAPTION_COLOR, width=LINE_PX, dash="dash"))
         # The per-integer unit grid is retired in favour of the
         # outer-end label above -- `showgrid=False` removes it. The dashed
         # neutral-reference line just above is NOT a "unit gridline" and
@@ -721,14 +996,27 @@ def fig_share_si(
         fig.update_xaxes(title_text=si_axis_title, showgrid=False,
                          range=[si_lo - pad, si_hi + pad], row=si_row, col=si_col)
 
-    fig.update_yaxes(autorange="reversed", showgrid=False, automargin=True)
+    fig.update_yaxes(autorange="reversed", showgrid=False, automargin=True,
+                     tickfont=dict(size=TICK_FONT_PX))
     fig.update_xaxes(gridcolor=P.GRID, zerolinecolor=P.GRID, linecolor=P.BORDER)
     fig.update_xaxes(title_text=AX_SHARE, tickformat=_AXIS_PCT_FMT, row=1, col=1)
-    height = row_height(n, n_wrapped=n_wrapped) * (2 if (has_si and stacked) else 1)
-    margin_l = _gutter_margin_px(plain_display)
+    if gutter and vol is not None:
+        # Two go.Bar traces (the real share bar + the gutter phantom) now
+        # share this subplot's category axis -- plotly's own un-set default
+        # `barmode` is "group", which would halve EACH trace's own lane
+        # (and, via `constraintext`, its text) to fit two traces side by
+        # side. `"overlay"` keeps every trace at its own full, independently
+        # computed width -- the same fix `charts_compare.fig_metric_bars`
+        # already carries for its own multi-trace rows.
+        fig.update_layout(barmode="overlay")
+    height = row_height_single(n) * (2 if (has_si and stacked) else 1)
+    # bar-layout contract: the label + gutter columns are CONSTANTS derived
+    # from the whole label universe (module header), never this frame's own
+    # text -- every Find panel's bars therefore start at the identical pixel.
+    margin_l = LABEL_COL_PX["find"] + GUTTER_COL_PX["find"] + COL_PAD_PX
     margin_r = SI_LABEL_MARGIN_PX if has_si else 16
     return _base_layout(fig, height, margin=dict(t=BASE_PX // 2, l=margin_l, r=margin_r,
-                                                 b=BASE_PX))
+                                                 b=BASE_PX), bargap=BAR_GAP_SINGLE)
 
 
 # ---------------------------------------------------------------------------
@@ -768,9 +1056,11 @@ def fig_topics(
     names = [f"{EXCLUDED_GLYPH}{THIN_SPACE}{v}" if excluded[i] else str(v)
              for i, v in enumerate(d[label_col])]
     # `names` is the identity (y positions / hover), full and untouched;
-    # `_tick_display` wraps it for the volume-folded tick actually drawn
-    # see fig_share_si's fix note above; topic names are the longest labels
-    # in the app, so this panel is the wrap mechanism's harder test.
+    # `_tick_label` pixel-wraps it for the tick actually drawn -- the volume
+    # itself now lives in its own gutter column, see the fix note above.
+    # Topic names are the longest labels in the app, so this panel is the
+    # wrap mechanism's harder test (`WRAP_PX["find"]`, the same view-level
+    # budget every other Find panel wraps at).
     share = d[share_col].to_numpy(dtype=float)
     vol = d[volume_col].to_numpy() if volume_col else None
 
@@ -790,27 +1080,40 @@ def fig_topics(
                     line=dict(color=P.SURFACE, width=HAIRLINE_PX)),
         customdata=hover, hovertemplate="%{customdata}<extra></extra>", showlegend=False,
     ))
-    if gutter and vol is not None:
-        pairs = [_tick_display(names[i], _fmt_vol(vol[i]), wrap=wrap) for i in range(n)]
-    else:
-        pairs = [_tick_display(names[i], None, wrap=wrap) for i in range(n)]
-    plain_display = [p for p, _ in pairs]
+    # Wrap the RAW name (never the glyph-prefixed `names[i]`): the catch-all
+    # marker's own THIN_SPACE is Unicode whitespace, which a plain word-split
+    # would otherwise treat as a break point, losing the exact character on
+    # re-join (`_tick_label`'s own `prefix` note).
+    pairs = [_tick_label(str(v), wrap_px=WRAP_PX["find"],
+                         prefix=(f"{EXCLUDED_GLYPH}{THIN_SPACE}" if excluded[i] else ""))
+             for i, v in enumerate(d[label_col])]
     styled_display = [s for _, s in pairs]
-    n_wrapped = sum(1 for s in styled_display if "<br>" in s)
     fig.update_yaxes(tickmode="array", tickvals=names, ticktext=styled_display)
 
     xmax = float(np.nanmax(share)) if n and np.isfinite(share).any() else 1.0
     xmax = xmax if xmax > 0 else 1.0
     if gutter and vol is not None:
+        _add_gutter_column(fig, names=names, values=[_fmt_vol(v) for v in vol], xmax=xmax)
+        # Two go.Bar traces now share this axis (see `fig_share_si`'s own
+        # identical note) -- force overlay so plotly's un-set "group"
+        # default cannot halve either trace's own lane (and, via
+        # `constraintext`, its text).
+        fig.update_layout(barmode="overlay")
         fig.add_shape(type="line", x0=0, x1=0, y0=-0.5, y1=n - 0.5,
                       line=dict(color=P.BORDER, width=HAIRLINE_PX))
-    fig.update_xaxes(range=[0, xmax * 1.02], tickvals=_nice_ticks(xmax))
-    fig.update_yaxes(autorange="reversed", showgrid=False, automargin=True)
+    else:
+        fig.update_xaxes(range=[0, xmax * 1.02])
+    fig.update_xaxes(tickvals=_nice_ticks(xmax))
+    fig.update_yaxes(autorange="reversed", showgrid=False, automargin=True,
+                     tickfont=dict(size=TICK_FONT_PX))
     fig.update_xaxes(title_text=AX_SHARE, tickformat=_AXIS_PCT_FMT,
                      gridcolor=P.GRID, zerolinecolor=P.GRID, linecolor=P.BORDER)
-    margin_l = _gutter_margin_px(plain_display)
-    return _base_layout(fig, row_height(n, n_wrapped=n_wrapped),
-                        margin=dict(t=BASE_PX // 2, l=margin_l, r=16, b=BASE_PX))
+    # bar-layout contract: a CONSTANT margin (the whole 4,516-topic universe,
+    # never this frame's own longest name) -- see `fig_share_si`'s own note.
+    margin_l = LABEL_COL_PX["find"] + GUTTER_COL_PX["find"] + COL_PAD_PX
+    return _base_layout(fig, row_height_single(n),
+                        margin=dict(t=BASE_PX // 2, l=margin_l, r=16, b=BASE_PX),
+                        bargap=BAR_GAP_SINGLE)
 
 
 # ---------------------------------------------------------------------------
@@ -974,7 +1277,10 @@ def fig_frontier(
 def fig_sdg(df: pd.DataFrame, *, sort: str = "taxonomy", gutter: bool = True) -> go.Figure:
     """The SDG panel. Delegates to `fig_share_si` with `esi` presented in the SI
     slot, so the reader learns ONE form and reuses it
-    (`same-read-same-form`).
+    (`same-read-same-form`). Each row's label carries a small SQUARE in its
+    own official SDG colour (`label_accent=True`) -- the same taxonomy-accent
+    idiom Compare's SDG chart carries, so a reader sees the goal's colour on
+    either page.
 
     The share denominator is SDG-TAGGED fractional mass and the labelling is
     MULTI-LABEL -- one work can carry several goals, so these shares do NOT sum
@@ -986,7 +1292,8 @@ def fig_sdg(df: pd.DataFrame, *, sort: str = "taxonomy", gutter: bool = True) ->
     if "sdg_number" not in d.columns and "sdg_idx" in d.columns:
         d["sdg_number"] = pd.to_numeric(d["sdg_idx"], errors="coerce") + 1
     return fig_share_si(d, family="sdg", sort=sort, gutter=gutter,
-                        si_axis_title=AX_ESI, si_hover_label=HOVER_ESI)
+                        si_axis_title=AX_ESI, si_hover_label=HOVER_ESI,
+                        label_accent=True)
 
 
 # ---------------------------------------------------------------------------

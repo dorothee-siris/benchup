@@ -674,9 +674,17 @@ width instead of half of it each.
 
 ### 2.15 Panel — Fields (share + SI)
 
+> **Gutter, margin and reference SUPERSEDED by §12 (bar-layout contract,
+> D28)** — the volume gutter is now its own phantom-trace column (not folded
+> into the tick text), the left margin is the CONSTANT `LABEL_COL_PX["find"]
+> + GUTTER_COL_PX["find"] + COL_PAD_PX`, and the neutral SI/ESI reference
+> below is a full-height RED dashed line (its connecting stem retired) —
+> everything else in this row (the unit grid, the dot family, the taxonomy
+> sort) is unchanged.
+
 - **Form.** `st.expander(expanded=False)`. Inside: `charts.fig_share_si(family="oa")`
   — two aligned panels of one figure sharing the y axis; share bars left with the
-  volume in a left text gutter, SI lollipops right against a dashed reference at
+  volume in a left gutter column, SI lollipops right against a dashed reference at
   the neutral value (A/B #3 and #4 winners), plus a **unit grid** — a
   light `GRID`-coloured vertical line at every integer 1, 2, 3 … up to the SI
   axis's own max, tick-labelled at those integers, so a reader can place a dot
@@ -873,6 +881,11 @@ unchanged, it never knows which mode produced its input.
 > answers neither cleanly.
 
 ### 2.19 Panel — SDG profile
+
+> **§12 addition (bar-layout contract, D28):** each row's label now carries a
+> small square in the goal's own official UN colour (`fig_sdg`'s
+> `label_accent=True`) — the same taxonomy-accent idiom Compare's SDG chart
+> carries, so a reader sees the goal's colour on either page.
 
 - **Form.** `st.expander(expanded=False)` → `charts.fig_sdg`, which delegates to
   `charts.fig_share_si` with ESI in the SI slot, so the reader learns ONE form
@@ -2439,6 +2452,13 @@ runs against.
 
 ### 10.1 The left gutter COLUMN (replaces §5.3)
 
+> **Partially SUPERSEDED by §12 (bar-layout contract, D28).** The mechanism
+> below (a phantom `go.Bar` trace) is UNCHANGED and is now single-sourced in
+> `lib/charts.py` for BOTH views. What changed: the header line above the
+> column is RETIRED (no chart draws one any more), and the left margin this
+> column sits inside is a CONSTANT (`LABEL_COL_PX[view] + GUTTER_COL_PX[view]
+> + COL_PAD_PX`), never the per-frame measurement this section describes.
+
 - **Form.** A phantom, zero-visible-fill `go.Bar` trace per drawn institution,
   offset into the SAME lane as its real bar, sitting at a small negative x
   (`GUTTER_NEG_AXIS_FRAC` of the data span) with the raw volume as its own
@@ -2515,7 +2535,21 @@ runs against.
 > half-rendered" at density in a way a caution-coloured NUMBER, sitting
 > exactly where every other value sits, does not.
 
-### 10.3 The dot/SI family — audited, confirmed UNCHANGED
+### 10.3 The dot/SI family — audited, confirmed UNCHANGED (partially converged by §12)
+
+> **§12 update (bar-layout contract, D28):** two of the three findings below
+> are SUPERSEDED, not by reopening the judgement but because the thing they
+> ruled "stays apart" later converged anyway. The gutter mechanism is no
+> longer folded into the tick label at all — Find now draws the SAME
+> phantom-trace column §10.1 describes, single-sourced in `lib/charts.py`
+> for both views (`_tick_display`, named below, is retired). The neutral
+> reference's COLOUR changes to `palette.WARNING_CAPTION_COLOR` (red),
+> matching §10.4's own repaint — it stays a dashed RULE, never a diamond,
+> exactly as this section already judged; only the hue moves. The below-
+> floor hollow-dot ruling (bullet one) is genuinely UNCHANGED, including
+> under D28: the DOT survives, only its connecting STEM is retired (a
+> per-row connector to a now-unmistakable red reference line is redundant).
+> Full current detail: `CHROME_CONTRACT.md` §11.
 
 The question was raised whether the SI/mirror-dot below-floor MARKER should be
 retired too. Judged and confirmed NO, for two independent reasons:
@@ -2553,6 +2587,13 @@ retired too. Judged and confirmed NO, for two independent reasons:
   family is the second case, unchanged.
 
 ### 10.4 The reference mark (replaces §5.5's encoding — the arithmetic stays)
+
+> **SUPERSEDED by §12 (bar-layout contract, D28).** The `diamond-tall`
+> marker described below is RETIRED — the reported defect named it directly
+> ("a dark diamond that is not visible"). Both the varying and the constant
+> case now draw in `palette.WARNING_CAPTION_COLOR` (red): a per-row `go.Shape`
+> vertical line (never a marker) for the varying case, one full-height rule
+> for the constant case. See §12 for the full mechanism and its render proof.
 
 - **Form.** A reference that VARIES by row (PP / SDG-tagged share / Dynamics
   / FWCI's own per-taxon population mean) is now a dark `REF_MARKER_SYMBOL`
@@ -2659,6 +2700,15 @@ metric `pp`), `grouped_by_field` toggling the field-domain row grouping
 no new bar-drawing code, the existing SS10 bar-family contract unchanged.
 See `lib/charts_compare.py:two_tab_bars`'s own docstring for the frame
 contract; the render proof at all three widths confirms it.
+
+> **§12 changes (bar-layout contract, D28):** the SDG section (`_render_sdg`)
+> now calls `_render_two_tab_section` with `tabs=False` — Profile only, no
+> Impact tab and no tab strip at all; the Thematic-shape section's own call
+> site is untouched and keeps both tabs. The gutter's per-chart header
+> ("Publications, full count") is retired. The diamond reference is a dashed
+> red tick/line now. Tick font 13 px, gutter font 12 px. The SDG accent
+> square (missing before this stream) now shows via a new
+> `accent_key_col="sdg_number"` passed through `_render_sdg`.
 
 ### 11.2 `mirror_frontier` — Shared frontier
 
@@ -2811,3 +2861,202 @@ full contract detail in `CHROME_CONTRACT.md` SS13 row 8 and SS10 row 8.
 
 Re-rendered at all three widths. Full proof (render-script assertions,
 before/after screenshots) recorded.
+
+## 12. Bar-layout contract (D28) — supersedes the margin/gutter/diamond/font
+##     passages in §§2.15–2.20, 10.1, 10.4 and 11.1 above
+
+Triggered by two user reports read together rather than separately: (O4)
+"the ERC panel leaves ~150 empty px between the collapsible panel's left
+border and the longest y-label… every bar must start at the same pixel,
+every bar the same height, every gutter (and its volume) aligned
+vertically… in Compare the gutter font size and bar heights differ across
+charts" and (C2) "the baseline is a dark diamond that is not visible → a
+dashed vertical red line; the gutter is too large; remove 'Publications,
+full count'". Both views' bar-family charts now share ONE set of rules
+instead of two independently-tuned ones (Find's fold-into-tick-text
+mechanism, Compare's phantom-trace column) — single-sourced in
+`lib/charts.py`, `lib/charts_compare.py` imports every constant.
+
+**The columns are CONSTANTS, not per-frame measurements.** `LABEL_COL_PX`
+and `GUTTER_COL_PX`, one pair per view, are derived ONCE from the WHOLE
+label universe on disk — every field, subfield, ERC panel, SDG goal and
+topic name the app could ever show, not the current seed's or pair's own
+frame — so a bar starts at the identical pixel on every chart of a view,
+whatever institution or pair is loaded. This is the mechanical fix for O4:
+the old `_gutter_margin_px` measured the CURRENT frame's longest line, which
+is why two charts of the "same" panel type could reserve two different
+margins and why the ERC panel (labels up to ~68 chars) left dead space when
+a shorter panel's own estimate happened to be reused, or reserved more than
+a given seed's own labels needed.
+
+**Derivation, offline and reproducible (no browser needed at chart-build
+time).** The real rendered tick font — family read ONCE, live, off a y-tick
+`<text>` element's computed style on the actual app (`"Source Sans", sans-
+serif`) — at `TICK_FONT_PX`; a per-character pixel-width table measured with
+that exact font via canvas `measureText`, committed as `lib/resources/
+glyph_widths.json` (13 px for a label, 12 px for a gutter number, every
+character present in today's label universes, +8 % safety already folded
+into the derived constants below to absorb the gap between a canvas
+measurement and plotly's own SVG text layout); a pixel-accurate greedy
+word-wrap (`charts.wrap_label_px`) capped at two lines, the same "never
+split a word, merge a third line into the second" algorithm `wrap_label`
+already used, `len()` swapped for the measured width. The label column is
+the smallest width at which every label of the family wraps to ≤ 2 lines
+with no rendered line wider than the column itself — a fixed point: start
+at the family's own longest single word (a word can never be split, so this
+is the true floor), wrap the whole universe, remeasure the widest resulting
+line, widen if it exceeds the starting width, repeat (converges in a
+handful of steps on real data).
+
+**Find's column (306 px) is the widest fixed point over {field, subfield,
+ERC, SDG}** (`WRAP_PX = {field: 170, subfield: 242, erc: 292, sdg: 228}`) —
+ERC panel labels are the widest family (up to "Molecules of Life: Biological
+Mechanisms, Structures and Functions"), so ERC decides Find's column;
+topics (the app's own longest labels, up to 86 characters) are NOT part of
+this fixed-point search but are measured against the resulting column
+separately and fit inside it with room to spare (`WRAP_PX["topic"] = 241 <
+292`). **Compare's column (261 px) is the widest fixed point over
+{subfield, SDG, topic}** (topics are included here because a later stream's
+topic-overlap balance bars will carry topic labels in this same column) —
+every family there also carries the taxonomy accent square (below), whose
+width is charged to the FIRST wrapped line before the fixed point is
+solved. Measured on the real 4,516-topic universe: **0 topics need an
+ellipsis fallback** at the derived column (well under the 1 % ceiling this
+decision was conditioned on) — `wrap_label_px` still carries the ellipsis
+branch as a standing safety net for a future, longer topic name, not a live
+path today.
+
+**The gutter column (44 px Find, 41 px Compare)** holds the row's raw
+volume, right-aligned, `GUTTER_FONT_PX`, immediately left of the bar
+origin — sized off the widest volume that can ever appear there (an
+institution's own scenario total, `index.total_full_2020_2024` /
+`total_frac_2020_2024`, since no single taxon's volume can exceed the
+institution's own grand total), formatted exactly as `_fmt_vol` prints it.
+Find's column is wider because its fractional basis can print one decimal
+("36 956.0"); Compare's `vol_full` gutter is always an integer.
+
+**ONE gutter mechanism for both views now**, replacing Find's own
+fold-into-the-tick-text idiom (§2.15's "Fix X3", `_tick_display`/
+`_gutter_margin_px`, RETIRED — not kept as dead code): a phantom,
+zero-visible-fill `go.Bar` trace at a small negative x
+(`GUTTER_NEG_AXIS_FRAC`/`GUTTER_TIP_FRAC` of the panel's own data span),
+its own pre-formatted volume as `text`, pushed further left by
+`textposition="outside"` — the exact mechanism Compare's `fig_metric_bars`
+already proved at 1920/1280/390 px (CHROME_CONTRACT.md §10.1), now
+single-sourced in `lib/charts.py` (`_add_gutter_column`) so both views call
+the identical helper. **No header text above the gutter, anywhere** — the
+per-chart basis label ("Publications, full count", "Joint publications")
+that used to sit above Compare's own gutter column is retired; the basis is
+named once, in the section's own caption, never repeated per chart.
+
+**Row pitch and bar thickness — TWO shapes, both fixed.**
+`ROW_PITCH_SINGLE = 27` / `BAR_PX_SINGLE = 20` for one-bar-per-row charts
+(Find's Fields, Top subfields, Top topics, SDG, ERC panels — up from an
+18 px pitch, the O4 "raise each bar's height by ~50 %" ask; `BAR_GAP_SINGLE
+= 1 − BAR_PX_SINGLE⁄ROW_PITCH_SINGLE` is solved so the target thickness is
+exact, not tuned by eye). `ROW_PITCH_PAIR = 40` / `BAR_PX_PAIR = 16` for
+two-institutions-per-row charts (Compare's `fig_metric_bars` family:
+Thematic shape, SDG profile, reciprocity — `PAIR_GROUP_FILL = 0.86`
+unchanged from the app's existing grouped-bar fill ratio, `PAIR_GROUP_SPAN`
+solved so two `PAIR_GROUP_FILL`-filled bars at this pitch are exactly
+`BAR_PX_PAIR` px thick). Figure height is now the direct formula "margins +
+`n` rows at the row-shape's own pitch" (`charts.row_height_single`/
+`row_height_pair`) — **the `n_wrapped` height correction goes away
+entirely**: two-line labels are the norm the new pitch already hosts, not
+an exception that grows the whole panel the moment one row wraps.
+
+**Fonts: `TICK_FONT_PX = 13`, `GUTTER_FONT_PX = 12`.** The category tick
+label (the row's own name) is now BIGGER than the figure's other chrome — an
+explicit `tickfont` on the category axis, the O4 "raise the font 1–2 pt"
+ask. `GUTTER_FONT_PX` moves from 11 to 12, now equal to the figure-wide
+default (`FONT_PX`) — the O4 complaint "the gutter volume font size… differ
+across charts" is fixed by every consumer reading the SAME shared constant,
+not by tuning each chart individually.
+
+**References: a dashed RED tick or line, never a diamond, never a
+dot-and-stem.** A reference that VARIES by row (the European-mean share in
+Compare's profile tab, the world PP10 reference in the impact tab) is now a
+`go.Shape` vertical LINE per row — `x0 == x1` at the reference value,
+`y0`/`y1` spanning exactly that row's own band (`row_index ± 0.5`) — in
+`palette.WARNING_CAPTION_COLOR` (the SAME validated red `SHARED_FRONTIER`
+already uses, `#821D13`; re-validated for this new role — every hue it can
+now share a screen with, OA/ERC/SDG/institution marks — in
+`design-system/palette_validation.txt`), `LINE_PX` (2 px), dashed. This
+REPLACES the earlier `diamond-tall` `go.Scatter` marker (§10.4/
+CHROME_CONTRACT.md §10.3), which the reported defect named directly: a dark
+diamond barely visible against a panel already full of solid institution-
+coloured bars. A reference that is CONSTANT across every row (SI/ESI = 1 in
+Find's `fig_share_si`/`fig_sdg`/`fig_erc`; any single-value `REF_METRICS`
+case in Compare) stays ONE rule — the SAME red, the SAME dash, spanning the
+WHOLE panel (`add_vline`'s own default span) — replacing the earlier
+`INK_SECONDARY` hairline (Find) / `palette.INK` dash (Compare) with one
+shared "the reference is red" rule for both chart families. **Find's SI
+lollipop loses its connecting STEM** (the `go.Scatter` line from the
+neutral reference to each row's own dot): once the panel-wide reference is
+an unmistakable red line, a per-row line connecting back to it is a
+redundant second read of the same fact. The DOT itself — filled/hollow per
+`si_status`, carrying its own formatted value as text — is UNCHANGED; only
+the connector is retired.
+
+**Compare's SDG chart is profile-only.** No Impact tab, no tab UI at all —
+`_render_two_tab_section` gains a `tabs=False` path (the thematic-shape
+section's own call site is untouched and keeps both tabs; only `_render_sdg`
+passes `tabs=False`). **The SDG accent square, found and fixed.** The
+taxonomy-accent mechanism (a small coloured square before a row's label,
+already wired for subfields via `domain_id`, `_LEVEL_ACCENT_FAMILY`) was
+silently absent for SDG rows because `_shape_long` (the frame builder both
+sections share) only adds `domain_id`/`group_label` when `grouped=True` —
+the SDG call (`grouped=False`) added nothing in its place, so
+`fig_metric_bars`'s own accent lookup (`_ACCENT_COLS["sdg"] = ("sdg_number",
+"sdg_idx")`) never found a column to key by. Fixed by a new
+`accent_key_col` parameter on `_render_two_tab_section`: `_render_sdg`
+passes `accent_key_col="sdg_number"`, copying that column straight through
+onto the frame `two_tab_bars` draws (position-aligned, since `_shape_long`
+never reorders rows) — no change to `_shape_long` itself, no change to the
+already-working subfield path. **Find's SDG panel gets the identical
+square** (`fig_sdg`'s new `label_accent=True`, reusing the per-row colour
+`_colors_for` already computed for the bar itself) — Fields, Subfields and
+ERC do not, since their bars are already coloured by the SAME family the
+accent would repeat.
+
+**Mirror_frontier converges its OWN margin and wrap onto the shared
+Compare contract**, its floating-segment geometry (row 1, edge-to-edge, no
+internal bargap — a different visual grammar from an isolated bar with
+breathing room, deliberately unchanged) aside: `margin.l` is now
+`LABEL_COL_PX["compare"]` directly (the earlier `MIRROR_MARGIN_CAP_PX`
+belt-and-braces ceiling on a per-frame `_gutter_margin_px` measurement is
+retired), and a topic name wraps via `charts.wrap_label_px` at
+`charts.WRAP_PX["topic"]` — the SAME two-line pixel budget the rest of
+Compare's bar charts use, replacing the bespoke three-line character-count
+wrap (`_wrap_topic_label`/`MIRROR_LABEL_MAX_LINES`/
+`MIRROR_LABEL_WRAP_WIDTH`/`MIRROR_LABEL_CHAR_BUDGET`, all retired). Row
+height simplifies to `charts.row_height_single` — a CONSTANT pitch
+regardless of how many lines a row's own label wraps to, since the shared
+contract's "two-line labels are the norm" reasoning applies here too
+(`_mirror_row_height`'s own line-count-driven formula, and
+`MIRROR_THREE_LINE_FACTOR`, are retired with it). Full detail:
+`CHROME_CONTRACT.md` §13 row 8.
+
+**What is UNCHANGED.** Every builder's colours, sort order, hover fields,
+empty-state rules and export columns — this is a LAYOUT contract, not a
+data or encoding change; `tests/test_charts.py`/`test_charts_compare.py`'s
+own goldens on those axes stay green. `fig_frontier` (a scatter, no
+category axis, no gutter) and `yearly_domain_stack` (a year-axis chart, no
+row-per-taxon geometry) are untouched beyond the shared `GUTTER_FONT_PX`
+bump every consumer of that one constant inherits automatically.
+`fig_breakdown_global`/`fig_breakdown_yearly` (Find's yearly-breakdown pair)
+keep the pre-contract `row_height`/`DEFAULT_GROUP_SPAN`/`DEFAULT_GROUP_FILL`
+idiom unchanged — a different section, never named by O4 or C2.
+
+**Verification.** `tests/test_chart_layout.py` (new) checks the contract
+systematically across every bar-family builder: the margin formula, tick/
+gutter fonts, pitch and bar thickness derived from the rendered figure,
+"no annotation ever reads 'Publications, full count'", every reference
+shape's colour/dash/span, the SDG accent fix, and the label-universe wrap
+(every field/subfield/ERC/SDG label ≤ 2 lines in its column, topic
+ellipsis share < 1 % of 4,516) — read against the SAME committed glyph
+table the constants above were derived from, so a future font or label-set
+change that breaks the fixed point fails this test before it reaches a
+render. Screenshots at 1920/1280/390 px (`scrollWidth ≤ innerWidth`) of
+Find's ERC/Fields/Subfields/SDG panels and Compare's thematic + SDG
+sections are the manager's own render-proof, per stream practice.

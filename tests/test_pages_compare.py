@@ -142,11 +142,14 @@ def test_at_least_one_card_carries_the_leader_dot():
 # ---------------------------------------------------------------- tabs -----
 
 def test_shape_and_sdg_sections_each_offer_profile_and_impact_tabs():
+    """Bar-layout contract (D28/C3): the SDG section is now PROFILE ONLY --
+    no tab strip at all -- so only the Thematic-shape section's own pair of
+    tabs remains; both label counts drop from 2 to 1."""
     at = _app(PAIR).run()
     assert not at.exception
     labels = [t.label for t in at.tabs]
-    assert labels.count(copy.COMPARE["TAB_PROFILE"]) == 2
-    assert labels.count(copy.COMPARE["TAB_IMPACT"]) == 2
+    assert labels.count(copy.COMPARE["TAB_PROFILE"]) == 1
+    assert labels.count(copy.COMPARE["TAB_IMPACT"]) == 1
 
 
 def test_shape_and_sdg_basis_captions_name_the_pin():

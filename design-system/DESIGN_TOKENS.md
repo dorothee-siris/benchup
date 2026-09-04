@@ -53,7 +53,8 @@ aspirational scale below for provenance only.
 | Page title (`st.title`) | 44px | 700 | Streamlit default — identical across Find/Compare/Methods (`CHROME_CONTRACT.md` §1) |
 | Subsection header (`st.subheader`) | 28px | 600 | Streamlit default (`h3`) — the level every chart/table section intro uses |
 | Figure-wide default font (`FONT_PX`, `lib/charts.py`) | 12px | 400 | chart layout font; the ratio-chart caption line and the `_note` reading line both use this |
-| Bar text / tick labels / "?" glyph (`GUTTER_FONT_PX`, `lib/charts.py`) | 11px | 400 | measured live at `rgb(90,95,102)` = `INK_SECONDARY`, matching spec exactly |
+| Category tick labels, bar-layout contract (`TICK_FONT_PX`, `lib/charts.py`) | 13px | 400 | the row label on every bar-family chart — bigger than the figure's other chrome (§O4's "raise the font 1–2 pt"), applied via an explicit `tickfont` on the category axis |
+| Bar text / gutter numbers / "?" glyph (`GUTTER_FONT_PX`, `lib/charts.py`) | 12px | 400 | : 11 → 12, now equal to `FONT_PX` — one shared constant fixes the "gutter font size differs across charts" complaint by construction; ink `rgb(90,95,102)` = `INK_SECONDARY` |
 | Table header cell (`st.dataframe`) | 16px | 700 | Streamlit default — consistent app-wide |
 | Table body cell (`st.dataframe`) | 16px | 400 | Streamlit default |
 | KPI tile label / value / subline (`lib/tiles.py`) | 15 / 22 / 12px | — | **the one place a hand-set type scale IS real** — `LABEL_PX`/`VALUE_PX`/`META_PX`, explicitly imported by `charts_compare._card_html` "so the two card families cannot drift apart" (its own docstring). Cite THIS as the pattern to generalise, never the retired table below. |
@@ -337,9 +338,27 @@ the digit-ban makes that a mechanical requirement, not a style preference.
 
 | Token | Value | Use |
 |---|---:|---|
-| `ROW_PX` / `BASE_PX` / `MIN_HEIGHT` | 22 / 60 / 300 | `row_height(n) = max(300, 22n + 60)` — the one height idiom for every category chart |
-| `GUTTER_FRACTION` / `GUTTER_INSET` | 0.16 / 0.06 | the left volume gutter (A/B #4 winner) as a fraction of the x range |
-| `MARKER_PX` / `LINE_PX` / `HAIRLINE_PX` | 10 / 2 / 1 | SI dot, SI stem and every hairline — thin marks, per the dataviz mark specs |
+| `ROW_PX` / `BASE_PX` / `MIN_HEIGHT` | 18 / 50 / 300 | `row_height(n) = max(300, 18n + 50)` — kept for the one caller still measuring its own frame (`fig_breakdown_global`; CHROME_CONTRACT.md §2 flags this table's earlier 22/60 pair as stale drift) |
+| `MARKER_PX` / `LINE_PX` / `HAIRLINE_PX` | 10 / 2 / 1 | SI dot and every hairline/reference-line width — thin marks, per the dataviz mark specs (the SI lollipop's own connecting STEM is retired, §8.6 below) |
 | `BUBBLE_MIN_PX` / `BUBBLE_MAX_PX` | 6 / 34 | frontier bubble range (area ∝ mass via a sqrt scale) |
-| `DEFAULT_GROUP_SPAN` / `DEFAULT_GROUP_FILL` | 0.8 / 0.9 | the grouped-bar geometry, verbatim — `offsetgroup` is broken on plotly 5.24.1 |
+| `DEFAULT_GROUP_SPAN` / `DEFAULT_GROUP_FILL` | 0.82 / 0.86 | the yearly-breakdown pair's own grouped-bar geometry, verbatim — `offsetgroup` is broken on plotly 5.24.1. The `fig_metric_bars` family (Compare) now uses its OWN pair, `PAIR_GROUP_SPAN`/`PAIR_GROUP_FILL`, §8.6 |
 | `SHARE_DECIMALS` / `SI_DECIMALS` | 1 / 2 | one precision level per measure (RULES §5); number formats are composed from these |
+
+### 8.6 The bar-layout contract's own tokens (D28; single-sourced in `lib/charts.py`, `lib/charts_compare.py` imports every one)
+
+Supersedes the earlier per-frame gutter margin (`GUTTER_FRACTION`/`GUTTER_INSET`,
+`_gutter_margin_px`, retired) with CONSTANTS derived once from the whole label
+universe on disk — every bar of a view starts at the identical pixel whatever
+seed or pair is loaded.
+
+| Token | Value | Use |
+|---|---:|---|
+| `TICK_FONT_PX` / `GUTTER_FONT_PX` | 13 / 12 | category tick labels / bar text + gutter numbers + tick pseudo-html spans (§8.5 table above, top row) |
+| `ROW_PITCH_SINGLE` / `BAR_PX_SINGLE` | 27 / 20 | one-bar-per-row charts (Find's Fields/Subfields/Topics/SDG/ERC panels); `BAR_GAP_SINGLE = 1 − BAR_PX_SINGLE / ROW_PITCH_SINGLE` (≈0.259) is the `bargap` these panels pass instead of the shared `BAR_GAP` |
+| `ROW_PITCH_PAIR` / `BAR_PX_PAIR` | 40 / 16 | two-institutions-per-row charts (Compare's `fig_metric_bars` family — thematic shape, SDG profile, reciprocity); `PAIR_GROUP_FILL = 0.86` (unchanged), `PAIR_GROUP_SPAN` solved (≈0.930) so two `PAIR_GROUP_FILL`-filled bars at this pitch are exactly `BAR_PX_PAIR` thick |
+| `LABEL_COL_PX` | `{"find": 306, "compare": 261}` | the fixed left LABEL column per view — the widest 2-line pixel-wrap fixed point over {field, subfield, erc, sdg} (find) / {subfield, sdg, topic} (compare), +8% safety |
+| `GUTTER_COL_PX` | `{"find": 44, "compare": 41}` | the fixed volume-number column, right-aligned, immediately left of the bar origin — sized off the widest realistic volume string (`index.total_full_2020_2024`/`total_frac_2020_2024`), +8% safety |
+| `WRAP_PX` | `{field: 170, subfield: 242, erc: 292, sdg: 228, topic: 241}` | the per-family pixel wrap budget `wrap_label_px` uses — the fixed point that makes every label of that family wrap to ≤ 2 lines with no line wider than the budget itself |
+| `COL_PAD_PX` | 12 | the one pad after the gutter column, before the bar origin — `margin.l == LABEL_COL_PX[view] + GUTTER_COL_PX[view] + COL_PAD_PX`, every bar-family chart, both views |
+| `lib/resources/glyph_widths.json` | — | the committed per-character pixel-width table (13 px label font, 12 px gutter font) every `LABEL_COL_PX`/`WRAP_PX`/`GUTTER_COL_PX` figure above was derived from — measured once, live, off a rendered y-tick `<text>` element's computed font-family via canvas `measureText`; reproducible offline (no browser needed at chart-build time) |
+| Reference mark | dashed red vertical TICK (`x0 == x1`, spans the row) if per-row VARYING; one full-height dashed red LINE if CONSTANT | `palette.WARNING_CAPTION_COLOR` (= `SHARED_FRONTIER`, already validated) at `LINE_PX` — replaces the diamond marker (`REF_MARKER_SYMBOL`, retired) and Find's SI lollipop STEM (retired; the dot + its own value label stays) |

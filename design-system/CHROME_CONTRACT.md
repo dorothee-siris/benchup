@@ -65,13 +65,17 @@ should share.
 | Token | Value | Role |
 |---|---:|---|
 | `FONT_PX` | 12 | figure-wide default font (`layout.font`) |
-| `GUTTER_FONT_PX` | 11 | bar text (value+gutter), tick labels, annotations — measured live: Compare's "?" glyph renders at **11px**, colour `rgb(90,95,102)` = `INK_SECONDARY`, matching exactly |
-| `HAIRLINE_PX` | 1 | every hairline: bar borders, reference dashes, table hairlines |
-| `MARKER_PX` / `LINE_PX` | 10 / 2 | SI dot / stem |
+| `TICK_FONT_PX` | 13 | bar-layout contract (D28): category tick labels on every bar-family chart, both views — bigger than the figure's other chrome, an explicit `tickfont` on the category axis |
+| `GUTTER_FONT_PX` | 12 (: 11 → 12) | bar text (value+gutter), tick labels, annotations — now EQUAL to `FONT_PX`, fixing "gutter font size differs across charts" by construction rather than per-chart tuning |
+| `HAIRLINE_PX` | 1 | every hairline: bar borders, table hairlines (reference lines now use `LINE_PX`, below — see §10 row 3) |
+| `MARKER_PX` / `LINE_PX` | 10 / 2 | SI dot / every reference line (constant or per-row tick) |
 | `BUBBLE_MIN_PX` / `BUBBLE_MAX_PX` | 6 / 34 | frontier scatter bubble range |
-| `ROW_PX` / `BASE_PX` / `MIN_HEIGHT` | 18 / 50 / 300 | `row_height(n) = max(300, 18n + 50)` |
-| `BAR_GAP` | 0.25 | single-series category charts (`fig_share_si`, frontier) |
+| `ROW_PX` / `BASE_PX` / `MIN_HEIGHT` | 18 / 50 / 300 | `row_height(n) = max(300, 18n + 50)` — the pre-contract idiom, kept for `fig_breakdown_global` (the one caller still measuring its own frame); every bar-family panel now uses `ROW_PITCH_SINGLE`/`ROW_PITCH_PAIR` below instead |
+| `ROW_PITCH_SINGLE` / `BAR_PX_SINGLE` | 27 / 20 | bar-layout contract: one-bar-per-row charts (Find's Fields/Subfields/Topics/SDG/ERC) |
+| `ROW_PITCH_PAIR` / `BAR_PX_PAIR` | 40 / 16 | bar-layout contract: two-institutions-per-row charts (Compare's `fig_metric_bars` family) |
+| `BAR_GAP` | 0.25 | the yearly-breakdown pair and any other caller not on the bar-layout contract; Find's single-bar contract charts pass `BAR_GAP_SINGLE` (≈0.259, solved from `BAR_PX_SINGLE`/`ROW_PITCH_SINGLE`) instead |
 | `OUTLINE_WIDTH` | 2 (`palette.py`) | frontier flag outline; hollow/low-vol mark border |
+| `LABEL_COL_PX` / `GUTTER_COL_PX` / `WRAP_PX` / `COL_PAD_PX` | see `DESIGN_TOKENS.md` §8.6 | the fixed label/gutter columns and per-family wrap budgets every bar-family chart's `margin.l` is now built from — a CONSTANT per view, never the current frame |
 
 **Known drift, flagged not fixed here (owner CHROME-F, confirm with VC before
 changing either):** `DESIGN_TOKENS.md` §8.5 documents `ROW_PX/BASE_PX/MIN_HEIGHT =
@@ -244,14 +248,20 @@ Reference builder, unchanged from §0 above: `charts_compare.fig_metric_bars`.
 every horizontal-bar chart** — every ratio chart in Compare (Subject/Subfield/
 ERC/SDG/FWCI) already draws through this one function, so "propagate" here
 means "do not build a second implementation of any of the four rows below",
-not "copy code".
+not "copy code". **Rows 1, 3 and 4 below are SUPERSEDED by the bar-layout
+contract (D28, `DESIGN_TOKENS.md` §8.6, `VIZ_SPEC.md` §12)**, which unifies
+this table's own gutter/reference/font rules with Find's `fig_share_si`
+family — a fixed LABEL and GUTTER column per VIEW (never the current frame),
+one row pitch per row-shape, one red dashed reference form for both a
+per-row tick and a constant line. The historical rules stay below for
+provenance; the current numbers are §12's.
 
 | # | Element | Rule |
 |---|---|---|
-| 1 | **Gutter column** | `gutter=True` (default): a phantom `go.Bar` trace per institution, offset into the SAME lane as its real bar, at `x = -GUTTER_NEG_AXIS_FRAC * basis * GUTTER_TIP_FRAC` (a DATA-space negative offset, never a pixel margin), text = the row's `gutter_col` value (`vol_display` by default) formatted by `charts._fmt_vol` — an integer when the value is integral, one decimal otherwise, thin-space thousands. `gutter_header` (new parameter) draws ONE small `INK_SECONDARY` label above the column, at `GUTTER_FONT_PX`, naming the basis — the caller supplies the word, this module never invents one. |
+| 1 | **Gutter column** | (superseded numbers, mechanism unchanged) a phantom `go.Bar` trace per institution, offset into the SAME lane as its real bar, at `x = -GUTTER_NEG_AXIS_FRAC * basis * GUTTER_TIP_FRAC` (a DATA-space negative offset, never a pixel margin), text = the row's `gutter_col` value (`vol_display` by default) formatted by `charts._fmt_vol` — an integer when the value is integral, one decimal otherwise, thin-space thousands. **No header above the column any more** (`gutter_header` is RETIRED, not merely defaulted off — "Publications, full count" and "Joint publications" are both gone; the basis is stated once in the section's own caption, never repeated per chart). The LEFT MARGIN this column (plus the label column beside it) sits inside is now `LABEL_COL_PX["compare"] + GUTTER_COL_PX["compare"] + COL_PAD_PX`, a CONSTANT (§12), never `_gutter_margin_px`'s per-frame measurement. |
 | 2 | **Caution channel** | Every bar is SOLID, in the institution's own colour — `marker.color` and `marker.line.color` are both the SAME hex on EVERY point, `marker.line.width` is `HAIRLINE_PX` on every point, and `marker.pattern` is never set. A row `_is_low_volume` flags (floor unchanged: PP/FWCI on `denom_value < palette.RATIO_HATCH_FLOOR`, every other metric on `vol_full_annual_mean < LOW_VOLUME_FLOOR`) switches BOTH its own bar-end value text AND its gutter-column text (row 1) to `palette.WARNING_CAPTION_COLOR` (`#821D13`), weight 400 (never bold), keeping `LOW_VOLUME_GLYPH` (†). The hover keeps the reason line, unchanged. |
-| 3 | **Diamond reference** | Every metric in `REF_METRICS` that ships a per-row VARYING `ref_value` draws a `go.Scatter` marker per row, `symbol="diamond-tall"` (`REF_MARKER_SYMBOL`), `size=8` (`REF_MARKER_SIZE`), colour `palette.INK`, `hoverinfo="skip"`, added to the figure BEFORE the institution bar traces (so it sits behind a bar's own outside-text at the one row where the two can coincide). A CONSTANT reference (SI's neutral value, or any single-value case) stays ONE rule across the panel, `palette.INK` at `LINE_PX` (2 px), dashed — heavier and darker than the earlier `INK_SECONDARY`/`HAIRLINE_PX` dash, but still a rule, never a repeated marker. |
-| 4 | **Fonts** | Unchanged from §2: `FONT_PX` (12) figure-wide, `GUTTER_FONT_PX` (11) for bar text, gutter text, gutter header and tick labels. |
+| 3 | **Reference: a dashed red TICK or LINE, never a diamond** | Every metric in `REF_METRICS` that ships a per-row VARYING `ref_value` draws a `go.Shape` vertical LINE per row (`x0 == x1` at the reference value, `y0`/`y1` spanning exactly that row's own band) in `palette.WARNING_CAPTION_COLOR`, `LINE_PX` (2 px), dashed — the earlier `go.Scatter` diamond marker (`symbol="diamond-tall"`, `REF_MARKER_SYMBOL`/`REF_MARKER_SIZE`, colour `palette.INK`) is RETIRED (it read as "not visible" against a panel already full of solid bars — the reported defect this fix answers). A CONSTANT reference (SI's neutral value, or any single-value case) stays ONE rule across the WHOLE panel — same colour, same dash, `add_vline`'s own full-height span — replacing the earlier `palette.INK` dash. |
+| 4 | **Fonts** | `TICK_FONT_PX` (13) for category tick labels (bigger than the figure's other chrome — D28's own "raise the font" ask), `GUTTER_FONT_PX` (12, was 11 — now equal to `FONT_PX`) for bar text, gutter text and the "?" glyph. |
 | 5 | **Hover skeleton** | Unchanged from §5, with the gutter-column text change carrying no new hover line — the raw volume was already in the hover's "works" line independent of whether the gutter COLUMN is drawn, and stays there. |
 | 6 | **Right-of-bar value** | Unchanged: `textposition="outside"`, `cliponaxis=False`, the value at the bar's own outer end. The earlier bar-end PARENTHESISED volume (`"{value} ({volume})"`) is RETIRED — row 1's dedicated column replaces it everywhere; a bar's own text now carries only its value (+ † when cautioned). |
 | 7 | **Below ~600 px plot width** | The gutter column (row 1) has nowhere to go — measured live: a wrapped first-row label alone can need the large majority of a 390 px figure's own width. Streamlit cannot read the viewport width server-side (unchanged constraint, §2.15/VIZ_SPEC's `fig_share_si`'s `stacked` argument already lives with this), so `fig_metric_bars` exposes `gutter=False` as the OFF switch and the CALLER decides when to pass it below that breakpoint. There is never a horizontal scroll either way — the raw volume stays in hover regardless. |
@@ -261,22 +271,27 @@ not "copy code".
 bearing for row 1 above at real density:** `metric_row_height`'s fallback
 branch now folds `n_wrapped` into its own per-row `need` estimate — see §12.
 
-## 11. Dot/SI-family contract — audited, confirmed
+## 11. Dot/SI-family contract — audited, confirmed, THEN partially converged by D28
 
 `fig_share_si` (Find's profile panels) and `fig_mirror_dots` (Compare's dot-
 row mirror, where still called) are a DIFFERENT chart TYPE from row 10's bar
 family — a filled/hollow DOT, not a bar — raising the question of whether any
 of row 10's changes should propagate to them. Audited and judged NO on all three
-counts, each for a reason specific to the dot family, not by default:
+counts at the time, each for a reason specific to the dot family, not by default.
+**The bar-layout contract (D28) later converges rows 2 and 3 anyway** — the
+`gutter_mechanism` split it once relied on is dissolved, and the reference
+colour follows row 10 §3's own repaint — while row 1 (the hollow dot's own
+identity) stays exactly as ruled:
 
 | # | Element | Ruling |
 |---|---|---|
-| 1 | **Below-floor marker** | STAYS a hollow dot (SURFACE fill, institution-coloured `OUTLINE_WIDTH` outline) — UNCHANGED. A filled-vs-hollow marker swap still reads as an IDENTITY (a ring in the institution's own hue), not a hole or a damaged mark, which is a different visual grammar from the diagonal `marker.pattern` texture row 10 §2 retires from bars — the two were never the same mechanism wearing different names, so retiring one does not obligate retiring the other. Plotly's own pattern fill is a Bar-family feature with no Scatter-marker equivalent in the first place (unchanged reasoning, `fig_metric_bars`'s own earlier docstring). |
-| 2 | **Gutter mechanism** | STAYS folded into the row's own tick label (`charts._tick_display`) — NOT unified with row 10 §1's phantom-trace column. Different problem shape: one number per row (this chart shows ONE institution) vs up to three. A prior-art note: an EARLIER version of this exact gutter WAS a separate annotation in a negative-x sliver — precisely row 10 §1's refuted candidate A — and was retired because it relied on `automargin` to keep two independently-positioned text systems apart, which collided at 390 px. Re-splitting it back into a column now would reintroduce the bug its own fix already solved, for a chart that never needed the up-to-three-numbers form. |
-| 3 | **Reference mark** | STAYS a dashed vertical rule at the neutral/index value, with the existing unit grid — NOT the diamond marker. Row 10 §3's diamond specifically answers "a reference next to a panel already full of solid bars, where a thin dash reads as a stray pixel"; the dot family's reference sits against a MOSTLY EMPTY panel (a distinction drawn from `VIZ_SPEC.md` §5.5's original reasoning), where the same dash reads cleanly — a different situation, not an oversight. |
+| 1 | **Below-floor marker** | STAYS a hollow dot (SURFACE fill, institution-coloured `OUTLINE_WIDTH` outline) — UNCHANGED by D28. A filled-vs-hollow marker swap still reads as an IDENTITY (a ring in the institution's own hue), not a hole or a damaged mark, which is a different visual grammar from the diagonal `marker.pattern` texture row 10 §2 retires from bars. **What DOES change under D28: the connecting STEM (a `go.Scatter` line from the neutral reference to the dot) is RETIRED** — the panel-wide reference line (row 3, below) is now unmistakable enough that a per-row connector back to it is a redundant second read of the same fact; the dot itself, and its own value label, are unchanged. |
+| 2 | **Gutter mechanism** | **SUPERSEDED.** No longer folded into the tick label at all: Find's panels now draw the SAME phantom-trace gutter column row 10 §1 documents, single-sourced in `lib/charts.py` (`_add_gutter_column`) for both views. The "one number vs up to three" distinction that justified keeping them apart is moot once the mechanism itself is shared code, not a per-chart choice; `charts._tick_display`/`_gutter_margin_px` (the folding mechanism this row named) are RETIRED. |
+| 3 | **Reference mark** | STAYS a dashed vertical rule at the neutral/index value — NOT the diamond marker, unchanged reasoning (a reference against a MOSTLY EMPTY dot panel reads cleanly as a dash). **Colour changes under D28**, matching row 10 §3's own repaint: `palette.WARNING_CAPTION_COLOR` (red) at `LINE_PX`, not `palette.INK_SECONDARY` — one shared "the reference is red" rule now covers both chart families. The per-integer unit grid stays retired (§VIZ_SPEC.md 2.15's own note), unaffected by this. |
 
-**Fonts, hover skeleton:** unchanged from §§2/5 for both families — the dot
-family was never asked to change these, and did not.
+**Fonts:** `TICK_FONT_PX` (13) now applies to this family's own category tick
+labels too, matching row 10 §4 — the same "raise the font" ask reaches both
+chart types. Hover skeleton unchanged from §5.
 
 ## 12. Dynamic-viewport proof-capture rule
 
@@ -320,7 +335,7 @@ NOT a bar-family or dot-family chart -- it needs its own short contract.
 | 5 | **Axis** | Symmetric range around zero, non-negative tick VALUES on both sides (absolute counts, never a signed number -- the sign is a direction, not a magnitude), a bold black rule at zero (`_bold_axes`). |
 | 6 | **Row order** | Ranked by combined volume (`vol_a + vol_b`) descending, computed by the builder itself -- `top_n` (top 20 by default, plus a show-all control) keeps the largest `top_n` rows; `None` draws every row given. |
 | 7 | **Colour family** | Institution (A/B) plus the one `SHARED_FRONTIER` exception for the joint segment -- never an OA-domain hue on this chart. The caller's legend (`legend_strip(., shared=True)`) names all three. |
-| 8 | **Label wrap + margin cap** | A topic name wraps onto at most `mirror_frontier.MIRROR_LABEL_MAX_LINES` (THREE, raised from two -- real OpenAlex names run 25-60 chars and were losing their meaning at two 20-char lines) at `mirror_frontier.MIRROR_LABEL_WRAP_WIDTH` (twenty) characters per line -- the ONE label-shortening rule in this module, because there is no Streamlit-side viewport width to condition a `gutter=False`-style per-width switch on (row 7 of SS10 does not apply here). **The ellipsis decision is keyed on the ORIGINAL name's own character count** (`mirror_frontier.MIRROR_LABEL_CHAR_BUDGET`, sixty), never on how many lines greedy wrap happens to want: a name at or under the budget that still needs a fourth line under strict word-boundary wrapping gets its overflow MERGED into the last kept line instead (never a lost character); only a name actually longer than the budget is cut, with `mirror_frontier.ELLIPSIS` marking the cut. **Binding fact, measured not estimated:** `yaxis.automargin=True` (unchanged, still on) GROWS the configured left margin past `mirror_frontier.MIRROR_MARGIN_CAP_PX` whenever the tick text still needs more room -- the wrap WIDTH and the margin CAP were tuned together against a live character-length sweep on the actual Playwright render, not derived from a font-metric formula. Re-verified after the three-line change: automargin's left-margin need is driven by line WIDTH (unchanged at twenty chars), never by line COUNT, so the 390 px acceptance floor (`>= 120 px` for bars) held with NO further tuning -- a two-line/forty-char fallback was considered and found unnecessary. A row's actual line count also drives its OWN pitch, generalised past the shared `charts.row_height`'s binary two-line-only `n_wrapped` term: `mirror_frontier._mirror_row_height(n_rows, max_lines_used)`, linearly extrapolating `WRAP_ROW_FACTOR` to three lines (still calibrated to reproduce the SAME two-line number every other wrapped chart in the app uses) -- replaces an earlier two-line-only height call that under-allocated height once three-line rows existed. |
+| 8 | **Label wrap + margin — SUPERSEDED by the bar-layout contract (D28)** | The bespoke character-count wrap (`mirror_frontier.MIRROR_LABEL_MAX_LINES`/`MIRROR_LABEL_WRAP_WIDTH`/`MIRROR_LABEL_CHAR_BUDGET`, up to three lines) and the margin CAP (`MIRROR_MARGIN_CAP_PX`) are RETIRED, not adapted. A topic name now wraps at `charts.WRAP_PX["topic"]` via `charts.wrap_label_px` — the SAME pixel budget and the SAME ≤ 2-line cap (with the SAME standing ellipsis fallback) every other bar-family chart's topic labels will use — and the left margin is the CONSTANT `charts.LABEL_COL_PX["compare"]`, not a per-frame `automargin`-grown measurement. Two consequences, both measured against the real 4,516-topic universe: the fixed column is WIDER than the old 20-char/line budget (sized from the real rendered font over the whole label universe, never guessed), so the three-line escape hatch this row used to need has zero live occurrences; row pitch simplifies to `charts.row_height_single(n_rows)` — a CONSTANT per-row pitch regardless of how many lines a label wraps to (`mirror_frontier._mirror_row_height`'s own line-count-driven formula is deleted with it). The floating-segment geometry itself (row 1 above, edge-to-edge, no internal bargap) is UNCHANGED — only the vertical PITCH between rows and the LEFT MARGIN converge onto the shared contract, not the segments' own bar-thickness idiom (`BAR_PX_SINGLE`/`BAR_PX_PAIR` do not apply to a composite floating bar). |
 
 ## 14. Yearly-domain-stack contract -- `charts_compare.yearly_domain_stack`
 
