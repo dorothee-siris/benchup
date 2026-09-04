@@ -72,7 +72,10 @@ def _empty(cols_dtypes: dict) -> pd.DataFrame:
 
 def _duck(ctx: dict):
     """Cursor onto the ONE process-wide, memory-bounded duckdb connection
-    (`SET memory_limit='512MB'` + `SET threads TO 2`), created lazily on
+    (`SET memory_limit='256MB'` + `SET threads TO 1`, tightened from
+    512MB/2 threads -- a concurrency fix, found via a stress test, phase B;
+    see `lib/collab_data.py:_duck`'s own docstring for the measurement and
+    the traded ceiling), created lazily on
     `ctx` under `_DUCK_LOCK` -- identical helper to `lib/collab_data.py:
     _duck` (same shared `ctx` object in production, so truly one connection
     per process); a bare test ctx gets its own small one. `.cursor()` per
@@ -82,8 +85,8 @@ def _duck(ctx: dict):
         con = ctx.get("_duck_con")
         if con is None:
             con = duckdb.connect()
-            con.execute("SET memory_limit='512MB'")
-            con.execute("SET threads TO 2")
+            con.execute("SET memory_limit='256MB'")
+            con.execute("SET threads TO 1")
             ctx["_duck_con"] = con
     return con.cursor()
 

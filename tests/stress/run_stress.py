@@ -253,7 +253,14 @@ class RssSampler:
         self.phase = "init"
         self.died_at: float | None = None
         self._stop = threading.Event()
-        self._t0 = time.time()
+        self.t0 = time.time()  # PUBLIC: chaos_session's own action-timestamp log
+        # below is stamped against this SAME reference so an action and an RSS
+        # sample can be lined up on one shared elapsed_s axis after the run --
+        # a diagnosis gap found closing out a stress FAIL (peak 1,878.5 MB):
+        # the action log had no timestamps at all, so "which actions ran in the
+        # three sessions around the peak" could not be answered from this
+        # harness's own report and had to be reconstructed with a separate
+        # bare-process repro instead.
         self._thread: threading.Thread | None = None
 
     def set_phase(self, name: str) -> None:
@@ -265,7 +272,7 @@ class RssSampler:
 
     def _run(self) -> None:
         while not self._stop.is_set():
-            t = time.time() - self._t0
+            t = time.time() - self.t0
             r = process_rss_mb(self.pid)
             if r is None:
                 if self.died_at is None:
@@ -455,18 +462,30 @@ CHAOS_ACTIONS = ["find_seed", "scenario_combo", "compare_pair", "methods", "down
                  "find_topic_controls", "compare_overlap_controls"]
 
 
-def chaos_session(session_id: int, base: str, minutes: float, seed: int, out: dict) -> None:
+def chaos_session(session_id: int, base: str, minutes: float, seed: int, out: dict,
+                  t0: float | None = None) -> None:
     """One concurrent browser context/session (own `sync_playwright()`
     instance per thread -- Playwright's sync API supports this as long as
     each thread owns its instance, per its own docs; simpler and safer here
     than mixing threads with the async API). Randomised action loop, NO
     waiting for spinners -- only the 300-1500ms pause the spec names -- so
     this genuinely fires actions faster than the app can settle, the whole
-    point of "chaos"."""
+    point of "chaos".
+
+    `t0` (the RSS sampler's own `RssSampler.t0`, when given -- `None` falls
+    back to this call's own start, so the function still runs standalone in
+    a test) is the SAME reference `RssSampler` stamps its own samples
+    against, so every action this session records lands on one shared
+    elapsed_s axis with the samples CSV -- reading the peak window off the
+    CSV and then grepping the action log for that same window is how a
+    future diagnosis finds "which actions ran in the three sessions around
+    the peak" without a separate bare-process repro."""
     rng = random.Random(seed * 1000 + session_id)
+    t_start = t0 if t0 is not None else time.time()
     deadline = time.time() + minutes * 60
     actions = 0
     failures: list[str] = []
+    action_log: list[tuple[float, str]] = []
     last_download = 0.0
 
     with sync_playwright() as p:
@@ -480,6 +499,7 @@ def chaos_session(session_id: int, base: str, minutes: float, seed: int, out: di
 
         while time.time() < deadline:
             action = rng.choice(CHAOS_ACTIONS)
+            action_log.append((round(time.time() - t_start, 2), action))
             try:
                 if action == "find_seed":
                     _, name = rng.choice(SEEDS)
@@ -570,13 +590,14 @@ def chaos_session(session_id: int, base: str, minutes: float, seed: int, out: di
 
         browser.close()
 
-    out[session_id] = {"actions": actions, "failures": failures, "n_failures": len(failures)}
+    out[session_id] = {"actions": actions, "failures": failures, "n_failures": len(failures),
+                       "action_log": action_log}
 
 
 def run_phase_b(base: str, sessions: int, minutes: float, seed: int, sampler: RssSampler) -> dict:
     sampler.set_phase("B")
     results: dict[int, dict] = {}
-    threads = [threading.Thread(target=chaos_session, args=(i, base, minutes, seed, results))
+    threads = [threading.Thread(target=chaos_session, args=(i, base, minutes, seed, results, sampler.t0))
                for i in range(sessions)]
     for t in threads:
         t.start()
@@ -625,7 +646,7 @@ def final_health_check(base: str) -> bool:
         return False
 
 
-def write_report(path: Path, csv_path: Path, cfg: dict, sampler: RssSampler,
+def write_report(path: Path, csv_path: Path, actions_csv_path: Path, cfg: dict, sampler: RssSampler,
                  phase_a_steps, phase_b_results, phase_c_result, server_alive: bool,
                  final_ok: bool) -> tuple[str, bool]:
     phases_run = cfg["phases"]
@@ -718,6 +739,11 @@ def write_report(path: Path, csv_path: Path, cfg: dict, sampler: RssSampler,
     lines.append(f"## Result: {'PASS' if passed else 'FAIL'}")
     lines.append("")
     lines.append(f"Samples CSV: `{csv_path.name}`")
+    if phase_b_results is not None:
+        lines.append(f"Phase-B action log CSV: `{actions_csv_path.name}` -- (session, elapsed_s, action), "
+                     f"elapsed_s on the SAME axis as the samples CSV (both stamped from `RssSampler.t0`): "
+                     f"find the peak window in the samples CSV, then filter this one to that window to see "
+                     f"which actions ran in which session(s) around it.")
     lines.append("")
 
     path.write_text("\n".join(lines), encoding="utf-8")
@@ -727,6 +753,14 @@ def write_report(path: Path, csv_path: Path, cfg: dict, sampler: RssSampler,
         w.writerow(["elapsed_s", "phase", "rss_mb"])
         for t, ph, mb in sampler.samples:
             w.writerow([f"{t:.2f}", ph, f"{mb:.2f}"])
+
+    if phase_b_results is not None:
+        with actions_csv_path.open("w", newline="", encoding="utf-8") as f:
+            w = csv.writer(f)
+            w.writerow(["session", "elapsed_s", "action"])
+            for sid, r in sorted(phase_b_results.items()):
+                for t, action in r.get("action_log", []):
+                    w.writerow([sid, f"{t:.2f}", action])
 
     return ("PASS" if passed else "FAIL"), passed
 
@@ -829,7 +863,8 @@ def main() -> int:
     }
     report_path = out_dir / f"STRESS_{stamp}.md"
     csv_path = out_dir / f"STRESS_{stamp}_samples.csv"
-    result, passed = write_report(report_path, csv_path, cfg, sampler, phase_a_steps,
+    actions_csv_path = out_dir / f"STRESS_{stamp}_actions.csv"
+    result, passed = write_report(report_path, csv_path, actions_csv_path, cfg, sampler, phase_a_steps,
                                   phase_b_results, phase_c_result, server_alive, final_ok)
 
     print("\n=== STRESS SUMMARY ===")
@@ -849,6 +884,8 @@ def main() -> int:
     print(f"RESULT: {result}")
     print(f"report: {report_path}")
     print(f"csv: {csv_path}")
+    if phase_b_results is not None:
+        print(f"actions csv: {actions_csv_path}")
 
     return 0 if passed else 1
 

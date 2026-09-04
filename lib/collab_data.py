@@ -73,7 +73,22 @@ def _posix(path) -> str:
 
 def _duck(ctx: dict):
     """Cursor onto the ONE process-wide, memory-bounded duckdb connection
-    (`SET memory_limit='512MB'` + `SET threads TO 2`), created lazily on
+    (`SET memory_limit='256MB'` + `SET threads TO 1`, tightened from
+    512MB/2 threads -- a concurrency fix, found via a stress test, phase B:
+    peak 1,878.5 MB > the 1,800 MB ceiling on a 3-session, 10-minute chaos
+    run. A bare-process attribution measured pure duckdb-pushdown
+    concurrency -- three threads hammering this module's/`leaders_data.py`'s/
+    `topic_data.py`'s own per-pair/per-institution reads with no scenario
+    swaps at all -- at a modest +109 MB peak over baseline, well inside even
+    the tighter 256MB cap (every pushdown here is already a bounded,
+    parameterised, single-pair/single-institution slice -- see the module
+    docstring); every single-pair slice measured stays a few hundred rows at
+    most, so 256MB leaves generous headroom for the buffer pool a query
+    this small ever needs. Traded ceiling: a query that DID legitimately
+    need more than 256MB of working memory would now spill to disk instead
+    of running fully in RAM (slower, not wrong) -- not observed on any
+    pushdown this module runs, all of them single-pair/single-institution
+    scoped by construction), created lazily on
     `ctx` under `_DUCK_LOCK` -- every per-pair pushdown in this module
     shares it instead of paying a fresh `duckdb.connect()`'s own buffer-pool
     overhead per call (three concurrent sessions hitting many distinct pairs
@@ -88,8 +103,8 @@ def _duck(ctx: dict):
         con = ctx.get("_duck_con")
         if con is None:
             con = duckdb.connect()
-            con.execute("SET memory_limit='512MB'")
-            con.execute("SET threads TO 2")
+            con.execute("SET memory_limit='256MB'")
+            con.execute("SET threads TO 1")
             ctx["_duck_con"] = con
     return con.cursor()
 

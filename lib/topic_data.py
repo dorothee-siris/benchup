@@ -74,12 +74,18 @@ def _data_dir(ctx: dict) -> Path:
 
 
 def _duck(ctx: dict):
+    """Cursor onto the ONE process-wide, memory-bounded duckdb connection
+    (`SET memory_limit='256MB'` + `SET threads TO 1`, tightened from
+    512MB/2 threads -- a concurrency fix, found via a stress test, phase B;
+    see `lib/collab_data.py:_duck`'s own docstring for the measurement and
+    the traded ceiling), identical helper to `lib/collab_data.py:_duck` /
+    `lib/leaders_data.py:_duck` (same shared `ctx` object in production)."""
     with _DUCK_LOCK:
         con = ctx.get("_duck_con")
         if con is None:
             con = duckdb.connect()
-            con.execute("SET memory_limit='512MB'")
-            con.execute("SET threads TO 2")
+            con.execute("SET memory_limit='256MB'")
+            con.execute("SET threads TO 1")
             ctx["_duck_con"] = con
     return con.cursor()
 

@@ -52,6 +52,7 @@ from __future__ import annotations
 import gc
 import os
 import threading
+import time
 from pathlib import Path
 
 import numpy as np
@@ -85,6 +86,37 @@ _LOAD_LOCK = threading.Lock()
 # "different scenario, about to swap" BEFORE calling through to the
 # `st.cache_resource`-wrapped builder, so it can evict the old entry first.
 _LAST_SCENARIO_KEY: tuple[str, str] | None = None
+
+# Minimum spacing between two consecutive DIFFERENT-key evict+rebuild
+# cycles (a concurrency fix, found via a stress test, phase B: peak 1,878.5
+# MB > the 1,800 MB ceiling on a 3-session, 10-minute chaos run). A bare-
+# process 3-thread reproduction of concurrent tree/basis toggling with NO
+# pause between calls (the adversarial worst case chaos approximates) showed
+# +690-900 MB peak WorkingSetSize over the SAME 3 threads doing only
+# duckdb-pushdown reads (no scenario swaps at all, measured +109 MB). Builds
+# are already fully serialised by `_LOAD_LOCK` (only one at a time, see the
+# module docstring) -- the residual cost is a REFERENCE-lifetime gap the
+# lock alone cannot close: `get()` releases the lock the instant it returns,
+# and a caller's own local variable keeps its scenario dict alive until that
+# SAME caller's next swap request reassigns or drops it. Under three
+# threads hammering with zero pause, this can stack two or three scenario
+# generations resident at once even though the CACHE itself never holds
+# more than one. Spacing consecutive evictions by at least
+# `_MIN_SWAP_INTERVAL_S` -- a little over `get()`'s own measured ~284 ms
+# single-build cost -- gives a caller who just received a dict roughly one
+# build-cycle to finish its own brief post-`get()` work before the NEXT
+# swap tears down what it is holding, cutting how often multiple
+# generations overlap under concurrent chaos. A real user's own tree/basis
+# selectbox clicks are already far slower than this (seconds apart, and the
+# UI waits for a full rerun between them); phase A's deterministic replay
+# and `tests/ui/switchback.py` likewise wait for each rerun to settle before
+# the next step -- neither is throttled by this in any measurable way. Only
+# back-to-back, zero-pause, DIFFERENT-session requests (phase B's chaos, and
+# the bare-process repro above) ever reach the sleep branch below, and even
+# then only queue briefly behind the lock -- queuing costs latency, never
+# RAM, so this can only help the ceiling, never hurt it.
+_MIN_SWAP_INTERVAL_S = 0.5
+_last_build_end = 0.0
 
 
 # ------------------------------------------------------------- bundle -----
@@ -179,12 +211,37 @@ def get(tree: str, basis: str) -> dict:
     validation here -- `load_substrates` already raises a clear
     `FileNotFoundError` for an unknown (tree, basis) pair via its own
     `_scenarios_dir` lookup; duplicating that check would just be a second
-    place for the two to drift."""
-    global _LAST_SCENARIO_KEY
+    place for the two to drift.
+
+    THROTTLED EVICTION (a second concurrency fix, found via a stress test,
+    phase B, on the FINAL tree: peak 1,878.5 MB > the 1,800 MB ceiling on a
+    3-session, 10-minute run): evict-before-build alone still lets a
+    caller's own local reference to a just-evicted dict outlive the evict,
+    because `_LOAD_LOCK` only serialises the BUILD, not how long a caller
+    who already got a dict back keeps it -- see `_MIN_SWAP_INTERVAL_S`'s own
+    module-level docstring for the measurement and the mechanism. When the
+    process has already built a DIFFERENT scenario within the last
+    `_MIN_SWAP_INTERVAL_S` seconds, this sleeps out the remainder of that
+    window (still holding `_LOAD_LOCK`, so no other build can start
+    underneath it either) before evicting -- giving whoever holds the
+    current resident dict roughly one build-cycle of head start to finish
+    with it first. Never applies to a same-key cache hit, and only ever
+    delays an ACTUAL swap (a real per-user tree/basis change is already
+    seconds apart, see the module-level note) -- so this cannot change which
+    scenario a caller gets, only how soon a rapid-fire different-key request
+    is allowed to tear down the one before it."""
+    global _LAST_SCENARIO_KEY, _last_build_end
     key = (tree, basis)
     with _LOAD_LOCK:
         if _SCENARIO_ENTRIES == 1 and _LAST_SCENARIO_KEY is not None and _LAST_SCENARIO_KEY != key:
+            wait = _MIN_SWAP_INTERVAL_S - (time.monotonic() - _last_build_end)
+            if wait > 0:
+                time.sleep(wait)
             _get_cached.clear()
             gc.collect()
+            _LAST_SCENARIO_KEY = key
+            result = _get_cached(tree, basis)
+            _last_build_end = time.monotonic()
+            return result
         _LAST_SCENARIO_KEY = key
         return _get_cached(tree, basis)

@@ -74,8 +74,13 @@ Phase C alone, standalone (no server, seconds not minutes):
 
 ## Reading the report
 
-`tests/stress/reports/STRESS_<YYYY-MM-DD_HHMM>.md` + a sibling `..._samples.csv` (every
-0.5 s sample: `elapsed_s, phase, rss_mb`). The report has:
+`tests/stress/reports/STRESS_<YYYY-MM-DD_HHMM>.md` + two sibling CSVs: `..._samples.csv`
+(every 0.5 s sample: `elapsed_s, phase, rss_mb`) and `..._actions.csv` (phase B only:
+`session, elapsed_s, action`, one row per chaos action any session fired, timestamped
+against the SAME `elapsed_s` axis the samples CSV uses -- both are stamped from the one
+`RssSampler.t0`). To find which actions ran in which session(s) around a peak: read the
+peak row's `elapsed_s` off the samples CSV, then filter the actions CSV to a window
+around it (e.g. +/-5s) to see the concurrent mix. The report has:
 - **Config** — exact args, and `BENCHUP_SCENARIO_ENTRIES` read from the environment
   the harness itself ran under (see "Broken control" below).
 - **Peak / mean / final RSS per phase**, plus an overall peak across every phase
