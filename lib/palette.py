@@ -184,6 +184,20 @@ mutual validator distance a NON-requirement (see palette_validation.txt run 6).
 #   suppressed because they ARE on screen together. **SUPERSEDED by run 25**
 #   the palette moves BOTH families and the same co-occurrence now PASSES.
 #
+# Run 39: JOINT_TOPIC_COLOR (Compare's topic-overlap balance bars) -- a
+#   candidate screen for a hue dedicated to the "joint" bar segment, so it
+#   never doubles as the momentum-up read elsewhere on the same page.
+#   #E69F00 (amber) passes its hard co-occurrence set (the navy institution
+#   trio, SHARED_FRONTIER, the momentum-up hue) with wide margins -- worst
+#   normal-vision 24.2, worst CVD (min protan/deutan) 11.4, both far above
+#   the 15/8 targets -- and also clears the ERC trio and a chrome-token
+#   screen (FOCAL/COMPARISON/momentum-stable). Its only real collisions are
+#   with the OA domain quartet and the SDG amber cluster, both FIND-side /
+#   SDG-panel-only hues this mark never shares a figure or a legend with
+#   (same coexistence disposition as every cross-family finding already
+#   carried in this file). Full command log and per-pair numbers:
+#   `design-system/palette_validation.txt` run 39.
+#
 # --- Runs 18-25 were the ONE colour
 #     rework of that period: a light pastel institution trio (L = 0.77, the top
 #     of the lightness band) replacing the original six-hue Okabe-Ito set, plus
@@ -735,6 +749,55 @@ FRONTIER_SHARED_HALO = {"color": SURFACE, "width": 1.5}
 # same-lightness navy bubble) and `OUTLINE_WIDTH` (2, already claimed by the
 # top-quartile flag on this same figure) so the two flags remain visually
 # distinct when a topic is BOTH shared and top-quartile.
+
+JOINT_TOPIC_COLOR = "#E69F00"
+# **NOT a fourth institution slot, and NOT `SHARED_FRONTIER`** -- the
+# balance-bars chart in Compare's topic overlap needs a THIRD colour: the
+# centred "joint" segment between an institution's own two side segments.
+# An early pass reused `MOMENTUM_COLORS["up"]` (the same hue as `ERC_DOMAIN_
+# COLORS["LS"]`) for this, on the reasoning that it was already validated
+# against everything the figure could co-occur with -- rejected on review:
+# one hue, one meaning, and this bar chart's own legend sits right beside
+# the "shared" scatter above it, so a reader must not read the bars' centre
+# segment as "momentum: up" restated. This hue is DEDICATED to that one
+# segment and used nowhere else in the app.
+#
+# Provenance: amber, `#E69F00` -- not a new invention, the one hue of an
+# earlier six-colour Okabe-Ito institution set (see the "REPLACES AN
+# EARLIER LIGHT PASTEL TRIO" note above) that never found a second home
+# after that family retired, so it already carried a validated pedigree and
+# needed no fresh hue synthesis (ponytail: reuse before invention). Full
+# re-screen against the CURRENT palette (`design-system/
+# palette_validation.txt` run 39, `--mode light --surface #FFFFFF`,
+# `validate_palette.py`'s own OKLab-Euclidean/Machado-Oliveira-Fernandes
+# method, identical to every other run in this file):
+#   vs institution slot 1 `#192C41`: normal 50.8, CVD (min protan/deutan) 45.4 PASS
+#   vs institution slot 2 `#5A6883`: normal 31.2, CVD 26.7 PASS
+#   vs institution slot 3 `#B5C0D4`: normal 19.6, CVD 19.1 PASS
+#   vs SHARED_FRONTIER    `#821D13`: normal 37.2, CVD 36.1 PASS
+#   vs MOMENTUM up/ERC-LS `#009E73`: normal 24.2, CVD 11.4 PASS (the ONE
+#                          pair this hue exists to keep apart -- comfortably
+#                          clear of both the 15 normal-vision and the 8 CVD
+#                          target, not merely the 6 floor)
+#   vs MOMENTUM down/ERC-SH `#D55E00`: normal 15.6, CVD 13.1 PASS (narrowest
+#                          normal-vision margin of the whole screen, still
+#                          above the 15 floor)
+#   vs FOCAL `#0072B2` / COMPARISON `#8C9196` / momentum-stable `#727272`:
+#                          all PASS, worst normal-vision 19.4
+#   vs the 3 ERC domain hues (label accents elsewhere, never a mark this
+#                          figure shares): ALL CHECKS PASS as a set
+# RESIDUAL, disclosed rather than hidden: this hue FAILS against the OA
+# domain quartet (Find-only, e.g. deutan 5.8 vs OA Life green) and against
+# the SDG amber cluster (Compare's OWN SDG panel, a different chart with no
+# "joint" concept and no shared legend). Both are the SAME coexistence
+# class this file already carries for OA-yellow, doctype-olive and others:
+# the balance bars and the topics this hue collides with never share one
+# figure, one legend or one chip strip -- Find and Compare are different
+# pages, and the SDG panel's coloured squares are row-label accents, never
+# a bar fill. Contrast on white: 2.25:1 (a documented WARN-band relief,
+# same class as OA Social/OA Physical above) -- satisfied here the same
+# way: the segment is never colour-alone, always paired with its own hover
+# line, the legend chip's text label, and the table/workbook export.
 
 # ---------------------------------------------------------------------------
 # Ratio-chart tokens (warning caption colour, hatch floor)

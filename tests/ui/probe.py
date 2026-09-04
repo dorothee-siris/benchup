@@ -265,22 +265,21 @@ def _probe_compare(page) -> None:
     ok = _wait_for(page, lambda: formatted in _full_text(page), timeout_ms=20_000)
     check(ok, f"Compare golden: Ifremer's recomputed Publications figure {formatted!r} renders on the page")
 
-    # --- shared-frontier row count, recomputed off `compare_data.
-    #     shared_frontier` (the SAME frame the mirror chart / table / xlsx
-    #     sheet all read), matched against the page's own "Show all N". ---
+    # --- topic-overlap counts, recomputed off `topic_data.pair_topics`
+    #     (D31: the SAME frame the owner-coloured plane / balance bars /
+    #     table / xlsx sheet all read), matched against the perimeter
+    #     caption's own rendered numbers. ---
+    from lib import topic_data as TD
+
     subs = load_substrates(ctx, "bestfit", "full")   # Compare is PINNED
-    shared = CD.shared_frontier(ctx, subs, ids)
-    n_shared = int(len(shared))
-    btn = page.locator("button").filter(has_text=re.compile(r"^Show all \d+$"))
-    if n_shared > 20:
-        check(btn.count() >= 1, f"Compare golden: 'Show all {n_shared}' renders (recomputed n={n_shared})")
-        if btn.count():
-            btn_n = int(re.search(r"\d+", btn.first.text_content()).group())
-            check(btn_n == n_shared,
-                  f"Compare golden: the 'Show all' button's own N == recomputed shared-frontier "
-                  f"row count ({btn_n} vs {n_shared})")
-    else:
-        check(btn.count() == 0, f"Compare golden: no 'Show all' button when recomputed n={n_shared} <= 20")
+    overlap = TD.pair_topics(ctx, ids[0], ids[1], TD.MODE_VOLUME, 50, "mean")
+    facts = TD.pair_topic_set_caption(overlap)
+    page_text = _full_text(page)
+    for label, n in (("shared", facts["n_shared"]), ("A-only", facts["n_a_only"]),
+                     ("B-only", facts["n_b_only"])):
+        formatted_n = format(int(n), ",").replace(",", "\N{NARROW NO-BREAK SPACE}")
+        check(formatted_n in page_text,
+              f"Compare golden: recomputed topic-overlap {label} count {formatted_n!r} renders on the page")
 
     # --- relationship tile recompute: Joint publications (core_total), off
     #     `compare_data.relationship` (pure), matched against the tile's own

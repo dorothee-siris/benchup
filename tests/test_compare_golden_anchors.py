@@ -21,13 +21,15 @@ from `index.parquet`/`topics_all.parquet` by hand:
     computation path AND a different source table.
   * `relationship`'s `joint_stars` -- read by hand off `pair_stars.
     parquet`'s own row, bypassing `leaders_data.pair_stars`'s ctx-cache.
-  * `shared_frontier`'s `rank_a`/`stars_a` -- read by hand off
-    `topic_leaders.parquet`/`inst_stars.parquet` for one named topic,
-    bypassing `leaders_data.topic_ranks`/`stars_by_topic` entirely.
-  * `frontier_positioning`'s `n_top25_topics_published` -- recomputed via
-    a hand-built `topics_dim.parquet` x `topics_all.parquet` merge+filter,
-    bypassing `profile_data.topics_table` (a different loader, a different
-    query engine call).
+  * `topic_data.pair_topics`'s `rank_a`/`stars_a` -- read by hand off
+    `topic_leaders.parquet`/`star_works.parquet` for one named topic,
+    bypassing `leaders_data.topic_rank`/`stars_for_topics` entirely
+    (D31: replaces the retired `shared_frontier`'s own version of this
+    anchor -- same method, the new function).
+  * `topic_data.pair_topics`'s own shared/A-only/B-only counts for the
+    Strasbourg x CNRS anchor, pinned to the measured value (D31: replaces
+    the retired `frontier_positioning`'s `n_top25_topics_published`
+    anchor, which has no direct successor -- see that test's own note).
 
 Anchor pair: Ifremer x NIOZ (I154202486 / I4210107283), the same golden
 anchor pair the rest of this suite already uses.
@@ -147,15 +149,18 @@ def test_relationship_joint_stars_matches_a_hand_read_of_pair_stars_parquet(ctx,
 # hand off topic_leaders.parquet/inst_stars.parquet.
 # ---------------------------------------------------------------------------
 
-def test_shared_frontier_rank_and_stars_match_a_hand_read_of_the_raw_leader_tables(ctx, subs):
-    """v1.7: topic_leaders.parquet has no `pool` column -- one ranking across
-    every institution type (shared_frontier's own pool_a/pool_b are now
-    always "all", kept only for the untouched table renderer)."""
-    sf = CD.shared_frontier(ctx, subs, IDS)
-    assert len(sf) > 0, "the anchor pair must share at least one frontier topic"
-    row = sf.iloc[0]
+def test_pair_topics_rank_and_stars_match_a_hand_read_of_the_raw_leader_tables(ctx, subs):
+    """D31: the topic-overlap frame's `rank_a`/`stars_a` are queried
+    directly over `topic_leaders.parquet`/`star_works.parquet` (via
+    `leaders_data.topic_rank`/`stars_for_topics`), independent of whichever
+    institution's own n_ar>=3 floor a topic clears -- hand-read against the
+    SAME raw tables, bypassing both accessors entirely."""
+    from lib import topic_data as TD
+
+    out = TD.pair_topics(ctx, IFREMER, NIOZ, TD.MODE_VOLUME, 50, "mean")
+    assert len(out) > 0, "the anchor pair must have at least one topic in the union"
+    row = out.iloc[0]
     topic_id = row["topic_id"]
-    assert row["pool_a"] == "all" and row["pool_b"] == "all"
 
     con = duckdb.connect()
     try:
@@ -164,8 +169,9 @@ def test_shared_frontier_rank_and_stars_match_a_hand_read_of_the_raw_leader_tabl
             [_posix(DATA_DIR / "topic_leaders.parquet"), topic_id, IFREMER],
         ).df()
         star_row = con.execute(
-            "SELECT n_stars FROM read_parquet(?) WHERE topic_id = ? AND institution_id = ?",
-            [_posix(DATA_DIR / "inst_stars.parquet"), topic_id, IFREMER],
+            "SELECT COUNT(DISTINCT work_id) AS n FROM read_parquet(?) "
+            "WHERE topic_id = ? AND ('|' || inst_ids || '|') LIKE '%|' || ? || '|%'",
+            [_posix(DATA_DIR / "star_works.parquet"), topic_id, IFREMER],
         ).df()
     finally:
         con.close()
@@ -176,12 +182,34 @@ def test_shared_frontier_rank_and_stars_match_a_hand_read_of_the_raw_leader_tabl
     else:
         assert int(row["rank_a"]) == expected_rank
 
-    expected_stars = int(star_row["n_stars"].iloc[0]) if len(star_row) else 0
+    expected_stars = int(star_row["n"].iloc[0]) if len(star_row) else 0
     assert int(row["stars_a"]) == expected_stars
 
     # VACUITY
     with pytest.raises(AssertionError):
         assert int(row["stars_a"]) == expected_stars + 1
+
+
+def test_pair_topics_shared_count_strasbourg_cnrs_default_mode_pinned(ctx):
+    """The overlap anchor D31 replaces the retired frontier-positioning
+    KPIs with: Universite de Strasbourg (I68947357) x CNRS (I1294671590),
+    default mode ("Top by volume"), n=50 per institution -- pinned to the
+    measured value so a future data refresh reports drift rather than
+    silently shipping a different shared count."""
+    from lib import topic_data as TD
+
+    STRASBOURG = "I68947357"
+    CNRS_ID = "I1294671590"
+    out = TD.pair_topics(ctx, STRASBOURG, CNRS_ID, TD.MODE_VOLUME, 50, "mean")
+    facts = TD.pair_topic_set_caption(out)
+    assert facts["n_total"] == 80
+    assert facts["n_shared"] == 20
+    assert facts["n_a_only"] == 30
+    assert facts["n_b_only"] == 30
+
+    # VACUITY
+    with pytest.raises(AssertionError):
+        assert facts["n_shared"] == 20 + 1
 
 
 # ---------------------------------------------------------------------------
@@ -280,26 +308,11 @@ def test_reciprocity_rank_in_a_b_match_a_hand_read_of_collab_pairs_and_reorient_
     assert int(out["rank_in_b"].iloc[0]) == pulse["rank_in_b"]
 
 
-def test_frontier_positioning_n_published_matches_a_hand_topics_all_merge(ctx, subs):
-    pos = CD.frontier_positioning(ctx, subs, IDS).set_index("institution_id")
-    con = duckdb.connect()
-    try:
-        rows = con.execute(
-            """
-            SELECT a.institution_id AS institution_id, COUNT(*) AS n
-            FROM read_parquet(?) a
-            JOIN read_parquet(?) d ON a.topic_id = d.topic_id
-            WHERE a.institution_id IN (?, ?) AND a.vol_full >= 1 AND d.top25pct_frontier = TRUE
-            GROUP BY a.institution_id
-            """,
-            [_posix(DATA_DIR / "topics_all.parquet"), _posix(DATA_DIR / "topics_dim.parquet"),
-             IFREMER, NIOZ],
-        ).df().set_index("institution_id")["n"]
-    finally:
-        con.close()
-    for iid in IDS:
-        assert int(pos.loc[iid, "n_top25_topics_published"]) == int(rows.loc[iid]), iid
-
-    # VACUITY
-    with pytest.raises(AssertionError):
-        assert int(pos.loc[IFREMER, "n_top25_topics_published"]) == int(rows.loc[IFREMER]) + 1
+# frontier_positioning -- DELETED (D31), no direct replacement: its five
+# KPIs (share_top25, n_top25_topics_published, n_of_those_top_decile,
+# n_topics_led_fair, n_stars_in_frontier_topics) are retired outright, not
+# ported into `pair_topics` under a new name -- Compare's topic overlap
+# answers a different question (which topics, not how many frontier
+# topics). The two anchors above cover what DOES survive from this area:
+# rank/stars accessors independent of the old KPI row, and the new shared
+# count pinned by construction.

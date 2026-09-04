@@ -251,101 +251,12 @@ def test_sdg_vacuity_a_wrong_value_is_caught(ctx, subs, golden):
 
 
 # ===========================================================================
-# 4. shared_frontier: topic set + A/B volumes == golden `shared_frontier`;
-#    per-topic `vol_joint` == golden `collab_topic_vols` slice
+# 4/5. frontier_positioning and shared_frontier -- DELETED (D31): both
+#    absorbed into Compare's topic overlap (`lib.topic_data.pair_topics`),
+#    tested in `tests/test_topic_data.py` on real seeds (Strasbourg x CNRS,
+#    Salento x Bamberg) rather than here, since the function no longer
+#    lives in `compare_data.py` at all.
 # ===========================================================================
-
-@pytest.mark.parametrize("pair_name", PAIR_NAMES)
-def test_shared_frontier_topic_set_and_ab_volumes_equal_golden(ctx, subs, golden, pair_name):
-    a, b = _pair_ids(golden, pair_name)
-    out = CD.shared_frontier(ctx, subs, [a, b]).set_index("topic_id")
-    gsf = golden["pairs"][pair_name]["shared_frontier"]
-    assert len(gsf) > 0
-    assert len(out) == len(gsf), f"{pair_name}: row count {len(out)} != golden {len(gsf)}"
-    vol_a_key, vol_b_key = f"vol_{a}", f"vol_{b}"
-    for g in gsf:
-        row = out.loc[g["topic_id"]]
-        assert _close(row["vol_a"], g[vol_a_key])
-        assert _close(row["vol_b"], g[vol_b_key])
-        assert _close(row["expansion"], g["x"])
-        assert _close(row["acceleration"], g["y"])
-        assert _close(row["combined_vol"], g["combined_vol"])
-
-
-@pytest.mark.parametrize("pair_name", PAIR_NAMES)
-def test_shared_frontier_vol_joint_equals_collab_topic_vols_slice(ctx, subs, golden, pair_name):
-    a, b = _pair_ids(golden, pair_name)
-    out = CD.shared_frontier(ctx, subs, [a, b])
-    ctv = {r["topic_id"]: r["vol"] for r in golden["pairs"][pair_name]["collab_topic_vols"]}
-    assert len(out) > 0
-    assert out["joint_known"].all(), f"{pair_name}: all three anchor pairs qualify (core_total >= 5)"
-    for _, row in out.iterrows():
-        want = ctv.get(row["topic_id"], 0.0)  # absent from the slice, qualifying pair -> genuinely 0
-        assert _close(row["vol_joint"], want), row["topic_id"]
-
-
-def test_shared_frontier_below_floor_pair_ships_joint_known_false(ctx, subs):
-    """Two institutions almost certainly never co-published (or did, below
-    the `core_total >= 5` qualifying floor): `joint_known` must be False and
-    `vol_joint` NaN for every row, never a fabricated 0."""
-    # Two small, geographically/thematically distant institutions with no
-    # engineered relationship -- IFPEN (energy, FR) and a tiny facility.
-    a, b = "I265217849", "I4210142177"
-    out = CD.shared_frontier(ctx, subs, [a, b])
-    if out.empty:
-        pytest.skip("no shared top-quartile-frontier topics between this probe pair -- nothing to assert")
-    assert not out["joint_known"].any() or out["joint_known"].all()  # never a mixed row set for one pair
-    if not out["joint_known"].iloc[0]:
-        assert out["vol_joint"].isna().all()
-
-
-def test_shared_frontier_required_columns_for_mirror_frontier(ctx, subs, golden):
-    """`lib/charts_compare.py:mirror_frontier`'s own INPUT FRAME CONTRACT
-    (its docstring's `required` tuple) -- every one of those columns must be
-    present under these exact names."""
-    a, b = _pair_ids(golden, "ifremer_nioz")
-    out = CD.shared_frontier(ctx, subs, [a, b])
-    required = ("topic_id", "topic_name", "url_joint", "vol_a", "vol_b",
-               "vol_joint", "expansion", "acceleration")
-    for col in required:
-        assert col in out.columns, f"missing {col!r} (charts_compare.mirror_frontier contract)"
-    assert list(out.columns) == CD.SHARED_FRONTIER_COLS
-
-
-def test_shared_frontier_vacuity_a_wrong_value_is_caught(ctx, subs, golden):
-    a, b = _pair_ids(golden, "ifremer_nioz")
-    out = CD.shared_frontier(ctx, subs, [a, b])
-    real = float(out.iloc[0]["vol_joint"])
-    assert _close(real, real)
-    assert not _close(real, real + 5.0)
-
-
-# ===========================================================================
-# 5. frontier_positioning: shape/contract + share_top25 == golden overview
-# ===========================================================================
-
-@pytest.mark.parametrize("pair_name", PAIR_NAMES)
-def test_frontier_positioning_share_top25_equals_golden_overview(ctx, subs, golden, pair_name):
-    a, b = _pair_ids(golden, pair_name)
-    out = CD.frontier_positioning(ctx, subs, [a, b]).set_index("institution_id")
-    gov = {r["institution_id"]: r for r in golden["pairs"][pair_name]["overview"]}
-    for iid in (a, b):
-        assert _close(out.loc[iid, "share_top25"], gov[iid]["frontier_top25_share"])
-
-
-def test_frontier_positioning_columns_and_n_shared_attr(ctx, subs, golden):
-    a, b = _pair_ids(golden, "ifremer_nioz")
-    out = CD.frontier_positioning(ctx, subs, [a, b])
-    assert list(out.columns) == CD.FRONTIER_POSITIONING_COLS
-    assert len(out) == 2
-    assert "n_shared" in out.attrs
-    assert isinstance(out.attrs["n_shared"], int)
-    # n_shared cannot exceed either institution's own n_top25_topics_published
-    assert out.attrs["n_shared"] <= out["n_top25_topics_published"].min()
-    # and it must equal shared_frontier's own row count (same topic-set definition)
-    sf = CD.shared_frontier(ctx, subs, [a, b])
-    assert out.attrs["n_shared"] == len(sf)
-
 
 # ===========================================================================
 # 6. relationship: momentum / pulse / core_total / reciprocity / yearly
@@ -489,16 +400,7 @@ def test_cards_fwci_eu_median_absent_is_nan_not_a_crash(ctx, golden):
 
 
 # ===========================================================================
-# 8. links helpers exposed on shared_frontier rows point at the pair
+# 8. links helpers -- DELETED (D31): the topic-overlap `url_a`/`url_b`/
+#    `url_joint` well-formedness check lives in `tests/test_topic_data.py`
+#    (`pair_topics` builds them, not `compare_data.py`).
 # ===========================================================================
-
-def test_shared_frontier_urls_point_at_the_right_ids_and_topic(ctx, subs, golden):
-    a, b = _pair_ids(golden, "ifremer_nioz")
-    out = CD.shared_frontier(ctx, subs, [a, b])
-    row = out.iloc[0]
-    assert f"authorships.institutions.id:{a}" in row["url_a"]
-    assert f"primary_topic.id:{row['topic_id']}" in row["url_a"]
-    assert f"authorships.institutions.id:{b}" in row["url_b"]
-    assert f"authorships.institutions.id:{a}" in row["url_joint"]
-    assert f"authorships.institutions.id:{b}" in row["url_joint"]
-    assert f"primary_topic.id:{row['topic_id']}" in row["url_joint"]

@@ -84,20 +84,20 @@ def test_every_c1_builder_runs_and_agrees_internally(ctx, subs, a, b):
     assert sdg["sdg_idx"].nunique() == 16
     assert set(sdg.attrs["untagged_share"]) == set(ids)
 
-    fp = CD.frontier_positioning(ctx, subs, ids)
-    assert len(fp) == 2
-    assert "n_shared" in fp.attrs
-    assert fp.attrs["n_shared"] >= 0
-    assert (fp["n_of_those_top_decile"] <= fp["n_top25_topics_published"]).all()
+    # D31: frontier_positioning/shared_frontier are DELETED, absorbed into
+    # Compare's topic overlap (`lib.topic_data.pair_topics`, not
+    # `compare_data.py` any more) -- this cell's own coverage of that area
+    # moves to the new function, same "every builder, every pair" spirit.
+    from lib import topic_data as TD
 
-    sf = CD.shared_frontier(ctx, subs, ids)
-    assert list(sf.columns) == CD.SHARED_FRONTIER_COLS if len(sf) else True
-    if len(sf):
-        assert (sf["vol_a"] > 0).all() and (sf["vol_b"] > 0).all()
-        assert np.isclose(sf["combined_vol"].to_numpy(), (sf["vol_a"] + sf["vol_b"]).to_numpy()).all()
-        # sorted by combined_vol descending (the shared-frontier row-order contract)
-        assert (sf["combined_vol"].diff().dropna() <= 1e-9).all()
-    assert fp.attrs["n_shared"] == len(sf)  # the SAME topic-set definition, cross-checked
+    ov = TD.pair_topics(ctx, ids[0], ids[1], TD.MODE_VOLUME, 50, "mean")
+    assert list(ov.columns) == TD.PAIR_COLS
+    assert len(ov) <= 100
+    if len(ov):
+        assert np.isclose(ov["combined_vol"].to_numpy(), (ov["vol_a"] + ov["vol_b"]).to_numpy()).all()
+        # sorted by combined_vol descending (the topic-overlap row-order contract)
+        assert (ov["combined_vol"].diff().dropna() <= 1e-9).all()
+        assert set(ov["owner"]) <= {TD.PAIR_OWNER_A, TD.PAIR_OWNER_B, TD.PAIR_OWNER_SHARED}
 
     rel = CD.relationship(ctx, ids, subs)
     assert set(rel) == {"a", "b", "momentum", "pulse", "yearly", "yearly_qualifies",

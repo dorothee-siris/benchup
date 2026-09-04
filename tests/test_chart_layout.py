@@ -135,13 +135,11 @@ def test_compare_builders_margin_is_the_constant_label_and_gutter_columns(name):
     assert fig.layout.margin.l == expected, f"{name}: margin.l={fig.layout.margin.l}, expected {expected}"
 
 
-def test_mirror_frontier_margin_is_the_compare_label_column():
-    df = pd.DataFrame([dict(topic_id=1, topic_name="A short topic name",
-                            url_joint="https://openalex.org/works?x",
-                            vol_a=10.0, vol_b=8.0, vol_joint=6.0,
-                            expansion=0.1, acceleration=0.1, is_top_decile=False)])
-    fig = X.mirror_frontier(df, ["A", "B"], [0, 1])
-    assert fig.layout.margin.l == C.LABEL_COL_PX["compare"]
+# test_mirror_frontier_margin_is_the_compare_label_column -- DELETED (D31):
+# `mirror_frontier` itself is retired, absorbed into Compare's topic
+# overlap (`lib.charts_topics.balance_bars`, a separate module); that
+# builder's own margin-column test lives in tests/test_charts_topics.py
+# (`test_balance_bars_label_column_is_the_compare_constant`).
 
 
 # ---------------------------------------------------------------------------

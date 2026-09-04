@@ -33,17 +33,11 @@ comments at each call site too):
     for the columns currently scrolled into the canvas viewport (a
     horizontal scroll via `scrollLeft` or a synthetic wheel event over the
     canvas did not bring the three link columns into that mirror in a live
-    trial). `aria-colcount` itself is NOT virtualized, so the shared-frontier
-    table's link-column check below reads `aria-colcount` (== 17, the full
+    trial). `aria-colcount` itself is NOT virtualized, so the topic-overlap
+    table's link-column check below reads `aria-colcount` (== 18, the full
     column list including the 3 link columns) plus a static source-grep for
     exactly 3 `LinkColumn(` calls, rather than reading rendered header text
     -- see `check_compare` and this file's own SOFTENED list at the bottom.
-  * The mirror chart's y-axis tick labels DO render as real DOM `<a href>`
-    elements (SVG2 anchors, plain `getAttribute('href')` reads them, no
-    `xlink:` namespace call needed on this Chromium build) -- confirmed live
-    (47 anchors for 20 rows pre-"Show all", 105 for 44 rows after: a topic
-    name wrapped onto two lines yields two `<a>` with the SAME href, so
-    every count below is de-duplicated by href, never a raw anchor count).
   * `st.tabs` renders `[data-testid="stTab"]` (not `[role="tab"]` on this
     Streamlit build).
   * A single search hit auto-selects (no `seed_pick` selectbox appears);
@@ -101,14 +95,14 @@ TREE_LABELS = {
     "original": "OpenAlex taxonomy as published",
 }
 BASIS_LABELS = {"frac": "Fractional counting", "full": "Full counting"}
-COMPARE_SECTION_HEADERS = ["Key figures", "Thematic shape", "SDG profile", "Frontier",
-                           "Who holds the shared frontier", "The relationship"]
+COMPARE_SECTION_HEADERS = ["Key figures", "Thematic shape", "SDG profile", "Topic overlap",
+                           "The relationship"]
 COMPARE_TILE_LABELS = ["Joint publications", "Joint star papers", "Momentum"]
 COMPARE_TAB_LABELS = ["Profile", "Impact"]
 PROMPT_NEED_TWO = "Pick two institutions above to compare them."
 SLOT_EMPTY_LABEL = "Empty slot"
 FIND_XLSX_SHEET_COUNT = 15   # Profile + Overview + 10 ALL_LENSES sheets + Aspirational + leaders sheet + Topics
-COMPARE_XLSX_SHEETS = ["Cards", "Subfields", "SDG", "Positioning", "Shared frontier",
+COMPARE_XLSX_SHEETS = ["Cards", "Subfields", "SDG", "Topic overlap",
                        "Relationship yearly", "Reciprocity"]
 METHODS_SECTION_TITLES = [
     "What the tool is", "Data and windows", "Counting bases, and the Compare pin",
@@ -478,66 +472,49 @@ def check_compare_deeplink(page) -> None:
         shape_tabs.filter(has_text="Profile").first.click(timeout=ACTION_TIMEOUT_MS)
         _settle(page, 1500)
 
-    # --- mirror chart: unique tick-anchor hrefs == rows shown, before/after
-    #     "Show all" -- DOM FACT (see module docstring): a wrapped 2-line
-    #     label yields 2 <a> with the SAME href, so raw anchor count is not
-    #     row count; de-duplicated by href, it is.
-    mirror_sel = '[class*="st-key-fig_mirror_frontier"]'
-    page.wait_for_selector(f"{mirror_sel} .js-plotly-plot", state="attached", timeout=60_000)
-    _wait_for(page, lambda: len(_unique_hrefs(page, mirror_sel, "openalex.org")) > 0, timeout_ms=15_000)
-    check(page.locator(mirror_sel).count() >= 1, "Compare: the shared-frontier mirror chart renders")
-    hrefs_before = _unique_hrefs(page, mirror_sel, "openalex.org")
-    btn = page.locator("button").filter(has_text=re.compile(r"^Show all \d+$"))
-    has_show_all = btn.count() >= 1
-    if has_show_all:
-        btn_text = btn.first.text_content()
-        n_total = int(re.search(r"\d+", btn_text).group())
-        check(len(hrefs_before) == min(20, n_total),
-              f"Compare mirror (pre-Show all): {len(hrefs_before)} unique topic links shown "
-              f"(default cut 20, total {n_total})")
-        btn.first.click(timeout=ACTION_TIMEOUT_MS)
-        _wait_for(page, lambda: len(_unique_hrefs(page, mirror_sel, "openalex.org")) >= n_total,
-                 timeout_ms=15_000)
-        hrefs_after = _unique_hrefs(page, mirror_sel, "openalex.org")
-        check(len(hrefs_after) == n_total,
-              f"Compare mirror: 'Show all {n_total}' expands to {n_total} unique topic links "
-              f"(found {len(hrefs_after)})")
-        check(page.locator("button").filter(has_text=re.compile(r"^Show all \d+$")).count() == 0,
-              "Compare mirror: the 'Show all' button is gone once clicked")
-    else:
-        check(len(hrefs_before) >= 1,
-              f"Compare mirror: {len(hrefs_before)} unique topic links shown (pair under 20 shared topics)")
-        soften("Compare mirror 'Show all': this pair has <= 20 shared topics, no button to exercise "
-              "(Ifremer x NIOZ; not a harness gap)")
+    # --- topic overlap (D31): the shared selector, the owner-coloured
+    #     plane, the balance bars -- replaces the retired mirror chart and
+    #     its "Show all" interaction entirely (no such button exists any
+    #     more on this page).
+    overlap_mode_options = page.locator(".st-key-compare_topic_mode button[data-variant='segmented_control']")
+    check(overlap_mode_options.count() == 5,
+          f"Compare: the 'Topics shown' selector offers 5 modes (found {overlap_mode_options.count()})")
+    check(page.locator(".st-key-compare_topic_n").count() == 1, "Compare: the topics-per-institution slider renders")
+    check(page.locator(".st-key-compare_topic_fwci_stat").count() == 1, "Compare: the FWCI mean/median radio renders")
+    overlap_plane_sel = '[class*="st-key-fig_topic_overlap_plane"]'
+    overlap_bars_sel = '[class*="st-key-fig_topic_overlap_bars"]'
+    page.wait_for_selector(f"{overlap_bars_sel} .js-plotly-plot", state="attached", timeout=60_000)
+    _settle(page, 1500)
+    check(page.locator(overlap_plane_sel).count() >= 1, "Compare: the topic-overlap owner-coloured plane renders")
+    check(page.locator(overlap_bars_sel).count() >= 1, "Compare: the topic-overlap balance bars render")
+    check("Joint" in _full_page_text(page), "Compare: the topic-overlap legend names the 'Joint' chip")
+    _no_exception(page, "Compare (topic overlap)")
 
-    # --- the shared-frontier table: 3 link columns -- SOFTENED to a
-    #     structural proof (see module docstring: glide-data-grid's a11y
-    #     mirror only ever exposed the first 3 (of 17) columnheaders live,
-    #     even after a scrollLeft write and a synthetic wheel scroll over
-    #     the canvas -- the LEFT columns, never the link columns at the
-    #     right, came back).
+    # --- the topic-overlap table: 18 columns (the retired shared-frontier
+    #     table's own 17, plus "Held by") -- SOFTENED to a structural proof
+    #     (see module docstring: glide-data-grid's a11y mirror only ever
+    #     exposed the first 3 (of N) columnheaders live, even after a
+    #     scrollLeft write and a synthetic wheel scroll over the canvas --
+    #     the LEFT columns, never the link columns at the right, came back).
     page.wait_for_selector('[role="grid"]', state="attached", timeout=30_000)
     _settle(page, 800)
     grid = page.locator('[role="grid"]').first
-    check(grid.count() >= 1, "Compare: the shared-frontier table renders as an accessible grid")
+    check(grid.count() >= 1, "Compare: the topic-overlap table renders as an accessible grid")
     if grid.count():
         colcount = grid.get_attribute("aria-colcount")
-        check(colcount == "17",
-              f"Compare table: aria-colcount == 17 (topic..url_joint, the 3 link columns included) (got {colcount})")
+        check(colcount == "18",
+              f"Compare table: aria-colcount == 18 (topic..url_joint, the 3 link columns included) (got {colcount})")
     src = (APP_DIR / "lib" / "views_compare.py").read_text(encoding="utf-8")
     n_link_cols = src.count("st.column_config.LinkColumn(")
     check(n_link_cols == 3, f"Compare table (source proof): exactly 3 LinkColumn columns are configured "
                             f"(institution A, institution B, joint) (found {n_link_cols})")
-    soften("Compare table 3-link-column check reads aria-colcount (17, live) + a LinkColumn( source "
+    soften("Compare table 3-link-column check reads aria-colcount (18, live) + a LinkColumn( source "
           "count (3, static) rather than live column-header text: glide-data-grid's accessibility "
           "mirror only exposes the columns scrolled into the canvas viewport, and neither scrollLeft "
           "nor a synthetic wheel event over the canvas brought the 3 rightmost (link) columns into it "
           "in a live trial")
 
-    # --- one workbook, 7 sheets, BEFORE and AFTER Show all (a known lesson: a
-    #     manual rerun after a widget callback poisons every download_button
-    #     for the session -- proving the download still works after the
-    #     Show-all click is the regression test for exactly that).
+    # --- one workbook, 6 sheets ----------------------------------------------
     dl_btn = page.locator('button').filter(has_text=re.compile(r"^Download this view"))
     check(dl_btn.count() >= 1, "Compare: the 'Download this view (Excel)' button renders")
     with page.expect_download(timeout=120_000) as info:
@@ -545,7 +522,7 @@ def check_compare_deeplink(page) -> None:
     raw = Path(info.value.path()).read_bytes()
     book = openpyxl.load_workbook(io.BytesIO(raw))
     check(book.sheetnames == COMPARE_XLSX_SHEETS,
-          f"Compare workbook (after Show all / interaction): 7 sheets in order ({book.sheetnames})")
+          f"Compare workbook: 6 sheets in order ({book.sheetnames})")
 
     # --- share box -----------------------------------------------------------
     code_texts = page.evaluate("Array.from(document.querySelectorAll('code')).map(c => c.textContent)")
@@ -555,21 +532,32 @@ def check_compare_deeplink(page) -> None:
 
 
 def check_compare_deeplink_pre_show_all_workbook(page) -> None:
-    """A SEPARATE fresh session: the workbook downloads 7 sheets BEFORE any
-    'Show all' interaction too -- `check_compare_deeplink` only proves the
-    AFTER case (its own workbook click happens after the mirror-chart Show
-    all click above), so this is the BEFORE half of the same acceptance
-    line, isolated so a failure here is legible on its own."""
+    """A SEPARATE fresh session: the download-button lesson (memory:
+    streamlit-rerun-breaks-download-button) re-checked against the
+    topic-overlap controls that replaced the retired 'Show all' button --
+    changing the 'Topics shown' selector must not poison
+    `st.download_button` for the rest of the session. Isolated in its own
+    session so a failure here is legible on its own, the same reason the
+    retired before/after Show-all split used two sessions."""
     page.goto(f"{BASE_URL}/Compare?compare={IFREMER_ID},{NIOZ_ID}", wait_until="domcontentloaded")
     page.wait_for_selector(".st-key-compare_slot_0", state="attached", timeout=60_000)
     _settle(page, 3000)
+    led_option = page.locator(".st-key-compare_topic_mode button[data-variant='segmented_control']") \
+        .filter(has_text="Topics led")
+    if led_option.count():
+        led_option.first.click(timeout=ACTION_TIMEOUT_MS)
+        _settle(page, 2000)
+        _no_exception(page, "Compare (after changing the topic-overlap selector)")
     dl_btn = page.locator('button').filter(has_text=re.compile(r"^Download this view"))
     with page.expect_download(timeout=120_000) as info:
         dl_btn.first.click(timeout=ACTION_TIMEOUT_MS)
     raw = Path(info.value.path()).read_bytes()
     book = openpyxl.load_workbook(io.BytesIO(raw))
     check(book.sheetnames == COMPARE_XLSX_SHEETS,
-          f"Compare workbook (BEFORE any Show-all interaction): 7 sheets in order ({book.sheetnames})")
+          f"Compare workbook (after changing the topic-overlap selector): 6 sheets in order ({book.sheetnames})")
+    dl_buttons_still_present = page.locator('button').filter(has_text=re.compile(r"^Download this view"))
+    check(dl_buttons_still_present.count() >= 1,
+          "Compare: the download button is still present after the selector change")
 
 
 def check_compare_clear(page) -> None:
@@ -699,7 +687,7 @@ def _run(sections: list[str]) -> None:
                 try:
                     check_compare_deeplink_pre_show_all_workbook(page)
                 except Exception as exc:  # noqa: BLE001
-                    fail_section("Compare workbook (before Show all)", exc)
+                    fail_section("Compare workbook (after selector change)", exc)
                 try:
                     check_compare_clear(page)
                 except Exception as exc:  # noqa: BLE001

@@ -372,9 +372,11 @@ def test_scenario_cycle():
 
 
 def test_compare_pairs_sweep():
-    """NEW (a concurrency fix). Runs Compare's six frame functions
-    (`cards`, `top_subfields`, `sdg_frame`, `frontier_positioning`,
-    `shared_frontier`, `relationship`) over 40 distinct qualifying pairs
+    """NEW (a concurrency fix). Runs Compare's frame functions
+    (`cards`, `top_subfields`, `sdg_frame`, `relationship`, and D31's
+    `topic_data.pair_topics`, which replaces the retired `frontier_
+    positioning`/`shared_frontier` pair in this sweep) over 40 distinct
+    qualifying pairs
     SEQUENTIALLY in this already-warm process -- reuses
     `scenario_cache.bundle()`/`get("bestfit", "full")`, the exact scenario
     Compare pins and the one `test_scenario_cycle` just above leaves
@@ -396,14 +398,14 @@ def test_compare_pairs_sweep():
     assert len(pairs) == COMPARE_SWEEP_N_PAIRS, f"expected {COMPARE_SWEEP_N_PAIRS} sampled pairs, got {len(pairs)}"
 
     from lib import compare_data as CD  # local import: keeps this file's module-load order untouched elsewhere
+    from lib import topic_data as TD
 
     r10 = r_end = None
     for i, (a, b) in enumerate(pairs, 1):
         CD.cards(ctx, [a, b])
         CD.top_subfields(ctx, subs, [a, b])
         CD.sdg_frame(ctx, subs, [a, b])
-        CD.frontier_positioning(ctx, subs, [a, b])
-        CD.shared_frontier(ctx, subs, [a, b])
+        TD.pair_topics(ctx, a, b, TD.MODE_VOLUME, 50, "mean")
         CD.relationship(ctx, [a, b], subs)
         if i == 10:
             r10 = process_rss_mb()

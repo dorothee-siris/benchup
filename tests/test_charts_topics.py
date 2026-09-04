@@ -344,6 +344,43 @@ def test_fig_plane_frontier_owner_joint_floor_phrase_when_nan():
             assert "not available under" not in h
 
 
+def test_fig_plane_frontier_owner_under3_reads_as_text_not_a_bare_zero():
+    """`_fmt_pair_volumes`'s own new `under_floor_a`/`under_floor_b` kwargs: a topic
+    reaching the union through ONE institution's own top set while the
+    OTHER has fewer than `PAIR_VOLUME_FLOOR` articles and reviews on it
+    must read "under 3" in the hover, never a bare "0" (which would assert
+    a fact `inst_topic_impact.parquet`'s own pre-floored shape cannot
+    support)."""
+    df = _overlay_frame()
+    d = df.copy()
+    d["under_floor_a"] = False
+    d["under_floor_b"] = False
+    d.loc[0, "vol_b"] = 0
+    d.loc[0, "under_floor_b"] = True
+    fig = X.fig_plane_frontier(d, color_by="owner", slots=SLOTS, names=NAMES, ids=IDS)
+    h0 = fig.data[0].customdata[0]
+    assert f"{NAMES['Ib']} under {X.PAIR_VOLUME_FLOOR}" in h0
+    assert f"{NAMES['Ib']} 0" not in h0  # never a bare, falsely-precise zero
+    # a row with the default (no flag) still prints the real number
+    h1 = fig.data[0].customdata[1]
+    assert "under" not in h1
+
+
+def test_balance_bars_owner_under3_reads_as_text_not_a_bare_zero():
+    rows = _balance_rows()
+    d = rows.copy()
+    d["under_floor_a"] = False
+    d["under_floor_b"] = False
+    d.loc[0, "vol_a"] = 0
+    d.loc[0, "under_floor_a"] = True
+    fig = X.balance_bars(d, IDS, slots=SLOTS, names=NAMES, sort_col="n_ar_combined")
+    # find the row now flagged, wherever sorting placed it
+    sorted_d = d.sort_values(["n_ar_combined", "topic_id"], ascending=[False, True]).reset_index(drop=True)
+    flagged_pos = sorted_d.index[sorted_d["under_floor_a"]][0]
+    h = fig.data[0].customdata[flagged_pos]
+    assert f"under {X.PAIR_VOLUME_FLOOR}" in h
+
+
 def test_fig_plane_frontier_invalid_color_by_raises():
     df = _impact_frame()
     with pytest.raises(ValueError):
@@ -390,9 +427,11 @@ def test_balance_bars_three_traces_a_only_joint_b_only():
     # iterate its characters, so compare the scalar directly.
     assert bar_traces[0].marker.color == P.institution_color(0)
     assert bar_traces[2].marker.color == P.institution_color(1)
-    assert bar_traces[1].marker.color == P.MOMENTUM_COLORS["up"]
-    # the joint colour is distinct from SHARED_FRONTIER (distinct colours required)
-    assert P.MOMENTUM_COLORS["up"] != P.SHARED_FRONTIER
+    assert bar_traces[1].marker.color == P.JOINT_TOPIC_COLOR
+    # a hue DEDICATED to this segment: distinct from SHARED_FRONTIER (the
+    # scatter's own "shared" colour) and from the momentum-up hue an
+    # earlier pass reused (review rejected it: one colour, one meaning)
+    assert P.JOINT_TOPIC_COLOR not in (P.SHARED_FRONTIER, P.MOMENTUM_COLORS["up"])
 
 
 def test_balance_bars_gutter_carries_combined_volume_no_header():

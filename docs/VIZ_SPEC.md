@@ -2662,7 +2662,8 @@ This section replaces the whole earlier Compare page (§2 ter
 through §10 above) with a FIXED two-institution page (two search slots,
 no cross-tab shortlist — every "up to `COMPARE_MAX_SERIES`" ceiling above is generous
 headroom now, never a live cap) built from four sections: Thematic shape,
-SDG profile, Shared frontier, The relationship. The
+SDG profile, Topic overlap (§11.8; absorbs the earlier Frontier positioning
+KPIs and the Shared-frontier mirror, §11.2), The relationship. The
 metric-selector surface (§8/§9's Dynamics/SDG-tagged-as-a-tab/Specialisation/
 Volume/FWCI tabs, `SELECTOR_METRICS`) is RETIRED along with the selector UI
 it served — the profile and impact sections need exactly two fixed tabs, Profile and Impact. `docs/
@@ -2702,7 +2703,7 @@ contract; the render proof at all three widths confirms it.
 > square (missing before this stream) now shows via a new
 > `accent_key_col="sdg_number"` passed through `_render_sdg`.
 
-### 11.2 `mirror_frontier` — Shared frontier
+### 11.2 `mirror_frontier` — Shared frontier (superseded, §11.8)
 
 New geometry, three floating `go.Bar` traces per topic via `base=` (A-only /
 JOINT / B-only around a common centre) — no kept primitive draws this shape.
@@ -2897,6 +2898,90 @@ disclosed rather than silently absorbed:
   * `collab_pair_fields.n_covered` (the PP10_WD population) is narrower
     than `n_fwci` (the FWCI population) — both are surfaced in the hover
     rather than picking one and hiding the difference.
+
+### 11.8 Topic overlap (D31) — absorbs Frontier positioning and §11.2
+
+Replaces BOTH the earlier Frontier-positioning metric row and the §11.2
+shared-frontier mirror + table with one section, in the same position
+(after SDG profile, before the relationship): a controls row shared with
+Find's own topic planes (the "Topics shown" selector, a "Topics per
+institution" slider 10–50, the FWCI mean/median switch — same modes and
+labels, `lib.copy.FIND`'s own strings, never duplicated), a legend chip
+strip (both institutions, "joint", "shared"), a perimeter caption naming
+the counts (shared / A-only / B-only, catch-all among them, unplaced on
+the plane), the owner-coloured plane, the balance bars, and their shared
+table.
+
+**The topic set**: `lib.topic_data.pair_topics` — the UNION of each
+institution's own `select_topics` cut under the identical (mode, n,
+fwci_stat), n clamped to [10, 50] PER institution before the union (at
+most 100 rows, the D29 chart cap, satisfied by construction rather than a
+truncation). A topic is `"shared"` when BOTH institutions' own selected
+sets contain it, never derived from volume alone (a topic can carry real
+volume on both sides while being selected under, say, the "led" mode by
+only one of them).
+
+**The plane**: `lib.charts_topics.fig_plane_frontier(color_by="owner")` —
+the SAME builder Find's own Frontier plane uses in `color_by="domain"`
+mode (one module, two colour channels, built and tested together so a
+later Find-side change cannot silently break Compare's reuse or vice
+versa). Colour: `palette.SHARED_FRONTIER` for a shared topic (with the
+`FRONTIER_SHARED_HALO` ring), each institution's own colour otherwise;
+area = combined volume; a top-quartile-frontier topic still keeps its own
+ink outline. Unscored topics (no expansion/acceleration) are dropped from
+the plane exactly as Find's own does, counted in the caption, not hidden
+silently.
+
+**The balance bars**: `lib.charts_topics.balance_bars` — the mirror
+chart's own floating three-segment geometry (A-only | joint | B-only,
+`base=`), generalised: sorted by the CALLER's `sort_col` (here,
+`combined_vol` descending — "always sorted by decreasing value of the
+displayed metric," the user's own words) rather than a fixed rule, and a
+genuine gutter column (`mirror_frontier` never had one). The joint segment
+is `palette.JOINT_TOPIC_COLOR` — a hue DEDICATED to this one segment
+(§ below), never `palette.SHARED_FRONTIER` (the plane's own "shared"
+red) and never `palette.MOMENTUM_COLORS["up"]` (the relationship
+section's own "momentum: up" green, on the same page).
+
+> **Rejected alternative — keep the joint segment in `MOMENTUM_COLORS
+> ["up"]` (the mirror chart's own original choice, kept because it was
+> already validated against everything nearby).** Rejected on review: one
+> colour, one meaning — the legend chip strip for this exact section sits
+> a few pixels from the momentum tile a reader saw scrolling past the
+> relationship block, and a green bar segment here must never be read as
+> "momentum is rising" restated. `palette.JOINT_TOPIC_COLOR` (`#E69F00`,
+> one hue of an earlier, fully-retired Okabe-Ito institution set) ships
+> instead, re-screened against the current cast (`design-system/
+> palette_validation.txt` run 39): comfortably clear of both institution
+> navy slots, of `SHARED_FRONTIER`, and of the momentum hue it replaces as
+> a candidate.
+
+**The table**: `docs/tooltip_spec.yaml`'s `compare_topic_table`, 18
+columns verbatim (topic, held-by, keywords, frontier score, expansion,
+acceleration, both institutions' own publications, joint, both institutions'
+own change and world rank and star-paper counts, three OpenAlex links),
+sorted like the bars, capped at 200 rows with a caption naming the true
+total whenever the union exceeds it — the D29 table cap, structural here
+(the union itself never exceeds 100) but exercised on a synthetic frame so
+the cap's own code path is proven regardless. World rank reads the FULL
+1..200 leaderboard (`leaders_data.topic_rank`) — rank ≤ 20 is the "topics
+led" flag elsewhere on this page, never a display cap on this column, so a
+rank past 20 still prints a real number.
+
+**The under-the-floor volume case**: a topic can reach the union through
+ONE institution's own top set while the OTHER institution has fewer than
+three articles and reviews on it — `inst_topic_impact.parquet` ships
+pre-floored at that same minimum, so the true count (0, 1 or 2) is
+unrecoverable from this table. `pair_topics` ships a bucketed 0 for that
+case with its own `under_floor_a`/`under_floor_b` flags; the hover prints
+"under 3", never a bare, falsely-precise "0" — the honest reading `charts_
+topics._fmt_pair_volumes`'s own new keyword arguments exist for.
+
+**The workbook**: the "Positioning" and "Shared frontier" sheets are
+replaced by one "Topic overlap" sheet — `pair_topics` for whatever
+selector state the reader currently has on screen, every row, every
+column, no 200-row cap (the export's job is completeness; the on-page
+table's cap is a rendering concern only).
 
 ## 12. Bar-layout contract (D28) — supersedes the margin/gutter/diamond/font
 ##     passages in §§2.15–2.20, 10.1, 10.4 and 11.1 above

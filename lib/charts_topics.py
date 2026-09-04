@@ -36,23 +36,16 @@ THE JOINT-SEGMENT COLOUR (`balance_bars` needs a distinct colour for
 "shared" in the scatter and for copublications in the bars): the scatter's
 "shared" mark is `palette.SHARED_FRONTIER` (the dark red every pooled-
 frontier view already uses); the bar chart's "joint" segment is
-`palette.MOMENTUM_COLORS["up"]` (the SAME hue as `palette.
-ERC_DOMAIN_COLORS["LS"]`, a saturated green) -- picked FROM the existing
-palette (no new hex), never SHARED_FRONTIER itself. Chosen because it is
-the only non-institution, non-SHARED_FRONTIER hue already validated
-(`design-system/palette_validation.txt` run 37) against every colour this
-figure and the SHARED_FRONTIER scatter can co-occur with in sequential
-memory: comfortably clear of SHARED_FRONTIER (the ERC trio's own worst-case
-normal-vision distance to it, run 37), and a different hue family entirely
-from the navy institution trio (saturated green vs. desaturated blue-grey)
--- so a reader who has just seen the red "shared" bubble on the scatter
-above does not mistake the bars' green segment for the same fact restated.
-The one disclosed residual: this same hue also means "momentum: up" in
-Compare's OWN relationship section (`palette.MOMENTUM_COLORS["up"]`) -- a
-different section of the same page, never on screen at the same time as
-this chart, and the joint segment is never colour-alone (its own hover
-line and the section's caption both name it "joint" in words). Flagged
-for confirmation or override at review.
+`palette.JOINT_TOPIC_COLOR` -- a hue DEDICATED to this one segment,
+distinct from `palette.MOMENTUM_COLORS["up"]` (an earlier pass reused that
+green, and review rejected it: one colour, one meaning, and this section's
+own legend sits right beside the scatter above it, so the bars' centre
+segment must never read as "momentum: up" restated). Full validation
+(`design-system/palette_validation.txt` run 39): comfortably clear of both
+institution navy slots, of SHARED_FRONTIER, and of the momentum hue it
+replaces as a candidate, on the SAME co-occurrence screen SHARED_FRONTIER
+itself was measured against (`palette.JOINT_TOPIC_COLOR`'s own docstring
+carries the full per-pair numbers).
 """
 from __future__ import annotations
 
@@ -73,6 +66,12 @@ from lib import palette as P
 WORLD_LEADERBOARD_SIZE = 200     # topic_leaders.parquet's own rank range, 1..200
 FIND_LED_RANK_FLOOR = 20         # "topics led" -- world rank at or above this
 JOINT_FLOOR = 5                  # collab_topic_vols' own joint-publication floor
+PAIR_VOLUME_FLOOR = 3            # topic_data.pair_topics' own per-institution floor
+                                  # (inst_topic_impact.parquet's own n_ar>=3 minimum) --
+                                  # below this an institution's OWN volume on a topic
+                                  # its PARTNER'S top set pulled in is reported as the
+                                  # bucketed 0 `pair_topics` ships, never a literal
+                                  # zero-publications claim
 
 
 def _is_na(v) -> bool:
@@ -164,10 +163,22 @@ def _fmt_rank_and_leader(rank, leader_name) -> str | None:
     return f"most works worldwide: {leader_name}"
 
 
-def _fmt_pair_volumes(name_a, vol_a, name_b, vol_b) -> str:
+def _fmt_pair_volumes(name_a, vol_a, name_b, vol_b, *,
+                      under_floor_a: bool = False, under_floor_b: bool = False) -> str:
     """`pair_volumes`: one volume per institution, in slot order --
-    "{name A} 120 - {name B} 84"."""
-    return f"{name_a} {C._fmt_vol(vol_a)} - {name_b} {C._fmt_vol(vol_b)}"
+    "{name A} 120 - {name B} 84". `under_floor_a`/`under_floor_b` (default False,
+    so every Find-side caller and every existing Compare test keeps its
+    exact prior text): a topic can reach this pair's union set through ONE
+    institution's own top set while the OTHER institution has fewer than
+    `PAIR_VOLUME_FLOOR` articles and reviews on it -- `inst_topic_impact.
+    parquet` ships pre-floored at that same minimum, so `pair_topics` genuinely
+    cannot distinguish zero works from one or two, and stores a bucketed 0
+    for exactly that case. Printing that bucketed 0 as a bare "0" would
+    assert a fact this pipeline cannot see; the honest reading is "under
+    3", not zero."""
+    a_text = f"under {PAIR_VOLUME_FLOOR}" if under_floor_a else C._fmt_vol(vol_a)
+    b_text = f"under {PAIR_VOLUME_FLOOR}" if under_floor_b else C._fmt_vol(vol_b)
+    return f"{name_a} {a_text} - {name_b} {b_text}"
 
 
 def _fmt_joint_or_floor(vol_joint) -> str:
@@ -376,8 +387,10 @@ def fig_plane_frontier(
                 parts.append(rank_leader)
         else:
             name_a, name_b = str(names.get(ids[0], ids[0])), str(names.get(ids[1], ids[1]))
-            parts.append(f"{HOVER_PUBLICATIONS_CORE_PAIR}{C.THIN_SPACE}"
-                         f"{_fmt_pair_volumes(name_a, row.get('vol_a'), name_b, row.get('vol_b'))}")
+            pair_vol = _fmt_pair_volumes(
+                name_a, row.get("vol_a"), name_b, row.get("vol_b"),
+                under_floor_a=bool(row.get("under_floor_a", False)), under_floor_b=bool(row.get("under_floor_b", False)))
+            parts.append(f"{HOVER_PUBLICATIONS_CORE_PAIR}{C.THIN_SPACE}{pair_vol}")
             parts.append(f"{HOVER_JOINT_PUBLICATIONS}{C.THIN_SPACE}"
                          f"{_fmt_joint_or_floor(row.get('vol_joint'))}")
             parts.append(_fmt_owner_clause(row.get("owner"), name_a, name_b))
@@ -414,9 +427,10 @@ def balance_bars(
     top_n: int | None = None,
 ) -> go.Figure:
     """One row per topic: A-only publications LEFT of a bold zero in A's
-    colour, JOINT publications centred in `palette.MOMENTUM_COLORS["up"]`
-    (module docstring: the joint-segment colour, distinct from the scatter's
-    `palette.SHARED_FRONTIER`), B-only RIGHT in B's colour -- the same
+    colour, JOINT publications centred in `palette.JOINT_TOPIC_COLOR`
+    (module docstring: a hue dedicated to this one segment, distinct from
+    both the scatter's `palette.SHARED_FRONTIER` and `palette.
+    MOMENTUM_COLORS["up"]`), B-only RIGHT in B's colour -- the same
     floating three-segment geometry `charts_compare.mirror_frontier` uses,
     generalised: sort by the CALLER's own `sort_col` (descending, `topic_id`
     ascending tie-break) rather than a fixed combined-volume rule, and a
@@ -456,7 +470,7 @@ def balance_bars(
     name_a, name_b = str(names.get(id_a, id_a)), str(names.get(id_b, id_b))
     color_a = P.institution_color(int(slots.get(id_a, -1)))
     color_b = P.institution_color(int(slots.get(id_b, -1)))
-    joint_color = P.MOMENTUM_COLORS["up"]
+    joint_color = P.JOINT_TOPIC_COLOR
 
     va = pd.to_numeric(d["vol_a"], errors="coerce").fillna(0.0).to_numpy(dtype=float)
     vb = pd.to_numeric(d["vol_b"], errors="coerce").fillna(0.0).to_numpy(dtype=float)
@@ -477,11 +491,13 @@ def balance_bars(
     hover = []
     for i in range(n):
         row = d.iloc[i]
+        pair_vol = _fmt_pair_volumes(
+            name_a, row["vol_a"], name_b, row["vol_b"],
+            under_floor_a=bool(row.get("under_floor_a", False)), under_floor_b=bool(row.get("under_floor_b", False)))
         parts = [
             _fmt_topic_name_flagged(row["topic_name"], excluded[i], row.get("exclusion_reason_label")),
             _fmt_keywords_2x5(row.get("keywords")),
-            f"{HOVER_PUBLICATIONS_CORE_PAIR}{C.THIN_SPACE}"
-            f"{_fmt_pair_volumes(name_a, row['vol_a'], name_b, row['vol_b'])}",
+            f"{HOVER_PUBLICATIONS_CORE_PAIR}{C.THIN_SPACE}{pair_vol}",
             f"{HOVER_JOINT_PUBLICATIONS}{C.THIN_SPACE}{_fmt_joint_or_floor(row.get('vol_joint'))}",
             f"{HOVER_EXPANSION}{C.THIN_SPACE}{C._fmt_frontier(row.get('expansion'))}",
             f"{HOVER_ACCELERATION}{C.THIN_SPACE}{C._fmt_frontier(row.get('acceleration'))}",

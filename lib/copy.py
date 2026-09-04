@@ -757,50 +757,52 @@ COMPARE = {
                         "fewer than {floor} covered works carries a dagger."),
     "SDG_UNTAGGED": "{name}: {share} of output carries no Sustainable Development Goal tag.",
 
-    # ---- 4. frontier: positioning + the shared deep dive -------------------
-    "FRONTIER_HEADER": "Frontier",
-    "FRONTIER_POSITIONING_SHARE": "Share of output in frontier topics",
-    "FRONTIER_POSITIONING_PUBLISHED": "Topics published in",
-    "FRONTIER_POSITIONING_TOP_DECILE": "of which world top-decile",
-    "FRONTIER_POSITIONING_LED": "Topics led",
-    "FRONTIER_POSITIONING_STARS": "Star papers in frontier topics",
-    "FRONTIER_POSITIONING_TIP": ("Frontier topics are the global top quarter by frontier score; "
-                                 "world top-decile is the global top tenth by that same score, "
-                                 "{y0} to {y1}."),
-    "FRONTIER_SHARED_LINE": "{n} frontier topics are held by both institutions.",
-    "SHARED_FRONTIER_HEADER": "Who holds the shared frontier",
-    "SHARED_FRONTIER_BASIS_CAPTION": ("Shared frontier topics, ranked by the pair's combined "
-                                      "publications, full counting."),
-    "SHOW_ALL": "Show all {n}",
-    "SHARED_FRONTIER_NOTE": ("Each bar splits into that institution's own publications, with "
-                             "their joint publications on the topic centred in red."),
-    "SHARED_FRONTIER_TIP": ("Expansion reads how fast world attention to the topic is growing; "
-                            "acceleration reads whether that growth is itself speeding up. Both "
-                            "measure attention, not novelty or quality. \N{BLACK DIAMOND} marks "
-                            "a topic in the world top-decile by frontier score. Below {floor} "
-                            "joint publications the pair's joint segment is not shown "
-                            "separately, and the table's joint column reads n/a."),
-    "SHARED_FRONTIER_TABLE_CAPTION": ("Every column the chart above shows, plus keywords, each "
-                                      "institution's own change in mean annual volume ({w1} "
-                                      "against {w2}, a dagger under {floor} works over the "
-                                      "window), each institution's world rank on the topic, and "
-                                      "star-paper counts. The three links open that "
-                                      "institution's -- or the pair's joint -- publications on "
-                                      "the topic in OpenAlex."),
+    # ======================================================================
+    # 4. Topic overlap -- the shared selector row, the perimeter caption,
+    #    the owner-coloured plane + balance bars, and their shared table.
+    #    D31: absorbs the earlier Frontier positioning + "who holds the
+    #    shared frontier" pair of sections into one.
+    # ======================================================================
+    "TOPIC_OVERLAP_HEADER": "Topic overlap",
+    "TOPIC_N_LABEL": "Topics per institution",
+    "TOPIC_OVERLAP_EMPTY": "No topic clears this selector for either institution.",
+    "TOPIC_OVERLAP_PLANE_EMPTY": ("No topic in this union carries a frontier score, so there is "
+                                  "nothing to place on the two axes."),
+    "CAPTION_TOPIC_OVERLAP_PERIMETER": (
+        "Articles and reviews {y0} to {y1}, full counting, primary topic, over the "
+        "union of each institution's own top set under the selector above: {n_shared} "
+        "topics are held by both, {n_a_only} by {name_a} alone, {n_b_only} by {name_b} "
+        "alone. {n_catchall} of those are catch-all topics, outside the subject scope; "
+        "{n_no_frontier} carry no frontier score and are not placed on the chart below."),
+    "LEGEND_JOINT": "Joint",
+    "TOPIC_OVERLAP_BARS_NOTE": (
+        "Each bar splits into each institution's own publications either side, joint "
+        "publications centred between, sorted by combined volume."),
+    "TOPIC_OVERLAP_BARS_TIP": (
+        "Below {floor} joint publications the pair's joint segment is not shown "
+        "separately, and the table's joint column reads n/a."),
+    "TOPIC_OVERLAP_TABLE_AB_CAPTION": "A is {name_a}; B is {name_b}.",
+    "TOPIC_OVERLAP_TABLE_CAPTION_CAPPED": (
+        "First {cap} of {n} topics by combined volume, all {n} in the workbook."),
+    "TOPIC_OVERLAP_TABLE_CAPTION_FULL": "Every topic in the union, {n} in all.",
     "COL_TOPIC": "Topic",
+    "COL_HELD_BY": "Held by",
     "COL_KEYWORDS": "Keywords",
-    "COL_FRONTIERNESS": "Frontierness",
+    "COL_FRONTIER_SCORE": "Frontier score",
     "COL_EXPANSION": "Expansion",
     "COL_ACCELERATION": "Acceleration",
-    "COL_VOL": "{name}",
-    "COL_VOL_JOINT": "Joint",
-    "COL_CHANGE": "{name} change",
-    "COL_RANK": "{name} world rank",
-    "COL_STARS": "{name} stars",
-    "COL_LINK": "{name}'s publications",
-    "COL_LINK_JOINT": "Joint publications",
-    "RANK_POOL_UNIVERSITIES": "universities",
-    "RANK_POOL_ALL": "all institutions",
+    "COL_PUBLICATIONS_A": "Publications, A",
+    "COL_PUBLICATIONS_B": "Publications, B",
+    "COL_JOINT": "Joint",
+    "COL_CHANGE_A": "Change, A",
+    "COL_CHANGE_B": "Change, B",
+    "COL_WORLD_RANK_A": "World rank, A",
+    "COL_WORLD_RANK_B": "World rank, B",
+    "COL_STAR_PAPERS_A": "Star papers, A",
+    "COL_STAR_PAPERS_B": "Star papers, B",
+    "COL_A_ON_OPENALEX": "A on OpenAlex",
+    "COL_B_ON_OPENALEX": "B on OpenAlex",
+    "COL_JOINT_ON_OPENALEX": "Joint on OpenAlex",
 
     # ---- 5. the relationship --------------------------------------------------
     "RELATIONSHIP_HEADER": "The relationship",
@@ -874,8 +876,7 @@ COMPARE = {
     "XLSX_SHEET_CARDS": "Cards",
     "XLSX_SHEET_SUBFIELDS": "Subfields",
     "XLSX_SHEET_SDG": "SDG",
-    "XLSX_SHEET_POSITIONING": "Positioning",
-    "XLSX_SHEET_SHARED_FRONTIER": "Shared frontier",
+    "XLSX_SHEET_TOPIC_OVERLAP": "Topic overlap",
     "XLSX_SHEET_RELATIONSHIP_YEARLY": "Relationship yearly",
     "XLSX_SHEET_RECIPROCITY": "Reciprocity",
 }

@@ -129,9 +129,9 @@ def joint_topic_url(institution_a: str, institution_b: str, topic_id, *,
                     years: tuple[int, int] | None = None, types: list[str] | None = None,
                     has_doi: bool | None = None, sort: str | None = None) -> str:
     """, joint = both ids repeated in the SAME filter (the
-    `copubs_taxon_url(., "topic",.)` shape, already live-verified) -- the shared-frontier mirror chart's own
-    `url_joint` (feeds each y-tick's `<a href>`, `charts_compare.
-    mirror_frontier`'s contract) and table `url_joint` column."""
+    `copubs_taxon_url(., "topic",.)` shape, already live-verified) -- feeds
+    the topic-overlap plane's hover, the balance bars' hover, and the
+    table/workbook `url_joint` column alike."""
     url = copubs_taxon_url(institution_a, institution_b, "topic", topic_id,
                            years=years, types=types, has_doi=has_doi)
     return f"{url}&sort={sort}" if sort else url

@@ -57,35 +57,39 @@ def subs():
 
 
 # ---------------------------------------------------------------------------
-# 1. joint segment absent below the qualifying floor (shared_frontier.joint_known)
+# 1. joint segment absent below the qualifying floor (D31: `topic_data.
+#    pair_topics`' own `vol_joint`, replacing the retired `shared_
+#    frontier.joint_known`/`vol_joint` pair -- same rule, new function)
 # ---------------------------------------------------------------------------
 
-def test_shared_frontier_joint_known_is_true_for_a_qualifying_pair(ctx, subs):
-    sf = CD.shared_frontier(ctx, subs, [IFREMER, NIOZ])
-    assert len(sf) > 0
-    assert sf["joint_known"].all()
-    assert sf["vol_joint"].notna().all()
+def test_pair_topics_vol_joint_is_known_for_a_qualifying_pair(ctx):
+    from lib import topic_data as TD
+
+    out = TD.pair_topics(ctx, IFREMER, NIOZ, TD.MODE_VOLUME, 50, "mean")
+    assert len(out) > 0
+    assert out["vol_joint"].notna().any(), "the anchor pair qualifies (core_total >= 5)"
 
     # VACUITY
-    corrupt = sf.copy()
-    corrupt.loc[0, "joint_known"] = False
-    assert not corrupt["joint_known"].all()
+    corrupt = out.copy()
+    corrupt.loc[corrupt.index[0], "vol_joint"] = float("nan")
+    assert not corrupt["vol_joint"].notna().all()
 
 
-def test_shared_frontier_tip_names_the_p7_floor_in_words():
-    """The chart's own caption states the rule in words
-    ("the caption says why") -- `copy.COMPARE["SHARED_FRONTIER_TIP"]`,
-    filled from `charts_compare.JOINT_FLOOR`, never a hand-typed number."""
-    from lib import charts_compare as X
+def test_topic_overlap_bars_tip_names_the_joint_floor_in_words():
+    """The bars' own caption states the rule in words -- `copy.COMPARE
+    ["TOPIC_OVERLAP_BARS_TIP"]`, filled from `topic_data.PAIR_JOINT_FLOOR`,
+    never a hand-typed number (D31: replaces the retired `SHARED_FRONTIER_
+    TIP`'s version of this same rule)."""
+    from lib import topic_data as TD
 
-    rendered = copy.COMPARE["SHARED_FRONTIER_TIP"].format(floor=int(X.JOINT_FLOOR))
-    needle = f"Below {X.JOINT_FLOOR} joint publications"
+    rendered = copy.COMPARE["TOPIC_OVERLAP_BARS_TIP"].format(floor=int(TD.PAIR_JOINT_FLOOR))
+    needle = f"Below {TD.PAIR_JOINT_FLOOR} joint publications"
     assert needle in rendered
     assert "not shown separately" in rendered and "n/a" in rendered
 
     # VACUITY: a caption filled with the WRONG floor does not satisfy the
     # SAME needle.
-    wrong = copy.COMPARE["SHARED_FRONTIER_TIP"].format(floor=int(X.JOINT_FLOOR) + 1)
+    wrong = copy.COMPARE["TOPIC_OVERLAP_BARS_TIP"].format(floor=int(TD.PAIR_JOINT_FLOOR) + 1)
     assert needle not in wrong
 
 

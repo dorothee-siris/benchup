@@ -54,20 +54,14 @@ and are deleted with it -- the hatch-fill mechanism was already retired from
 every OTHER bar in this module, so no hatch remnant survives anywhere in the
 file now.
 
-THE FOUR NEW BUILDERS IN THIS MODULE
------------------------------------
+THE BUILDERS IN THIS MODULE
+----------------------------
   1. `two_tab_bars` -- the Thematic-shape and SDG-profile charts.
                          A thin `fig_metric_bars` adapter: tab="profile" is
                          metric="share", tab="impact" is metric="pp".
-  2. `mirror_frontier` -- the shared-frontier mirror: A-only left of a
-                         common centre, JOINT centred in `palette.
-                         SHARED_FRONTIER` with the white halo, B-only right.
-                         Genuinely new geometry (floating three-segment
-                         `go.Bar`s via `base=`), not offered by any kept
-                         primitive.
-  3. `yearly_domain_stack` -- the relationship section's yearly stack: joint
+  2. `yearly_domain_stack` -- the relationship section's yearly stack: joint
                          publications 2020-2024 by OpenAlex domain.
-  4. `reciprocity_scatter` -- "strategic reciprocity by field", a bubble
+  3. `reciprocity_scatter` -- "strategic reciprocity by field", a bubble
                          SCATTER: `y` = a field's share of A's own corpus,
                          `x` = the same for B, area = joint volume, colour =
                          the field's OpenAlex domain, one dotted equal-
@@ -78,16 +72,21 @@ THE FOUR NEW BUILDERS IN THIS MODULE
                          (`reciprocity_bars`, retired with its own
                          `_add_centred_gutter`/`_rewrite_reciprocity_hover`
                          helpers) before returning to the original reading.
+  The topic-overlap scatter and balance bars (D31) draw from `lib.
+  charts_topics` instead -- a separate module by design, so a Compare-side
+  edit here can never collide with a concurrently-edited topic-plane change
+  (see that module's own docstring).
 
 `colors`, everywhere in this module (`two_tab_bars`,
-`mirror_frontier`), is the institution SLOT mapping/sequence -- i.e. exactly
-what the app's institution-slot map returns (`{institution_id: slot}` for
-the two Mapping-shaped builders; `[slot_a, slot_b]` for `mirror_frontier`,
-whose frame carries no `institution_id` column at all to key a Mapping by).
-It is named `colors` rather than `slots` because that is ALL a slot ever is
-in this module -- an index `palette.institution_color`/`institution_ink`
-resolve to a hex -- and every one of the four builders' docstrings repeats
-this so a caller never has to cross-reference this paragraph.
+`reciprocity_scatter`), is the institution SLOT mapping/sequence -- i.e.
+exactly what the app's institution-slot map returns (`{institution_id:
+slot}` for the Mapping-shaped builder; `[slot_a, slot_b]` for
+`reciprocity_scatter`, whose frame carries no `institution_id` column at
+all to key a Mapping by). It is named `colors` rather than `slots` because
+that is ALL a slot ever is in this module -- an index `palette.
+institution_color`/`institution_ink` resolve to a hex -- and every
+builder's own docstring repeats this so a caller never has to
+cross-reference this paragraph.
 """
 from __future__ import annotations
 
@@ -112,9 +111,9 @@ def _slot_of(slots: Mapping, iid) -> int:
 
 
 def _name_of(names: Mapping | Sequence | None, iid, *, index: int | None = None) -> str:
-    """`names` is usually a Mapping keyed by institution id; `mirror_frontier`
-    also accepts a two-item Sequence (`[name_a, name_b]`, no id to key by)
-    `index` picks the positional entry in that case."""
+    """`names` is usually a Mapping keyed by institution id; `reciprocity_
+    scatter` also accepts a two-item Sequence (`[name_a, name_b]`, no id to
+    key by) -- `index` picks the positional entry in that case."""
     if names is None:
         return str(iid)
     if isinstance(names, Mapping):
@@ -862,201 +861,6 @@ def two_tab_bars(
 
 
 # ---------------------------------------------------------------------------
-# 3. mirror_frontier -- the shared-frontier mirror
-# ---------------------------------------------------------------------------
-JOINT_FLOOR = 5
-# The qualifying floor (`core_total >= 5`): below it `collab_topic_vols`
-# carries no row for the pair and `vol_joint` arrives NaN.
-HOVER_JOINT = "joint"
-HOVER_JOINT_UNAVAILABLE = "joint count not available under {floor} joint publications"
-TOP_DECILE_GLYPH = "\N{BLACK DIAMOND}"
-MIRROR_LINK_TARGET = "_blank"
-
-# --- mirror_frontier's own label geometry -- RETIRED under the bar-layout
-# contract (`docs/VIZ_SPEC.md` bar-layout section): this chart's margin and
-# topic-name wrap now use the SAME constants the rest of Compare's bar
-# charts do (`charts.LABEL_COL_PX["compare"]`, `charts.WRAP_PX["compare"]`,
-# `charts.wrap_label_px`) instead of a bespoke character-count budget and a
-# margin CAP -- both retired below, not kept as dead code (a reversed
-# decision is worth being explicit about, this module's own established
-# convention). Two consequences, both measured: (1) the fixed pixel column
-# is WIDER than the old 20-char/line budget (it is sized from the real
-# rendered font over the whole 4,516-topic universe, not guessed), so the
-# three-line escape hatch this section used to need is no longer live --
-# `charts.wrap_label_px` caps at two lines, with the SAME ellipsis fallback
-# `charts.LABEL_COL_PX["compare"]` was itself derived to need for < 1 % of
-# topics (measured at zero occurrences on today's data); (2) row pitch
-# simplifies to `charts.row_height_single` (the ONE-bar-per-row pitch that
-# chart's own composite floating segments already are, structurally --
-# `mirror_frontier`'s row is not a bar-family or dot-family row, but its
-# label geometry now converges on the single, not the paired, form).
-
-
-
-
-def mirror_frontier(
-    frame: pd.DataFrame,
-    names: Sequence,
-    colors: Sequence,
-    top_n: int | None = None,
-) -> go.Figure:
-    """The shared-frontier mirror: one row per topic, A-only publications
-    drawn LEFT of a common centre in A's colour, JOINT publications centred
-    (`-joint/2` to `+joint/2`) in `palette.SHARED_FRONTIER` red with the
-    `palette.FRONTIER_SHARED_HALO` white ring, B-only RIGHT in B's colour.
-    Total row width = A-only + joint + B-only. New geometry (floating
-    three-segment `go.Bar`s via `base=`) -- no kept primitive draws this.
-
-    INPUT FRAME CONTRACT (one row per topic):
-      topic_id, topic_name -- identity + display name
-      url_joint -- the OpenAlex link for the pair's joint publications on
-                       this topic (the `authorships.institutions.id:{A},
-                       authorships.institutions.id:{B}` filter) -- becomes the
-                       y tick's `<a href>`
-      vol_a, vol_b -- each institution's OWN publication count on the topic
-      vol_joint -- the pair's JOINT count on the topic; NaN when the pair
-                       is below the qualifying floor (`JOINT_FLOOR`) -- no red segment
-                       is drawn for that row and its hover explains why
-      expansion, acceleration -- the topic's frontier scores (hover only)
-      is_top_decile -- world top-decile flag; appends `TOP_DECILE_GLYPH` (an
-                       ink diamond, never a colour) to the row's label
-
-    `names`/`colors` are TWO-ITEM SEQUENCES, `[a, b]`, matching `vol_a`/
-    `vol_b`'s own order -- this frame carries no `institution_id` column to
-    key a Mapping by. `colors` holds SLOT ints (the institution-slot map
-    order), resolved via `palette.institution_color`, matching every other
-    builder in this module. `top_n` keeps the `top_n` rows with the largest
-    `vol_a + vol_b` ("combined volume"); `None` draws every row given.
-
-    y-axis ticks carry `<a href="{url_joint}" target="_blank">{topic_name}
-    {glyph}</a>` via plotly's own pseudo-html tick text (already exploited
-    elsewhere in this file for `<span style>`; verified here by rendering and
-    clicking through the page). A long name wraps onto
-    at most two lines (`charts.wrap_label_px` at `charts.WRAP_PX["compare"]`,
-    the same budget the Compare label column was itself sized against);
-    **measured
-    fact:** plotly renders each WRAPPED LINE as its own SVG `<tspan>`, and
-    re-wraps this module's ONE `<a>.</a>` source markup into ONE anchor
-    PER LINE at draw time (both carrying the identical `href` this module
-    wrote) -- so either line is independently clickable and both open the
-    same URL, even though the SOURCE string here is a single tag spanning
-    both lines. Confirmed by a live click-through check,
-    which clicks whichever line the anchor locator resolves to."""
-    required = ("topic_id", "topic_name", "url_joint", "vol_a", "vol_b",
-               "vol_joint", "expansion", "acceleration")
-    for col in required:
-        if col not in frame.columns:
-            raise ValueError(f"missing column {col!r}")
-    if len(names) < 2 or len(colors) < 2:
-        raise ValueError("mirror_frontier needs names=[a, b] and colors=[slot_a, slot_b]")
-
-    d = frame.copy()
-    va = pd.to_numeric(d["vol_a"], errors="coerce").fillna(0.0)
-    vb = pd.to_numeric(d["vol_b"], errors="coerce").fillna(0.0)
-    d["_combined"] = va + vb
-    d = d.sort_values("_combined", ascending=False, kind="mergesort").reset_index(drop=True)
-    if top_n is not None and top_n > 0:
-        d = d.head(int(top_n)).reset_index(drop=True)
-    n = len(d)
-    if n == 0:
-        raise ValueError("no topics to draw")
-
-    color_a = P.institution_color(int(colors[0]))
-    color_b = P.institution_color(int(colors[1]))
-    name_a, name_b = _name_of(names, None, index=0), _name_of(names, None, index=1)
-    top = (d["is_top_decile"].fillna(False).to_numpy(dtype=bool)
-          if "is_top_decile" in d.columns else np.zeros(n, dtype=bool))
-
-    a_only = np.zeros(n); b_only = np.zeros(n); half = np.zeros(n)
-    joint_valid = np.zeros(n, dtype=bool)
-    left_extent = np.zeros(n); right_extent = np.zeros(n)
-    for i in range(n):
-        va_i = _num(d.at[i, "vol_a"])
-        vb_i = _num(d.at[i, "vol_b"])
-        vj_i = _num(d.at[i, "vol_joint"])
-        valid = np.isfinite(vj_i)
-        veff = vj_i if valid else 0.0
-        joint_valid[i] = valid and veff > 0
-        half[i] = veff / 2.0
-        a_only[i] = max(0.0, (va_i if np.isfinite(va_i) else 0.0) - veff)
-        b_only[i] = max(0.0, (vb_i if np.isfinite(vb_i) else 0.0) - veff)
-        left_extent[i] = half[i] + a_only[i]
-        right_extent[i] = half[i] + b_only[i]
-
-    hovers = []
-    for i in range(n):
-        vj_i = _num(d.at[i, "vol_joint"])
-        joint_line = (f"{HOVER_JOINT}{C.THIN_SPACE}{_fmt_vol(vj_i)}" if joint_valid[i]
-                     else HOVER_JOINT_UNAVAILABLE.format(floor=_fmt_vol(JOINT_FLOOR)))
-        hovers.append("<br>".join([
-            str(d.at[i, "topic_name"]),
-            f"{name_a}{C.THIN_SPACE}{_fmt_vol(d.at[i, 'vol_a'])}",
-            f"{name_b}{C.THIN_SPACE}{_fmt_vol(d.at[i, 'vol_b'])}",
-            joint_line,
-            f"{C.HOVER_EXPANSION}{C.THIN_SPACE}{_fmt_frontier(d.at[i, 'expansion'])}",
-            f"{C.HOVER_ACCELERATION}{C.THIN_SPACE}{_fmt_frontier(d.at[i, 'acceleration'])}",
-        ]))
-
-    fig = go.Figure()
-    _row_rules(fig, n)
-    fig.add_trace(go.Bar(
-        x=list(a_only), y=list(range(n)), base=list(-left_extent), orientation="h",
-        marker=dict(color=color_a, line=dict(color=color_a, width=C.HAIRLINE_PX)),
-        customdata=hovers, hovertemplate="%{customdata}<extra></extra>", showlegend=False))
-    joint_idx = [i for i in range(n) if joint_valid[i]]
-    fig.add_trace(go.Bar(
-        x=[2.0 * half[i] for i in joint_idx], y=joint_idx,
-        base=[-half[i] for i in joint_idx], orientation="h",
-        marker=dict(color=P.SHARED_FRONTIER,
-                   line=dict(color=P.FRONTIER_SHARED_HALO["color"],
-                             width=P.FRONTIER_SHARED_HALO["width"])),
-        customdata=[hovers[i] for i in joint_idx],
-        hovertemplate="%{customdata}<extra></extra>", showlegend=False))
-    fig.add_trace(go.Bar(
-        x=list(b_only), y=list(range(n)), base=[half[i] for i in range(n)], orientation="h",
-        marker=dict(color=color_b, line=dict(color=color_b, width=C.HAIRLINE_PX)),
-        customdata=hovers, hovertemplate="%{customdata}<extra></extra>", showlegend=False))
-    fig.update_layout(barmode="overlay", bargap=0)
-
-    plain, styled = [], []
-    for i in range(n):
-        glyph = f" {TOP_DECILE_GLYPH}" if top[i] else ""
-        lines = C.wrap_label_px(str(d.at[i, "topic_name"]), C.WRAP_PX["compare"])
-        plain.append("\n".join(lines) + glyph)
-        styled_lines = "<br>".join(_esc(ln) for ln in lines)
-        # ONE <a>.</a> wraps the whole (possibly two-line) label in THIS
-        # source string -- plotly re-splits it into one anchor per rendered
-        # line at draw time (both keep the same href; see the docstring's
-        # own "measured fact" above). Glyph lands on the last line by
-        # construction (appended after the join, no separate placement).
-        styled.append(f'<a href="{_esc(d.at[i, "url_joint"])}" target="{MIRROR_LINK_TARGET}">'
-                      f"{styled_lines}{glyph}</a>")
-    _y_axis(fig, n, styled)
-
-    vmax = float(max(left_extent.max(), right_extent.max())) if n else 1.0
-    vmax = vmax if vmax > 0 else 1.0
-    pad = vmax * AXIS_PAD_FRAC
-    ticks = [t for t in C._nice_ticks(vmax) if t > 0]
-    fig.update_xaxes(
-        range=[-vmax - pad, vmax + pad], tickmode="array",
-        tickvals=[-t for t in reversed(ticks)] + [0.0] + ticks,
-        ticktext=([_fmt_vol(t) for t in reversed(ticks)] + [_fmt_vol(0.0)]
-                  + [_fmt_vol(t) for t in ticks]),
-        title_text=C.AX_WORKS, gridcolor=P.GRID, zerolinecolor=P.GRID, linecolor=P.BORDER)
-    _bold_axes(fig, y=None)
-    # bar-layout contract: the label column is a CONSTANT (`LABEL_COL_PX
-    # ["compare"]`, the same one every other Compare bar chart uses) --
-    # no more per-frame margin measurement or margin CAP, and no more a
-    # three-line pitch escape hatch (`wrap_label_px` above already keeps
-    # every topic name to <= 2 lines, `row_height_single` already hosts
-    # that as the norm; see the module note above this function).
-    margin_l = C.LABEL_COL_PX["compare"]
-    return C._base_layout(fig, C.row_height_single(n),
-                          margin=dict(t=C.BASE_PX // 2, l=margin_l,
-                                      r=C.BASE_PX, b=C.BASE_PX))
-
-
-# ---------------------------------------------------------------------------
 # 4. yearly_domain_stack -- the relationship section's yearly stack
 # ---------------------------------------------------------------------------
 YEARLY_STACK_HEIGHT_PX = 500  # C7/D27: doubled (and a little) from the pre-trim 320 px
@@ -1201,9 +1005,10 @@ def reciprocity_scatter(frame: pd.DataFrame, names: Sequence, colors: Sequence) 
                       the same on every row) -- omit the columns, or leave
                       a row's cells null, to drop the clause entirely
 
-    `names`/`colors` are TWO-ITEM SEQUENCES `[a, b]`, the SAME convention
-    `mirror_frontier` uses -- this frame carries no `institution_id` column
-    to key a Mapping by. `colors` is accepted for that same signature
+    `names`/`colors` are TWO-ITEM SEQUENCES `[a, b]` (this module's own
+    fixed-pair convention, see the module docstring's `colors` paragraph)
+    -- this frame carries no `institution_id` column to key a Mapping by.
+    `colors` is accepted for that same signature
     parity but unused for the MARK colour here (the field's domain is the
     only colour channel this chart draws)."""
     required = ("field_id", "field_name", "domain_id", "share_a", "share_b", "vol_joint")
@@ -1273,10 +1078,11 @@ def reciprocity_scatter(frame: pd.DataFrame, names: Sequence, colors: Sequence) 
     fig.update_yaxes(range=[0, axis_max], tickformat=C._AXIS_PCT_FMT,
                      title_text=AX_RECIPROCITY_SHARE.format(name=name_a),
                      gridcolor=P.GRID, zerolinecolor=P.GRID, linecolor=P.BORDER,
-                     # `constrain="domain"`, not the "range" default -- see
-                     # mirror_frontier's own note on the identical plotly
-                     # quirk this avoids (the shorter axis otherwise
-                     # silently grows a meaningless negative extent).
+                     # `constrain="domain"`, not the "range" default -- a
+                     # plotly quirk: with `scaleanchor` set, the "range"
+                     # default silently grows the SHORTER axis into a
+                     # meaningless negative extent instead of shrinking its
+                     # own plot area to match the square aspect ratio.
                      scaleanchor="x", scaleratio=1, constrain="domain")
     return C._base_layout(fig, C.SCATTER_HEIGHT,
                           margin=dict(t=C.BASE_PX // 2, l=C.BASE_PX, r=16, b=C.BASE_PX))
@@ -1293,8 +1099,9 @@ def legend_strip(ids: Sequence, *, slots: Mapping, names: Mapping | None = None,
     mandatory ABOVE EVERY Compare chart (CHROME_CONTRACT.md SS4): it is
     the secondary encoding the palette's own accessibility validation obliges.
 
-    `shared=True` appends the `palette.SHARED_FRONTIER` chip -- the caller
-    for `mirror_frontier`'s own legend. `extra` takes further `(label, hex)`
+    `shared=True` appends the `palette.SHARED_FRONTIER` chip -- Compare's
+    topic-overlap legend, above its owner-coloured scatter and balance
+    bars, is the caller. `extra` takes further `(label, hex)`
     chips; the hex must still come from `lib.palette`."""
     order = sorted(dict.fromkeys(ids), key=lambda i: (_slot_of(slots, i), str(i)))
     items = [(_name_of(names, i), P.institution_color(_slot_of(slots, i)),

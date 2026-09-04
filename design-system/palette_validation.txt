@@ -1447,3 +1447,125 @@ layout contract now draws it: Find's fig_share_si/fig_sdg/fig_erc/fig_topics
 fig_metric_bars family (a per-row tick or full-height line beside
 institution-coloured bars). No new hex; `palette.WARNING_CAPTION_COLOR` (==
 `SHARED_FRONTIER`) ships unchanged.
+
+================================================================================
+RUN 39 (2026-09-04) -- JOINT_TOPIC_COLOR: a dedicated hue for the balance-bars
+"joint" segment in Compare's topic overlap (D31), so it never doubles as
+palette.MOMENTUM_COLORS["up"] (one colour, one meaning) on a page where the
+scatter above the bars already uses SHARED_FRONTIER red for its own "shared"
+concept. Method unchanged: dataviz skill validate_palette.py, --mode light
+--surface #FFFFFF --pairs all, PYTHONIOENCODING=utf-8. Candidate: #E69F00
+(amber) -- one hue of an earlier, now fully retired six-colour Okabe-Ito
+institution set (see lib/palette.py's own "REPLACES AN EARLIER LIGHT PASTEL
+TRIO" note); confirmed absent from every currently-shipped constant before
+re-screening it fresh against the CURRENT cast.
+
+$ python validate_palette.py "#192C41,#5A6883,#B5C0D4,#821D13,#009E73,#D55E00,#E69F00" --mode light --surface "#FFFFFF" --pairs all
+  (the hard co-occurrence set: the institution navy trio + SHARED_FRONTIER +
+   both momentum hues -- everything the balance-bars chart itself, or its
+   immediate section neighbours, can paint alongside the joint segment)
+
+Palette (light, surface #FFFFFF, categorical): 7 slots
+  [FAIL] Lightness band         outside band: [["#192C41",0.288],["#B5C0D4",0.806],["#821D13",0.4]]
+  [FAIL] Chroma floor           below floor (reads gray): [["#192C41",0.046],["#5A6883",0.046],["#B5C0D4",0.031]]
+  [PASS] CVD separation         worst all-pairs #821D13<->#192C41 dE 9.9 (protan) . tritan 14.0
+  [PASS] Normal-vision floor    worst all-pairs #E69F00<->#D55E00 dE 15.6 (normal)
+  [WARN] Contrast vs surface    below 3:1 -- relief required (visible labels or table view): [["#B5C0D4",1.83],["#E69F00",2.25]]
+  -> FAILED -- fix the marked checks (CVD in the 6-8 floor band is legal ONLY with secondary encoding)
+  DISPOSITION: every FAIL/WARN line is a PRE-EXISTING finding (the
+  institution-monochrome exemption, run 9/13/37; SHARED_FRONTIER's own
+  lightness-band exemption, run 37/38; the amber's own WARN-band contrast,
+  the same class as OA Social/OA Physical). The amber is the worst pair in
+  NEITHER the CVD nor the normal-vision line -- both worst pairs are
+  pre-existing findings among hues already shipped, unrelated to this
+  candidate. Its OWN pairwise numbers, read directly off the per-pair
+  screen below, clear every hard-set target with margin.
+
+Per-pair screen (candidate vs each hard-set member, OKLab dE x100, floors
+15 normal / 8 CVD target / 6 CVD hard floor):
+  vs #192C41 (institution slot 1): normal 50.8  CVD(min protan/deutan) 45.4  PASS
+  vs #5A6883 (institution slot 2): normal 31.2  CVD 26.7  PASS
+  vs #B5C0D4 (institution slot 3): normal 19.6  CVD 19.1  PASS
+  vs #821D13 (SHARED_FRONTIER):    normal 37.2  CVD 36.1  PASS
+  vs #009E73 (MOMENTUM up/ERC-LS): normal 24.2  CVD 11.4  PASS <- the one pair this hue exists to keep apart
+  vs #D55E00 (MOMENTUM down/ERC-SH): normal 15.6  CVD 13.1  PASS (narrowest normal-vision margin, still clear)
+
+$ python validate_palette.py "#6A3D9A,#009E73,#D55E00,#E69F00" --mode light --surface "#FFFFFF" --pairs all
+  (the 3 ERC domain hues + the candidate -- descriptive, never on the same
+   chart as this mark, checked anyway)
+
+Palette (light, surface #FFFFFF, categorical): 4 slots
+  [PASS] Lightness band         all 4 inside L 0.43-0.77
+  [PASS] Chroma floor           all 4 >= 0.1
+  [PASS] CVD separation         worst all-pairs #D55E00<->#009E73 dE 11.0 (deutan) . tritan 14.8
+  [PASS] Normal-vision floor    worst all-pairs #E69F00<->#D55E00 dE 15.6 (normal)
+  [WARN] Contrast vs surface    below 3:1: [["#E69F00",2.25]]
+  -> ALL CHECKS PASS (the amber's own contrast WARN is the same disclosed,
+     relief-satisfied band every other WARN-band hue in this file carries)
+
+$ python validate_palette.py "#0072B2,#8C9196,#727272,#E69F00" --mode light --surface "#FFFFFF" --pairs all
+  (chrome tokens FOCAL/COMPARISON/momentum-stable + the candidate --
+   descriptive, mixes marks with text/chrome tokens by this file's own
+   convention, checked anyway)
+
+Palette (light, surface #FFFFFF, categorical): 4 slots
+  [PASS] Lightness band         all 4 inside L 0.43-0.77
+  [FAIL] Chroma floor           below floor (reads gray): [["#8C9196",0.009],["#727272",0]]
+  [PASS] CVD separation         worst all-pairs #727272<->#8C9196 dE 10.2 (deutan) . tritan 9.4
+  [FAIL] Normal-vision floor    worst all-pairs #727272<->#8C9196 dE 10.2 (normal)
+  [WARN] Contrast vs surface    below 3:1: [["#E69F00",2.25]]
+  DISPOSITION: both FAILs are the PRE-EXISTING chrome-vs-chrome exclusion
+  class (run 2/8/11): #727272<->#8C9196 is a text-token pair, neither of
+  them this candidate. The amber's own worst pair here is FOCAL (normal
+  36.2 / CVD min 29.2, not printed as the worst line since it is not the
+  worst) -- clear with wide margin.
+
+$ python validate_palette.py "#0CA750,#FFCB3A,#8190FF,#F85C32,#E69F00" --mode light --surface "#FFFFFF" --pairs all
+  (the OA domain quartet + the candidate -- Find-only, a DIFFERENT VIEW
+   from where this mark ever renders, checked for full disclosure)
+
+Palette (light, surface #FFFFFF, categorical): 5 slots
+  [FAIL] Lightness band         outside band: [["#FFCB3A",0.865]]
+  [PASS] Chroma floor           all 5 >= 0.1
+  [FAIL] CVD separation         worst all-pairs #E69F00<->#0CA750 dE 5.8 (protan) . tritan 7.3
+  [FAIL] Normal-vision floor    worst all-pairs #E69F00<->#FFCB3A dE 11.6 (normal) -- below 15
+  [WARN] Contrast vs surface    below 3:1: [["#FFCB3A",1.52],["#8190FF",2.85],["#E69F00",2.25]]
+  DISPOSITION: REAL findings, disclosed, not suppressed -- but this hue's
+  mark (Compare's balance bars) and the OA domain hues (Find's own
+  profile/topic-plane charts) are never in the same figure, the same
+  legend, or even the same PAGE (Find vs Compare) -- a strictly weaker
+  coexistence claim than the "same page, different section" class this
+  file already ships under (runs 6b/10/17/25). Recorded per this file's
+  own "never suppress a finding" convention.
+
+$ python validate_palette.py "#E5243B,#DDA63A,#4C9F38,#C5192D,#FF3A21,#26BDE2,#FCC30B,#A21942,#FD6925,#DD1367,#FD9D24,#BF8B2E,#3F7E44,#0A97D9,#56C02B,#00689D,#E69F00" --mode light --surface "#FFFFFF" --pairs all
+  (the 16 drawn SDG hues + the candidate -- Compare's OWN SDG panel, a
+   DIFFERENT chart in the same section's page, no "joint" concept there,
+   no shared legend with the topic-overlap bars)
+
+Palette (light, surface #FFFFFF, categorical): 17 slots
+  [FAIL] Lightness band         outside band: [["#FCC30B",0.845],["#FD9D24",0.777]]
+  [PASS] Chroma floor           all 17 >= 0.1
+  [FAIL] CVD separation         worst all-pairs #E69F00<->#FD9D24 dE 1.0 (protan) . tritan 0.9
+  [FAIL] Normal-vision floor    worst all-pairs #E69F00<->#DDA63A dE 2.4 (normal) -- below 15
+  [WARN] Contrast vs surface    seven UN hues + the candidate, listed in run 7 plus #E69F00 at 2.25
+  DISPOSITION: the WORST finding of this whole run 39 -- amber-on-amber is
+  about as close as two hues get. Disclosed plainly, not minimised: the SDG
+  panel's coloured squares are ROW-LABEL ACCENTS on a bar chart with no
+  institution-vs-institution balance concept and no "joint" segment of its
+  own (D31/C3: SDG stays profile-only, no overlap machinery) -- the two
+  hues are never two MARKS in one figure, never in one legend, and the
+  balance bars' own legend chip strip (A / B / joint / shared) carries no
+  SDG chip at all. Same disposition class as every other same-page,
+  different-figure collision already carried in this file (runs 6b/10/17).
+
+OVERALL DISPOSITION: JOINT_TOPIC_COLOR = #E69F00 ships. Every pair that
+actually matters -- the two institution slots the bars paint alongside,
+SHARED_FRONTIER on the scatter directly above, and MOMENTUM_COLORS["up"]
+(the hue this candidate exists to stop reusing) -- clears both the normal-
+vision and CVD targets with real margin, not merely the floor. The two
+real collisions (OA quartet, SDG cluster) are both cross-figure/cross-page,
+disclosed per this file's own "never suppress a finding" rule, and relieved
+the same way every other WARN-band or cross-family hue in this file already
+is: the segment is never colour-alone, and always sits beside its own
+hover line, its named legend chip, and the table/workbook export.

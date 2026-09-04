@@ -347,3 +347,38 @@ def test_viz_spec_has_rejected_alternative_per_compare_view_row():
     assert compare_rows >= 11, f"expected the Compare view rows in VIZ_SPEC, found {compare_rows}"
     find_rows = len(re.findall(r"^### 2\.\d+", text, flags=re.MULTILINE))
     assert text.count("Rejected alternative:") >= find_rows + compare_rows
+
+
+# ---------------------------------------------------------------------------
+# JOINT_TOPIC_COLOR -- the topic-overlap balance bars' own dedicated hue
+# (D31): a fresh identity, never re-derived from an already-meaningful
+# colour it must stay distinguishable from.
+# ---------------------------------------------------------------------------
+
+def test_joint_topic_color_is_a_real_hex_distinct_from_shared_and_momentum():
+    from lib import palette
+
+    assert re.fullmatch(r"#[0-9A-Fa-f]{6}", palette.JOINT_TOPIC_COLOR)
+    # the two colours review explicitly said this hue must never be mistaken
+    # for: the scatter's own "shared" red, and the momentum-up green an
+    # earlier pass reused here before being asked for something dedicated.
+    assert palette.JOINT_TOPIC_COLOR != palette.SHARED_FRONTIER
+    assert palette.JOINT_TOPIC_COLOR != palette.MOMENTUM_COLORS["up"]
+    assert palette.JOINT_TOPIC_COLOR not in palette.MOMENTUM_COLORS.values()
+    assert palette.JOINT_TOPIC_COLOR not in (v for v in palette.INSTITUTION_COLORS)
+    # not a fourth institution slot either -- institution_color never hands
+    # it out for any in-range slot
+    assert all(palette.institution_color(s) != palette.JOINT_TOPIC_COLOR for s in range(6))
+
+
+def test_joint_topic_color_appears_in_the_run_39_validation_log():
+    """Non-vacuity twin of `test_every_palette_hex_is_validated`, scoped to
+    this one hex and this one run, so a future edit that deletes run 39
+    without also removing the hex is caught by name, not only by the
+    generic scan."""
+    validation_path = APP_DIR / "design-system" / "palette_validation.txt"
+    text = validation_path.read_text(encoding="utf-8")
+    assert "RUN 39" in text
+    run_39 = text.split("RUN 39", 1)[1]
+    assert "JOINT_TOPIC_COLOR" in text
+    assert run_39.upper().count("#E69F00") >= 5  # the candidate + every co-occurrence run

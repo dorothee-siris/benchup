@@ -81,12 +81,13 @@ def test_no_download_button_call_site_outside_the_three_view_modules():
 # workbook builders exist and return the contracted sheet counts
 # ============================================================================
 
-def test_compare_workbook_builder_returns_exactly_seven_sheets():
-    """Cards, subfields (all 252), SDG, positioning, shared
-    frontier (with links), relationship yearly, reciprocity -- SEVEN, in
-    that order, no Methods sheet this time. Called through the SAME
-    `_workbook_sheets` the real page's cached `_workbook_bytes` calls, on
-    real data (the golden anchor pair)."""
+def test_compare_workbook_builder_returns_exactly_six_sheets():
+    """Cards, subfields (all 252), SDG, topic overlap (D31: replaces the
+    retired positioning + shared-frontier pair with one sheet), relationship
+    yearly, reciprocity -- SIX, in that order, no Methods sheet this time.
+    Called through the SAME `_workbook_sheets` the real page's cached
+    `_workbook_bytes` calls, on real data (the golden anchor pair)."""
+    from lib import topic_data as TD
     from lib import views_compare as VC
     from lib.engine import scenario_cache as SC
 
@@ -94,19 +95,19 @@ def test_compare_workbook_builder_returns_exactly_seven_sheets():
     subs = SC.get("bestfit", "full")
     ids = ["I154202486", "I4210107283"]  # Ifremer x NIOZ, the anchor pair
 
-    sheets = VC._workbook_sheets(ctx, subs, ids)
-    assert len(sheets) == 7, len(sheets)
+    sheets = VC._workbook_sheets(ctx, subs, ids, TD.MODE_VOLUME, 50, "mean")
+    assert len(sheets) == 6, len(sheets)
     labels = [label for label, _frame in sheets]
     assert len(labels) == len(set(labels)), "sheet labels must be unique before Excel-legalisation"
     assert all(isinstance(frame, pd.DataFrame) for _label, frame in sheets)
     assert all(len(frame) > 0 for _label, frame in sheets), "every sheet should carry real rows for a real pair"
 
     # VACUITY: a hand-truncated copy of this SAME real result no longer
-    # satisfies "== 7" -- demonstrated explicitly, so the check above is
+    # satisfies "== 6" -- demonstrated explicitly, so the check above is
     # shown to discriminate a wrong count, not merely restate a constant.
     truncated = sheets[:-1]
     with pytest.raises(AssertionError):
-        assert len(truncated) == 7
+        assert len(truncated) == 6
 
 
 def test_find_workbook_sheet_count_matches_the_all_lenses_plus_leaders_contract():

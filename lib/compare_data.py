@@ -31,11 +31,8 @@ module's fence.
 """
 from __future__ import annotations
 
-import threading
-from collections import OrderedDict
 from pathlib import Path
 
-import duckdb
 import numpy as np
 import pandas as pd
 
@@ -44,43 +41,6 @@ from . import leaders_data as LD
 from . import profile_data as P
 from .app_config import CFG
 from .engine.substrates import load_substrates
-
-# A concurrency fix, found via a stress test (phase B): same
-# shared-connection + bounded-LRU idiom as `lib/collab_data.py`/
-# `lib/leaders_data.py` (module-duplicated) -- `_topic_yearly_own`'s
-# per-pair `ctx[key] = df` cache used to accumulate forever.
-_DUCK_LOCK = threading.Lock()
-_PAIR_CACHE_MAX = 32
-
-
-def _duck(ctx: dict):
-    """Cursor onto the ONE process-wide, memory-bounded duckdb connection
-    (`SET memory_limit='512MB'` + `SET threads TO 2`), created lazily on
-    `ctx` under `_DUCK_LOCK` -- identical helper to `lib/collab_data.py:
-    _duck` (same shared `ctx` object in production, so truly one connection
-    per process)."""
-    with _DUCK_LOCK:
-        con = ctx.get("_duck_con")
-        if con is None:
-            con = duckdb.connect()
-            con.execute("SET memory_limit='512MB'")
-            con.execute("SET threads TO 2")
-            ctx["_duck_con"] = con
-    return con.cursor()
-
-
-def _lru_touch(ctx: dict, key: str, prefix: str) -> None:
-    """Marks `key` (cache namespace `prefix`) most-recently-used, evicting
-    the least-recently-used key in that namespace once more than
-    `_PAIR_CACHE_MAX` are resident -- identical helper to
-    `lib/collab_data.py:_lru_touch`."""
-    with _DUCK_LOCK:
-        order = ctx.setdefault(f"_lru::{prefix}", OrderedDict())
-        order[key] = None
-        order.move_to_end(key)
-        while len(order) > _PAIR_CACHE_MAX:
-            oldest, _ = order.popitem(last=False)
-            ctx.pop(oldest, None)
 
 # ---------------------------------------------------------------------------
 # Windows & pin: every figure in this module is CORE-AR 2020-2024
@@ -99,11 +59,15 @@ DYNAMICS_W2 = (2023, 2024)  # mean annual volume, window 2 (2 years)
 # PAIR_TOPICS_FLOOR`) -- kept here as a plain int (not imported from
 # `collab_data`, which itself imports THIS module -- see the module
 # docstring on the one-way `fields_long` dependency; importing back would
-# be a circular import) so `shared_frontier`/`relationship` never have to
-# guess the number.
+# be a circular import) so `relationship` never has to guess the number
+# (`lib.topic_data.pair_topics` keeps its own copy for the same reason).
 PAIR_QUALIFYING_FLOOR = 5
 
-ELITE_FRONTIER_PERCENTILE = 0.90  # global top-decile cut on frontier_score_latest (the "world top-decile" glyph)
+ELITE_FRONTIER_PERCENTILE = 0.90  # global top-decile cut on frontier_score_latest;
+# no function in this module reads it any more (the positioning/shared-
+# frontier figures it fed are retired into Compare's topic overlap), kept
+# as a standalone constant because `lib/views_methods.py` still imports it
+# by name for the Methods page's own "world top-decile" wording.
 
 
 def _num(v) -> float:
@@ -612,293 +576,6 @@ def sdg_frame(ctx: dict, subs: dict, ids: list[str]) -> pd.DataFrame:
         untagged[iid] = (1.0 - float(tagged)) if pd.notna(tagged) else float("nan")
     out.attrs["untagged_share"] = untagged
     return out
-
-
-# ---------------------------------------------------------------------------
-# frontier_positioning -- the Frontier "positioning" figures, one row per
-# institution.
-# ---------------------------------------------------------------------------
-
-FRONTIER_POSITIONING_COLS = [
-    "institution_id", "share_top25", "n_top25_topics_published", "n_of_those_top_decile",
-    "n_topics_led_fair", "n_stars_in_frontier_topics",
-]
-
-
-def _elite_frontier_topic_ids(ctx: dict) -> frozenset:
-    """Global top-decile topic set: topic ids in the top-10% by
-    `frontier_score_latest`, cut over every SCORED topic (never the compared
-    institutions' own footprint) -- the "world top-decile" glyph. Cached on
-    ctx (one `topics_dim.parquet` read + one quantile)."""
-    if "_elite_frontier_topic_ids" not in ctx:
-        extra = P._topics_dim_extra(ctx)
-        scores = pd.to_numeric(extra["frontier_score_latest"], errors="coerce")
-        scored = scores.dropna()
-        cutoff = float(scored.quantile(ELITE_FRONTIER_PERCENTILE)) if len(scored) else np.inf
-        ctx["_elite_frontier_topic_ids"] = frozenset(extra.loc[scores >= cutoff, "topic_id"])
-    return ctx["_elite_frontier_topic_ids"]
-
-
-def _top25_frontier_topic_ids(ctx: dict) -> frozenset:
-    """Global top-quartile-frontier topic set (`topics_dim.top25pct_
-    frontier == True`) -- the shared frontier's FIXED pool, tree-independent (the narrow
-    `ctx['topics_dim_df']` already carries this column, no extra read)."""
-    if "_top25_frontier_topic_ids" not in ctx:
-        td = ctx["topics_dim_df"]
-        ctx["_top25_frontier_topic_ids"] = frozenset(td.loc[td["top25pct_frontier"] == True, "topic_id"])  # noqa: E712
-    return ctx["_top25_frontier_topic_ids"]
-
-
-def frontier_positioning(ctx: dict, subs: dict, ids: list[str]) -> pd.DataFrame:
-    """The Frontier "positioning" row per institution: `share_top25`
-    (`index.frontier_top25_share`, verbatim), `n_top25_topics_published`
-    (the count of the shared frontier's FIXED top-quartile-frontier topic
-    pool where this institution's OWN volume, current basis, is >= 1),
-    `n_of_those_top_decile` (the subset also in the GLOBAL top-decile-by-
-    `frontier_score_latest` set, `_elite_frontier_topic_ids`),
-    `n_topics_led_fair` (v1.7: sourced from index.n_topics_led_all, rank<=20
-    across every institution type -- the output key is unchanged, only its
-    source column, kept for the untouched metric renderer that still reads
-    it), `n_stars_in_frontier_topics` (this institution's own star-work
-    count, summed over exactly the topics it was just counted as
-    publishing in above).
-
-    `df.attrs["n_shared"]` -- the count of top-quartile-frontier
-    topics where BOTH `ids` hold >= 1 publication; `frozenset` when `ids`
-    has fewer than 2 entries (defined as 0 shared, never a KeyError)."""
-    top25 = _top25_frontier_topic_ids(ctx)
-    elite = _elite_frontier_topic_ids(ctx)
-    vol_col = "vol_full" if subs["basis"] == "full" else "vol_frac"
-
-    rows = []
-    own_topics: dict[str, set] = {}
-    for iid in ids:
-        df = P.topics_table(ctx, subs, iid)
-        pub = df[(df[vol_col] >= 1) & df["topic_id"].isin(top25)]
-        own_topics[iid] = set(pub["topic_id"])
-        n_decile = int(pub["topic_id"].isin(elite).sum())
-
-        stars = LD.stars_by_topic(ctx, [iid])
-        n_stars = int(stars.loc[stars["topic_id"].astype(str).isin(own_topics[iid]), "n_stars"].sum())
-
-        row = ctx["index_by_id"].loc[iid]
-        share_top25 = row.get("frontier_top25_share")
-        led_fair = row.get("n_topics_led_all")  # v1.7: one pool, rank<=20 -- see the docstring's shim note
-        rows.append({
-            "institution_id": iid,
-            "share_top25": float(share_top25) if pd.notna(share_top25) else float("nan"),
-            "n_top25_topics_published": int(len(pub)),
-            "n_of_those_top_decile": n_decile,
-            "n_topics_led_fair": int(led_fair) if pd.notna(led_fair) else 0,
-            "n_stars_in_frontier_topics": n_stars,
-        })
-    out = pd.DataFrame(rows, columns=FRONTIER_POSITIONING_COLS)
-    shared = set.intersection(*own_topics.values()) if len(own_topics) >= 2 else set()
-    out.attrs["n_shared"] = int(len(shared))
-    return out
-
-
-# ---------------------------------------------------------------------------
-# shared_frontier -- the mirror-chart + table data. Topic set and A/B
-# volumes are IDENTICAL to the reference version's own
-# `shared_frontier(ctx, subs, ids, pool="volume")` (golden-anchor tested);
-# every other column is a NEW per-topic addition.
-# ---------------------------------------------------------------------------
-
-SHARED_FRONTIER_COLS = [
-    "topic_id", "topic_name", "keywords", "domain_id",
-    "frontier_score", "expansion", "acceleration", "is_top_decile",
-    "vol_a", "vol_b", "combined_vol", "vol_joint", "joint_known",
-    "change_a", "change_b", "low_volume_a", "low_volume_b",
-    "rank_a", "pool_a", "rank_b", "pool_b", "stars_a", "stars_b",
-    "url_a", "url_b", "url_joint",
-]
-
-LOW_VOLUME_FLOOR = 10  # "own change A/B w1->w2 with dagger under 10 works"
-
-
-def _shared_frontier_topics(ctx: dict, subs: dict, ids: list[str]) -> pd.DataFrame:
-    """topic_id, topic_name, x (`expansion_latest`), y (`acceleration_
-    latest`), combined_vol, vol_a, vol_b -- the topics BOTH `ids` (exactly
-    two) hold nonzero volume in, restricted to the shared frontier's FIXED
-    top-quartile-frontier pool (`topics_dim.top25pct_frontier == True`,
-    scored topics only). Ported from the reference implementation's
-    `frontier_points(mode="emerging")` +
-    `_frontier_pool_frame(pool="volume")` + `shared_frontier`'s own
-    `owner == "shared"` filter, COLLAPSED to this module's fixed 2-
-    institution case (the OLD N-institution "owner" tri-state and the
-    "elite" pool alternative are deleted: the pool is fixed, only two
-    institutions are ever compared now) -- values are BIT-IDENTICAL to that
-    path for the rows it would have called "shared" (anchor-tested
-    against the reference figures' own `shared_frontier`)."""
-    assert len(ids) == 2, "shared_frontier is defined for exactly two institutions (Compare's own cap)"
-    vol_col = "vol_full" if subs["basis"] == "full" else "vol_frac"
-    frames = []
-    for iid in ids:
-        df = P.topics_table(ctx, subs, iid)
-        df = df[df["quadrant"].notna() & (df["top25pct_frontier"] == True)]  # noqa: E712
-        df = df.copy()
-        df.insert(0, "institution_id", iid)
-        frames.append(df)
-    pts = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
-    cols = ["topic_id", "name", "x", "y", "combined_vol", "vol_a", "vol_b"]
-    if pts.empty:
-        return pd.DataFrame(columns=cols)
-
-    per_id = pts.pivot_table(index="topic_id", columns="institution_id", values=vol_col,
-                             aggfunc="sum", fill_value=0.0).reindex(columns=ids, fill_value=0.0)
-    n_holders = (per_id > 0).sum(axis=1)
-    shared_topics = per_id.index[n_holders >= 2]
-    if len(shared_topics) == 0:
-        return pd.DataFrame(columns=cols)
-    per_id = per_id.loc[shared_topics]
-    meta = pts[pts["topic_id"].isin(shared_topics)].groupby("topic_id").agg(
-        name=("topic_name", "first"), x=("expansion_latest", "first"), y=("acceleration_latest", "first"))
-    out = meta.join(per_id)
-    out["combined_vol"] = per_id.sum(axis=1)
-    out = out.reset_index().rename(columns={ids[0]: "vol_a", ids[1]: "vol_b"})
-    return out.sort_values("combined_vol", ascending=False).reset_index(drop=True).reindex(columns=cols)
-
-
-def _topics_dim_keywords(ctx: dict) -> pd.Series:
-    """Lazy, ctx-cached: `topics_dim.parquet`'s `keywords` column, indexed by
-    `topic_id` -- the ONE column neither the narrow `ctx['topics_dim_df']`
-    nor `profile_data._topics_dim_extra` carries (a second, narrow read of
-    the same file, same idiom as `profile_data._topics_dim_extra`)."""
-    if "_topics_dim_keywords" not in ctx:
-        df = pd.read_parquet(Path(ctx["data_dir"]) / "topics_dim.parquet", columns=["topic_id", "keywords"])
-        ctx["_topics_dim_keywords"] = df.set_index("topic_id")["keywords"]
-    return ctx["_topics_dim_keywords"]
-
-
-def _topic_yearly_own(ctx: dict, a: str, b: str) -> pd.DataFrame:
-    """duckdb pushdown on `topics_all.parquet`, `institution_id IN (a, b)`:
-    (institution_id, topic_id, vol_full_2020.vol_full_2024) -- ctx-cached
-    per pair. Needed because neither `ctx`'s own topic-grain arrays
-    (`load_context`, WHOLE-RUN totals only) nor `subs['subfields_df']`
-    (subfield grain, not topic grain) carry a per-topic YEARLY breakdown
-    `shared_frontier`'s own "change A/B" column is the one figure in this
-    module that genuinely needs a fresh topic x year read."""
-    key = f"_topic_yearly_own::{a}::{b}"
-    if key not in ctx:
-        path = Path(ctx["topics_all_path"]).as_posix()
-        con = _duck(ctx)
-        try:
-            df = con.execute(
-                "SELECT institution_id, topic_id, vol_full_2020, vol_full_2021, vol_full_2022, "
-                "vol_full_2023, vol_full_2024 FROM read_parquet(?) WHERE institution_id IN (?, ?)",
-                [path, a, b],
-            ).df()
-        finally:
-            con.close()
-        ctx[key] = df
-    _lru_touch(ctx, key, "topic_yearly_own")
-    return ctx[key]
-
-
-def shared_frontier(ctx: dict, subs: dict, ids: list[str]) -> pd.DataFrame:
-    """The shared-frontier mirror chart + table data (`mirror_frontier`'s
-    own INPUT FRAME CONTRACT, `lib/charts_compare.py`: `topic_id`,
-    `topic_name`, `url_joint`, `vol_a`, `vol_b`, `vol_joint`, `expansion`,
-    `acceleration`, `is_top_decile` are all present under these exact
-    names). Topic set and `vol_a`/`vol_b` are IDENTICAL to the reference
-    version's own `shared_frontier` (`_shared_frontier_topics`'s own
-    docstring; anchor-tested against the reference figures).
-
-    Per topic, ADDED:
-      keywords, domain_id, frontier_score -- `topics_dim.parquet`
-      is_top_decile -- global top-10% by frontier_score_latest
-      vol_joint, joint_known -- `collab_topic_vols.parquet`'s
-                                                   per-topic joint volume, `joint_known=False`
-                                                   (`vol_joint=NaN`) when the pair is below
-                                                   the qualifying floor (`core_total >= 5`)
-                                                   -- the floor is
-                                                   checked on the PAIR, not the topic: a
-                                                   qualifying pair's genuinely-zero topic
-                                                   still ships `vol_joint=0.0`, `joint_known=True`
-      change_a, change_b, low_volume_a/b -- mean annual `vol_full` 2023-24 minus
-                                                   2020-22 (an ABSOLUTE delta, not a percent
-                                                   distinct from `cards`' own `vol_change`),
-                                                   `low_volume_*` when the institution's own
-                                                   2020-2024 volume on the topic is < 10 works
-      rank_a, pool_a, rank_b, pool_b -- `leaders_data.topic_rank`, one ranking
-                                                   pool across every institution type now
-                                                   (pool_a/pool_b always "all", kept only
-                                                   because the untouched table renderer
-                                                   still reads those two columns), NaN when the
-                                                   institution is not in the topic's top 200
-      stars_a, stars_b -- `leaders_data.stars_by_topic`, 0 when absent
-      url_a, url_b, url_joint -- `links.topic_url`/`links.joint_topic_url`
-    """
-    from . import collab_data as COL  # local import -- collab_data imports THIS module (fields_long)
-
-    assert len(ids) == 2, "shared_frontier is defined for exactly two institutions (Compare's own cap)"
-    a, b = ids
-    base = _shared_frontier_topics(ctx, subs, ids)
-    if base.empty:
-        return pd.DataFrame(columns=SHARED_FRONTIER_COLS)
-
-    extra = P._topics_dim_extra(ctx)[["topic_id", "frontier_score_latest"]].set_index("topic_id")
-    keywords = _topics_dim_keywords(ctx)
-    domain_by_topic = ctx["topics_dim_df"].set_index("topic_id")["domain_id"]
-    elite = _elite_frontier_topic_ids(ctx)
-
-    joint_slice = COL._collab_pair_slice(ctx, "collab_topic_vols", a, b)
-    pair_row = COL._load_collab_pairs(ctx, a, b)
-    core_total = float(pair_row.iloc[0]["core_total"]) if len(pair_row) else 0.0
-    joint_known = core_total >= PAIR_QUALIFYING_FLOOR
-    vol_joint_by_topic = (joint_slice.set_index("topic_id")["vol"].astype("float64")
-                          if joint_known and len(joint_slice) else pd.Series(dtype="float64"))
-
-    yearly = _topic_yearly_own(ctx, a, b)
-    ya = yearly[yearly["institution_id"] == a].set_index("topic_id")
-    yb = yearly[yearly["institution_id"] == b].set_index("topic_id")
-    w1_cols = [f"vol_full_{y}" for y in range(DYNAMICS_W1[0], DYNAMICS_W1[1] + 1)]
-    w2_cols = [f"vol_full_{y}" for y in range(DYNAMICS_W2[0], DYNAMICS_W2[1] + 1)]
-
-    def _own_change(y_df: pd.DataFrame, topic_id: str) -> tuple[float, bool]:
-        if topic_id not in y_df.index:
-            return float("nan"), True
-        r = y_df.loc[topic_id]
-        w1 = float(np.mean([r[c] for c in w1_cols]))
-        w2 = float(np.mean([r[c] for c in w2_cols]))
-        core_vol = float(sum(r[c] for c in w1_cols + w2_cols))
-        return (w2 - w1), (core_vol < LOW_VOLUME_FLOOR)
-
-    topic_ids = list(base["topic_id"])
-    # v1.7: one ranking pool across every institution type (topic_leaders.parquet no
-    # longer carries a `pool` column) -- pool_a/pool_b below are always "all", kept
-    # only because the untouched table renderer still reads those two columns.
-    ranks_a_map = LD.topic_rank(ctx, a, topic_ids)
-    ranks_b_map = LD.topic_rank(ctx, b, topic_ids)
-    pool_a = pool_b = "all"
-
-    stars = LD.stars_by_topic(ctx, [a, b])
-    stars_a = stars[stars["institution_id"] == a].set_index("topic_id")["n_stars"]
-    stars_b = stars[stars["institution_id"] == b].set_index("topic_id")["n_stars"]
-
-    rows = []
-    for _, r in base.iterrows():
-        tid = r["topic_id"]
-        ca, low_a = _own_change(ya, tid)
-        cb, low_b = _own_change(yb, tid)
-        rows.append({
-            "topic_id": tid, "topic_name": r["name"],
-            "keywords": keywords.get(tid), "domain_id": domain_by_topic.get(tid),
-            "frontier_score": float(extra.loc[tid, "frontier_score_latest"]) if tid in extra.index else np.nan,
-            "expansion": float(r["x"]), "acceleration": float(r["y"]),
-            "is_top_decile": bool(tid in elite),
-            "vol_a": float(r["vol_a"]), "vol_b": float(r["vol_b"]), "combined_vol": float(r["combined_vol"]),
-            "vol_joint": float(vol_joint_by_topic.get(tid, 0.0)) if joint_known else np.nan,
-            "joint_known": joint_known,
-            "change_a": ca, "change_b": cb, "low_volume_a": low_a, "low_volume_b": low_b,
-            "rank_a": (ranks_a_map.get(tid) if ranks_a_map.get(tid) is not None else np.nan), "pool_a": pool_a,
-            "rank_b": (ranks_b_map.get(tid) if ranks_b_map.get(tid) is not None else np.nan), "pool_b": pool_b,
-            "stars_a": int(stars_a.get(tid, 0)), "stars_b": int(stars_b.get(tid, 0)),
-            "url_a": links.topic_url(a, tid), "url_b": links.topic_url(b, tid),
-            "url_joint": links.joint_topic_url(a, b, tid),
-        })
-    return pd.DataFrame(rows, columns=SHARED_FRONTIER_COLS)
 
 
 # ---------------------------------------------------------------------------

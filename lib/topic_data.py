@@ -43,6 +43,7 @@ import numpy as np
 import pandas as pd
 
 from lib import leaders_data as LD
+from lib import links
 from lib.profile_data import _subfield_field_domain_map
 
 # Matches `lib/data_cache.py`'s own DATA_DIR construction exactly (both
@@ -419,4 +420,236 @@ def topic_set_caption(shown: pd.DataFrame, total_ar: float | None) -> dict:
         "n_not_placed_a": n_not_placed_a,
         "n_no_frontier": n_no_frontier,
         "share_of_ar": share_of_ar,
+    }
+
+
+# ---------------------------------------------------------------------------
+# pair_topics -- Compare's topic overlap: the union of both institutions'
+# own top-N under the shared selector, one row per topic in that union.
+# ---------------------------------------------------------------------------
+PAIR_OWNER_A = "A"          # MUST match lib.charts_topics.OWNER_A verbatim
+PAIR_OWNER_B = "B"          # MUST match lib.charts_topics.OWNER_B verbatim
+PAIR_OWNER_SHARED = "shared"  # MUST match lib.charts_topics.OWNER_SHARED verbatim
+# Duplicated here rather than imported: this module sits BELOW the chart
+# layer (`institution_topics`/`select_topics` are Find's own data source,
+# and no `lib/*_data.py` module in this codebase imports a `lib/charts*.py`
+# module -- `charts_topics.py`/`charts_compare.py` import data modules,
+# never the reverse). `tests/test_topic_data.py` cross-checks the three
+# values against `charts_topics`'s own constants directly, so a future edit
+# to either side cannot drift unnoticed.
+
+PAIR_N_MIN, PAIR_N_MAX = 10, 50   # Compare's own tighter per-institution
+# clamp (Find's `select_topics` clamps to [N_MIN, N_MAX] = [10, 100] on its
+# OWN combined display set; Compare clamps EACH institution's own cut to
+# [10, 50] BEFORE union, so two full-width cuts still land at or under the
+# D29 100-mark chart cap: `select_topics` itself is never edited for this,
+# its own [10, 100] band still applies as a no-op upper pass-through here).
+
+PAIR_JOINT_FLOOR = 5   # collab_topic_vols'/collab_pairs' own joint-qualifying
+# floor (core_total >= this) -- the SAME shipped number
+# `lib.compare_data.PAIR_QUALIFYING_FLOOR` and `lib.charts_topics.
+# JOINT_FLOOR` also carry, kept here as its own plain int (mirroring
+# `compare_data.py`'s own "kept as a plain int... so this module never has
+# to guess the number" convention) rather than a fresh import of
+# `compare_data` into this lower-layer module for one constant.
+
+PAIR_COLS = [
+    "topic_id", "topic_name", "keywords", "domain_id", "domain_name",
+    "field_name", "subfield_name", "is_excluded", "exclusion_reason_label",
+    "expansion_latest", "acceleration_latest", "frontier_score_latest",
+    "top25pct_frontier",
+    "vol_a", "vol_b", "under_floor_a", "under_floor_b", "combined_vol", "vol_joint",
+    "owner",
+    "rank_a", "rank_b", "stars_a", "stars_b",
+    "change_a", "change_b", "low_base_a", "low_base_b",
+    "fwci_a", "fwci_b",
+    "url_a", "url_b", "url_joint",
+]
+
+_PAIR_DIM_COLS = [
+    "topic_name", "keywords", "domain_id", "domain_name", "field_name",
+    "subfield_name", "is_excluded", "exclusion_reason_label",
+    "expansion_latest", "acceleration_latest", "frontier_score_latest",
+    "top25pct_frontier",
+]
+
+
+def pair_topics(ctx: dict, a: str, b: str, mode: str, n: int,
+                fwci_stat: str = FWCI_STAT_MEAN) -> pd.DataFrame:
+    """Compare's topic overlap: one row per topic in the UNION of `a`'s and
+    `b`'s own `select_topics` cut under the SAME (`mode`, `n`, `fwci_stat`)
+    -- `n` clamped to `[PAIR_N_MIN, PAIR_N_MAX]` PER institution before the
+    union, so at most `2 * PAIR_N_MAX` = 100 rows ever ship. Compare is
+    pinned to bestfit + full counting (`institution_topics(., ., "bestfit")`
+    for both sides, matching every other Compare-grain frame in this app).
+
+    Column groups (see `PAIR_COLS` for the exact order):
+      topic dimension -- name, keywords, domain/field/subfield, catch-all
+                       flag + reason, the three frontier-score fields --
+                       sourced from WHICHEVER institution's own full topic
+                       frame (`institution_topics`, NOT the selected
+                       cut) carries the row: a topic-level fact never
+                       varies by which institution is asking, so either
+                       side is authoritative, and a topic reaches the union
+                       only by being present in at least one side's full
+                       frame (it is a superset of that side's own
+                       `select_topics` cut).
+      vol_a, vol_b -- each institution's OWN `n_ar` from its own full topic
+                       frame; 0 when that institution has fewer than 3
+                       articles and reviews on the topic (`inst_topic_
+                       impact.parquet` ships pre-floored at exactly that
+                       minimum, so a genuine 0 and a genuine 1 or 2 are
+                       indistinguishable from here) -- `under_floor_a`/`under_floor_b`
+                       flag exactly this case so a caller can print "under
+                       3" rather than a bare, falsely-precise "0"
+                       (`charts_topics._fmt_pair_volumes`'s own new kwargs).
+      combined_vol -- vol_a + vol_b, the balance bars' own sort key.
+      vol_joint -- `collab_topic_vols.parquet`'s per-topic joint volume,
+                       NaN whenever the PAIR (not the topic) falls under
+                       `PAIR_JOINT_FLOOR` joint publications -- identical
+                       gating rule the retired `shared_frontier` used,
+                       ported here.
+      owner -- `PAIR_OWNER_SHARED` when the topic is in BOTH institutions'
+                       own SELECTED (`select_topics`) sets, else whichever
+                       one side actually selected it -- never derived from
+                       vol_a/vol_b (a topic can carry real volume on both
+                       sides while still being selected by only one, e.g.
+                       under the "led" or "stars" modes).
+      rank_a, rank_b -- `leaders_data.topic_rank`'s own full 1..200 range
+                       (never capped at the "led" floor of 20 -- a rank
+                       PAST 20 is still a real, displayable world rank),
+                       queried directly over the UNION set, independent of
+                       either institution's own n_ar floor (a topic_leaders
+                       row exists or does not on its own terms).
+      stars_a, stars_b -- `leaders_data.stars_for_topics`, likewise queried
+                       directly over the union set, 0 when absent.
+      change_a, change_b, low_base_a, low_base_b -- each institution's OWN
+                       `change_w1_w2`/`low_base` from `_topic_yearly_change_
+                       df`, queried directly (not through the n_ar>=3
+                       floor -- `topics_all.parquet`'s own per-year columns
+                       carry a topic whenever the institution has ANY
+                       volume on it, a wider population than `inst_topic_
+                       impact.parquet`), NaN/True when the topic is outside
+                       even that wider population.
+      fwci_a, fwci_b -- the CALLER's chosen stat (mean or median) straight
+                       off each institution's own full topic frame; NaN
+                       when absent (this one has no wider population to
+                       fall back to -- FWCI needs the same n_covered>=3 the
+                       source table itself floors on). Carried for the
+                       workbook and any future hover use; today's shipped
+                       hovers (`compare_topic_overlay`/`compare_balance_
+                       bars`/`compare_topic_table`) do not surface it.
+      url_a, url_b, url_joint -- `lib.links.topic_url`/`joint_topic_url`.
+
+    Empty (right columns) when the union is empty (neither institution has
+    any topic clearing its own n_ar>=3 floor)."""
+    from . import collab_data as COL  # local import: this module sits below
+    # Compare's own data layer and is never otherwise coupled to it (see the
+    # PAIR_OWNER_* constants' own note) -- mirrors `compare_data.shared_
+    # frontier`'s established precedent for reaching this exact private pair
+    # of accessors (`_collab_pair_slice`, `_load_collab_pairs`).
+
+    n_clamped = int(min(max(int(n), PAIR_N_MIN), PAIR_N_MAX))
+
+    full_a = institution_topics(ctx, a, "bestfit")
+    full_b = institution_topics(ctx, b, "bestfit")
+    sel_a = select_topics(full_a, mode, n_clamped, fwci_stat)
+    sel_b = select_topics(full_b, mode, n_clamped, fwci_stat)
+    ids_a, ids_b = set(sel_a["topic_id"]), set(sel_b["topic_id"])
+    union_ids = sorted(ids_a | ids_b)
+    if not union_ids:
+        return pd.DataFrame(columns=PAIR_COLS)
+
+    idx_a = full_a.set_index("topic_id")
+    idx_b = full_b.set_index("topic_id")
+    union_idx = pd.Index(union_ids, name="topic_id")
+
+    a_dim = idx_a.reindex(union_idx)[_PAIR_DIM_COLS]
+    b_dim = idx_b.reindex(union_idx)[_PAIR_DIM_COLS]
+    dim = a_dim.combine_first(b_dim)
+    # Every union topic is present in at least one side's own FULL frame
+    # (it reached the union through that side's `select_topics` cut, a
+    # subset of that same full frame) -- `is_excluded`/`top25pct_frontier`
+    # therefore never need a NaN-below-both-sides case, but both consuming
+    # builders (`charts_topics.fig_plane_frontier`'s owner branch) already
+    # guard with their own `.fillna(False)` regardless, so this is a
+    # belt-and-braces normalisation, not a load-bearing fix.
+    dim["is_excluded"] = dim["is_excluded"].map(lambda v: bool(v) if pd.notna(v) else False)
+    dim["top25pct_frontier"] = dim["top25pct_frontier"].map(lambda v: bool(v) if pd.notna(v) else False)
+
+    out = pd.DataFrame(index=union_idx).join(dim)
+
+    fwci_col = "fwci_mean" if fwci_stat != FWCI_STAT_MEDIAN else "fwci_median"
+    out["vol_a"] = idx_a["n_ar"].reindex(union_idx).fillna(0.0).astype("int64")
+    out["vol_b"] = idx_b["n_ar"].reindex(union_idx).fillna(0.0).astype("int64")
+    out["under_floor_a"] = ~union_idx.isin(idx_a.index)
+    out["under_floor_b"] = ~union_idx.isin(idx_b.index)
+    out["combined_vol"] = out["vol_a"] + out["vol_b"]
+    out["fwci_a"] = idx_a[fwci_col].reindex(union_idx)
+    out["fwci_b"] = idx_b[fwci_col].reindex(union_idx)
+
+    change_a = _topic_yearly_change_df(ctx, a).set_index("topic_id")
+    change_b = _topic_yearly_change_df(ctx, b).set_index("topic_id")
+    out["change_a"] = change_a["change_w1_w2"].reindex(union_idx)
+    out["change_b"] = change_b["change_w1_w2"].reindex(union_idx)
+    out["low_base_a"] = change_a["low_base"].reindex(union_idx).map(
+        lambda v: bool(v) if pd.notna(v) else True)
+    out["low_base_b"] = change_b["low_base"].reindex(union_idx).map(
+        lambda v: bool(v) if pd.notna(v) else True)
+
+    rank_map_a = LD.topic_rank(ctx, a, union_ids)
+    rank_map_b = LD.topic_rank(ctx, b, union_ids)
+    out["rank_a"] = pd.array([rank_map_a.get(t) for t in union_ids], dtype="Int64")
+    out["rank_b"] = pd.array([rank_map_b.get(t) for t in union_ids], dtype="Int64")
+
+    stars_map_a = LD.stars_for_topics(ctx, a, union_ids)
+    stars_map_b = LD.stars_for_topics(ctx, b, union_ids)
+    out["stars_a"] = [int(stars_map_a.get(t, 0)) for t in union_ids]
+    out["stars_b"] = [int(stars_map_b.get(t, 0)) for t in union_ids]
+
+    joint_slice = COL._collab_pair_slice(ctx, "collab_topic_vols", a, b)
+    pair_row = COL._load_collab_pairs(ctx, a, b)
+    core_total = float(pair_row.iloc[0]["core_total"]) if len(pair_row) else 0.0
+    joint_known = core_total >= PAIR_JOINT_FLOOR
+    if joint_known and len(joint_slice):
+        vol_joint_map = joint_slice.set_index("topic_id")["vol"].astype("float64")
+        out["vol_joint"] = vol_joint_map.reindex(union_idx).fillna(0.0)
+    else:
+        out["vol_joint"] = np.nan
+
+    out["owner"] = [PAIR_OWNER_SHARED if (t in ids_a and t in ids_b)
+                    else (PAIR_OWNER_A if t in ids_a else PAIR_OWNER_B) for t in union_ids]
+
+    out["url_a"] = [links.topic_url(a, t) for t in union_ids]
+    out["url_b"] = [links.topic_url(b, t) for t in union_ids]
+    out["url_joint"] = [links.joint_topic_url(a, b, t) for t in union_ids]
+
+    out = out.reset_index()
+    out = out.sort_values(["combined_vol", "topic_id"], ascending=[False, True],
+                          kind="mergesort").reset_index(drop=True)
+    return out.reindex(columns=PAIR_COLS)
+
+
+def pair_topic_set_caption(pairs: pd.DataFrame) -> dict:
+    """Facts about `pair_topics`' own output set (never a wider frame): how
+    many topics are held by both institutions, by A alone, by B alone
+    (`owner`), how many of the WHOLE set are catch-all, and how many the
+    frontier plane cannot place at all (no expansion/acceleration score) --
+    the plain counts the topic-overlap caption composes into one sentence
+    (perimeter, then shared / A-only / B-only, catch-all among them,
+    unplaced on the plane)."""
+    n = len(pairs)
+    if not n:
+        return {"n_total": 0, "n_shared": 0, "n_a_only": 0, "n_b_only": 0,
+                "n_catchall": 0, "n_no_frontier": 0}
+    owner = pairs["owner"]
+    no_frontier = (~np.isfinite(pd.to_numeric(pairs["expansion_latest"], errors="coerce"))
+                  | ~np.isfinite(pd.to_numeric(pairs["acceleration_latest"], errors="coerce")))
+    return {
+        "n_total": n,
+        "n_shared": int((owner == PAIR_OWNER_SHARED).sum()),
+        "n_a_only": int((owner == PAIR_OWNER_A).sum()),
+        "n_b_only": int((owner == PAIR_OWNER_B).sum()),
+        "n_catchall": int(pairs["is_excluded"].fillna(False).sum()),
+        "n_no_frontier": int(no_frontier.sum()),
     }

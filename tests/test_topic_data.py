@@ -308,3 +308,174 @@ def test_world_rank_and_is_led_agree(frames):
         assert (df.loc[ranked, "world_rank"] >= 1).all()
         assert (df.loc[ranked, "world_rank"] <= 200).all()
         assert (df["is_led"] == (df["world_rank"] <= 20).fillna(False)).all()
+
+
+# ---------------------------------------------------------------------------
+# pair_topics -- Compare's topic overlap (D31). Two anchor pairs: Strasbourg
+# x CNRS (well above the joint-publication floor) and Salento x Bamberg
+# (below it -- collab_topic_vols/collab_pairs carry no qualifying row).
+# ---------------------------------------------------------------------------
+BAMBERG = "I94626330"
+PAIRS = ((STRASBOURG, CNRS), (SALENTO, BAMBERG))
+PAIR_IDS = ["strasbourg_cnrs", "salento_bamberg"]
+
+
+def test_pair_owner_constants_match_charts_topics():
+    """`TD.PAIR_OWNER_*` duplicate `charts_topics.OWNER_*` on purpose (no
+    lib/*_data.py module imports a lib/charts*.py module) -- this is the
+    cross-check the module's own comment promises."""
+    from lib import charts_topics as XT
+
+    assert TD.PAIR_OWNER_A == XT.OWNER_A
+    assert TD.PAIR_OWNER_B == XT.OWNER_B
+    assert TD.PAIR_OWNER_SHARED == XT.OWNER_SHARED
+
+
+@pytest.mark.parametrize("a,b", PAIRS, ids=PAIR_IDS)
+@pytest.mark.parametrize("mode", TD.MODES)
+def test_pair_topics_union_equals_both_selected_sets(ctx, a, b, mode):
+    full_a = TD.institution_topics(ctx, a, "bestfit")
+    full_b = TD.institution_topics(ctx, b, "bestfit")
+    sel_a = TD.select_topics(full_a, mode, 50, "mean")
+    sel_b = TD.select_topics(full_b, mode, 50, "mean")
+    want = set(sel_a["topic_id"]) | set(sel_b["topic_id"])
+    out = TD.pair_topics(ctx, a, b, mode, 50, "mean")
+    assert set(out["topic_id"]) == want
+    assert len(out) == len(want)  # one row per union topic, no duplicates
+    assert len(out) <= 100        # PAIR_N_MAX=50 per side -> at most 100 union rows
+
+
+@pytest.mark.parametrize("a,b", PAIRS, ids=PAIR_IDS)
+@pytest.mark.parametrize("mode", TD.MODES)
+def test_pair_topics_owner_shared_iff_in_both_selected_sets(ctx, a, b, mode):
+    full_a = TD.institution_topics(ctx, a, "bestfit")
+    full_b = TD.institution_topics(ctx, b, "bestfit")
+    ids_a = set(TD.select_topics(full_a, mode, 50, "mean")["topic_id"])
+    ids_b = set(TD.select_topics(full_b, mode, 50, "mean")["topic_id"])
+    out = TD.pair_topics(ctx, a, b, mode, 50, "mean")
+    for _, row in out.iterrows():
+        tid, owner = row["topic_id"], row["owner"]
+        if tid in ids_a and tid in ids_b:
+            assert owner == TD.PAIR_OWNER_SHARED, tid
+        elif tid in ids_a:
+            assert owner == TD.PAIR_OWNER_A, tid
+        else:
+            assert tid in ids_b and owner == TD.PAIR_OWNER_B, tid
+
+
+def test_pair_topics_columns_are_pair_cols(ctx):
+    out = TD.pair_topics(ctx, STRASBOURG, CNRS, TD.MODE_VOLUME, 50, "mean")
+    assert list(out.columns) == TD.PAIR_COLS
+
+
+def test_pair_topics_n_clamped_to_10_50(ctx):
+    lo = TD.pair_topics(ctx, STRASBOURG, CNRS, TD.MODE_VOLUME, 1, "mean")
+    hi = TD.pair_topics(ctx, STRASBOURG, CNRS, TD.MODE_VOLUME, 1000, "mean")
+    at_10 = TD.pair_topics(ctx, STRASBOURG, CNRS, TD.MODE_VOLUME, 10, "mean")
+    at_50 = TD.pair_topics(ctx, STRASBOURG, CNRS, TD.MODE_VOLUME, 50, "mean")
+    assert set(lo["topic_id"]) == set(at_10["topic_id"])
+    assert set(hi["topic_id"]) == set(at_50["topic_id"])
+    assert len(at_50) <= 100
+
+
+def test_pair_topics_sorted_by_combined_vol_descending(ctx):
+    out = TD.pair_topics(ctx, STRASBOURG, CNRS, TD.MODE_VOLUME, 50, "mean")
+    assert (out["combined_vol"].diff().dropna() <= 1e-9).all()
+
+
+@pytest.mark.parametrize("a,b", PAIRS, ids=PAIR_IDS)
+def test_pair_topics_vol_joint_le_min_vol_a_vol_b_or_explained(ctx, a, b):
+    """`vol_joint`, where known, must not exceed either institution's OWN
+    volume -- but ONLY on rows where BOTH institutions clear the n_ar>=3
+    floor: a row flagged `under3_*` stores a BUCKETED 0 (the true count is
+    unknown, somewhere in 0-2), so comparing a real vol_joint against that
+    bucketed 0 would flag a data-representation artifact, not a real
+    violation (`charts_topics._fmt_pair_volumes`'s own docstring names
+    this exact case). Reports the violation rate; expects 0."""
+    out = TD.pair_topics(ctx, a, b, TD.MODE_VOLUME, 50, "mean")
+    known = out[out["vol_joint"].notna() & ~out["under_floor_a"] & ~out["under_floor_b"]]
+    if known.empty:
+        pytest.skip(f"{a}x{b}: no joint-known, both-sides-floored row to check")
+    violations = known[known["vol_joint"] > known[["vol_a", "vol_b"]].min(axis=1) + 1e-9]
+    rate = len(violations) / len(known)
+    assert rate == 0, (
+        f"{a}x{b}: {len(violations)}/{len(known)} ({rate:.2%}) rows have "
+        f"vol_joint exceeding min(vol_a, vol_b): {violations['topic_id'].tolist()}")
+
+
+def test_pair_topics_vol_joint_na_below_the_qualifying_floor(ctx):
+    """Salento x Bamberg: `collab_pairs.core_total` is below `PAIR_JOINT_
+    FLOOR` (5) for this pair -- every row's `vol_joint` must be NA, never a
+    fabricated 0 (the SAME floor-gating rule the retired `shared_frontier`
+    used, ported here)."""
+    out = TD.pair_topics(ctx, SALENTO, BAMBERG, TD.MODE_VOLUME, 50, "mean")
+    assert len(out) > 0
+    assert out["vol_joint"].isna().all(), (
+        "expected this pair below the qualifying floor; if it now qualifies, "
+        "pick a different, still-disjoint probe pair")
+
+
+def test_pair_topics_vol_a_vol_b_zero_and_flagged_when_under_the_volume_floor(ctx):
+    out = TD.pair_topics(ctx, STRASBOURG, CNRS, TD.MODE_VOLUME, 50, "mean")
+    flagged_a = out[out["under_floor_a"]]
+    if len(flagged_a):
+        assert (flagged_a["vol_a"] == 0).all()
+    flagged_b = out[out["under_floor_b"]]
+    if len(flagged_b):
+        assert (flagged_b["vol_b"] == 0).all()
+    # and the institution's OWN full frame really does lack the topic
+    full_a = TD.institution_topics(ctx, STRASBOURG, "bestfit")
+    for tid in flagged_a["topic_id"]:
+        assert tid not in set(full_a["topic_id"])
+
+
+def test_pair_topics_rank_a_b_up_to_200_never_capped_at_20(ctx):
+    """`leaders_data.topic_rank` reads the full 1..200 leaderboard -- rank
+    <= 20 is the "topics led" flag elsewhere on this page, never a display
+    cap on this column. A row ranked between 21 and 200 must still carry a
+    real rank, not NA."""
+    out = TD.pair_topics(ctx, STRASBOURG, CNRS, TD.MODE_VOLUME, 50, "mean")
+    ranked = pd.concat([out["rank_a"].dropna(), out["rank_b"].dropna()])
+    assert len(ranked) > 0
+    assert (ranked >= 1).all() and (ranked <= 200).all()
+    assert (ranked > 20).any(), "expect at least one rank past the 'led' floor of 20 on this anchor pair"
+
+
+def test_pair_topics_links_well_formed(ctx):
+    out = TD.pair_topics(ctx, STRASBOURG, CNRS, TD.MODE_VOLUME, 50, "mean")
+    row = out.iloc[0]
+    assert f"authorships.institutions.id:{STRASBOURG}" in row["url_a"]
+    assert f"primary_topic.id:{row['topic_id']}" in row["url_a"]
+    assert f"authorships.institutions.id:{CNRS}" in row["url_b"]
+    assert f"authorships.institutions.id:{STRASBOURG}" in row["url_joint"]
+    assert f"authorships.institutions.id:{CNRS}" in row["url_joint"]
+    assert f"primary_topic.id:{row['topic_id']}" in row["url_joint"]
+    assert row["url_a"].startswith("https://openalex.org/works?filter=")
+
+
+def test_pair_topics_empty_when_neither_institution_has_any_qualifying_topic(ctx):
+    """Two institutions engineered to have no topic clearing the n_ar>=3
+    floor at all (an absurdly high `n` cannot help -- select_topics' own
+    clamp bites first, but a real institution with fewer than 3 works in
+    every topic is the genuine empty case): construct directly on an
+    empty `institution_topics`-shaped frame via a nonsense id."""
+    out = TD.pair_topics(ctx, "I_does_not_exist", "I_also_does_not_exist", TD.MODE_VOLUME, 50, "mean")
+    assert out.empty
+    assert list(out.columns) == TD.PAIR_COLS
+
+
+def test_pair_topic_set_caption_counts_match_owner_and_catchall(ctx):
+    out = TD.pair_topics(ctx, STRASBOURG, CNRS, TD.MODE_VOLUME, 50, "mean")
+    facts = TD.pair_topic_set_caption(out)
+    assert facts["n_total"] == len(out)
+    assert facts["n_shared"] == int((out["owner"] == TD.PAIR_OWNER_SHARED).sum())
+    assert facts["n_a_only"] == int((out["owner"] == TD.PAIR_OWNER_A).sum())
+    assert facts["n_b_only"] == int((out["owner"] == TD.PAIR_OWNER_B).sum())
+    assert facts["n_shared"] + facts["n_a_only"] + facts["n_b_only"] == facts["n_total"]
+    assert facts["n_catchall"] == int(out["is_excluded"].sum())
+
+
+def test_pair_topic_set_caption_on_an_empty_frame_never_raises():
+    facts = TD.pair_topic_set_caption(pd.DataFrame(columns=TD.PAIR_COLS))
+    assert facts == {"n_total": 0, "n_shared": 0, "n_a_only": 0, "n_b_only": 0,
+                     "n_catchall": 0, "n_no_frontier": 0}

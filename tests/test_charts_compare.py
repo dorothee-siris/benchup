@@ -105,20 +105,6 @@ def two_tab_frame(ids, *, grouped_by_field: bool) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def mirror_frame(n_rows: int = 4) -> pd.DataFrame:
-    rows = []
-    for i in range(n_rows):
-        rows.append(dict(
-            topic_id=1000 + i, topic_name=f"Topic {i}",
-            url_joint=f"https://openalex.org/works?filter=topic.id:T{i}",
-            vol_a=10.0 + i, vol_b=8.0 + i,
-            vol_joint=(np.nan if i == 1 else 6.0 + i),
-            expansion=0.3 * i - 0.5, acceleration=0.1 * i,
-            is_top_decile=(i % 2 == 0),
-        ))
-    return pd.DataFrame(rows)
-
-
 def yearly_frame() -> pd.DataFrame:
     years = list(range(2020, 2025))
     domains = [(1, "Physical Sciences"), (2, "Health Sciences"),
@@ -343,159 +329,13 @@ def test_two_tab_bars_sdg_hover_has_no_field_line(slots):
     assert not any(X.HOVER_FIELD_LABEL in h for h in hovers)
 
 # ---------------------------------------------------------------------------
-# mirror_frontier -- shared-frontier mirror
+# mirror_frontier -- shared-frontier mirror. DELETED (D31): retired along
+# with `_render_shared_frontier`/`_render_frontier_positioning`, absorbed
+# into Compare's topic overlap (`lib.charts_topics.fig_plane_frontier`'s
+# `color_by="owner"` mode + `balance_bars`, tested in
+# `tests/test_charts_topics.py`, not here -- a separate module by design).
+# `test_deleted_builders_are_actually_gone` below pins the removal.
 # ---------------------------------------------------------------------------
-def test_mirror_frontier_trace_count_is_fixed_at_three():
-    fig = X.mirror_frontier(mirror_frame(), ["A", "B"], [0, 1])
-    bars = _bar_traces(fig)
-    assert len(bars) == 3, "A-only, joint, B-only -- always three, even when a row's joint is NaN"
-
-
-def test_mirror_frontier_geometry_matches_the_ruled_example():
-    """vol_a=10, vol_b=8, vol_joint=6 -> A-only 4 on [-7,-3], joint on
-    [-3,+3], B-only 2 on [+3,+5]."""
-    df = pd.DataFrame([dict(topic_id=1, topic_name="T", url_joint="https://openalex.org/works?x",
-                            vol_a=10.0, vol_b=8.0, vol_joint=6.0,
-                            expansion=0.1, acceleration=0.1, is_top_decile=False)])
-    fig = X.mirror_frontier(df, ["A", "B"], [0, 1])
-    a, j, b = fig.data
-    assert a.base[0] == pytest.approx(-7.0) and a.x[0] == pytest.approx(4.0)
-    assert j.base[0] == pytest.approx(-3.0) and j.x[0] == pytest.approx(6.0)
-    assert b.base[0] == pytest.approx(3.0) and b.x[0] == pytest.approx(2.0)
-    assert a.base[0] + a.x[0] == pytest.approx(j.base[0])
-    assert j.base[0] + j.x[0] == pytest.approx(b.base[0])
-
-
-def test_mirror_frontier_clamps_an_inconsistent_row_at_zero():
-    """vol_a=10, vol_b=4, vol_joint=6: B-only (vol_b - vol_joint) is negative
-    clamp at zero rather than draw a bar of negative length."""
-    df = pd.DataFrame([dict(topic_id=1, topic_name="T", url_joint="u",
-                            vol_a=10.0, vol_b=4.0, vol_joint=6.0,
-                            expansion=0.0, acceleration=0.0, is_top_decile=False)])
-    fig = X.mirror_frontier(df, ["A", "B"], [0, 1])
-    _, _, b = fig.data
-    assert b.x[0] == 0.0
-
-
-def test_mirror_frontier_no_joint_segment_and_hover_says_why_under_the_floor():
-    fig = X.mirror_frontier(mirror_frame(), ["A", "B"], [0, 1])
-    a, j, b = fig.data
-    ticktext = list(fig.layout.yaxis.ticktext)
-    row_of_topic1 = next(i for i, t in enumerate(ticktext) if "Topic 1<" in t or "Topic 1 " in t)
-    assert row_of_topic1 not in list(j.y), (
-        "Topic 1 has NaN vol_joint in the fixture, no joint segment drawn for it")
-    hover_topic1 = next(h for h in a.customdata if "Topic 1" in h)
-    assert X.HOVER_JOINT_UNAVAILABLE.format(floor=X._fmt_vol(X.JOINT_FLOOR)) in hover_topic1
-
-
-def test_mirror_frontier_ticktext_carries_a_clickable_anchor_and_the_top_decile_glyph():
-    fig = X.mirror_frontier(mirror_frame(), ["A", "B"], [0, 1])
-    ticktext = list(fig.layout.yaxis.ticktext)
-    assert all("<a href" in t and 'target="_blank"' in t for t in ticktext)
-    assert any(X.TOP_DECILE_GLYPH in t for t in ticktext)
-    topic0_tick = next(t for t in ticktext if "Topic 0" in t)
-    assert "https://openalex.org/works?filter=topic.id:T0" in topic0_tick
-
-
-def test_mirror_frontier_top_n_keeps_the_largest_combined_volume():
-    df = mirror_frame(n_rows=4)
-    fig = X.mirror_frontier(df, ["A", "B"], [0, 1], top_n=2)
-    a, _, _ = fig.data
-    assert len(a.y) == 2, "two rows drawn"
-    # combined = vol_a + vol_b strictly ascending with i in the fixture, so
-    # the two rows kept are topics 2 and 3 (the largest combined volume)
-    ticktext = list(fig.layout.yaxis.ticktext)
-    assert any("Topic 3" in t for t in ticktext)
-    assert any("Topic 2" in t for t in ticktext)
-    assert not any("Topic 0" in t for t in ticktext)
-
-
-def test_mirror_frontier_symmetric_axis_shows_counts_on_both_sides():
-    fig = X.mirror_frontier(mirror_frame(), ["A", "B"], [0, 1])
-    tickvals = list(fig.layout.xaxis.tickvals)
-    assert min(tickvals) < 0 < max(tickvals)
-    assert tickvals == sorted(tickvals)
-    ticktext = list(fig.layout.xaxis.ticktext)
-    assert not any(t.startswith("-") for t in ticktext), "axis labels are ABSOLUTE counts"
-
-
-def test_mirror_frontier_rejects_a_missing_column():
-    bad = mirror_frame().drop(columns=["vol_joint"])
-    with pytest.raises(ValueError):
-        X.mirror_frontier(bad, ["A", "B"], [0, 1])
-
-
-# ---------------------------------------------------------------------------
-# mirror_frontier -- bar-layout contract: the bespoke character-count wrap
-# (`_wrap_topic_label`, up to three lines) and the margin CAP
-# (`MIRROR_MARGIN_CAP_PX`) are RETIRED, not adapted -- this chart's topic
-# labels and left margin now use the SAME pixel-wrap and the SAME constant
-# Compare column every other bar-family chart in this module uses
-# (`charts.wrap_label_px`/`WRAP_PX["compare"]`, `charts.LABEL_COL_PX["compare"]`,
-# `charts.row_height_single`). `test_deleted_builders_are_actually_gone`
-# below pins the old names' removal.
-# ---------------------------------------------------------------------------
-LONG_TOPIC_NAME = ("A realistically long OpenAlex topic name that runs well "
-                   "past the wrap width on purpose, to prove the ellipsis path")
-
-
-def _long_mirror_frame() -> pd.DataFrame:
-    return pd.DataFrame([dict(
-        topic_id=1, topic_name=LONG_TOPIC_NAME, url_joint="https://openalex.org/works?x",
-        vol_a=10.0, vol_b=8.0, vol_joint=6.0, expansion=0.1, acceleration=0.1,
-        is_top_decile=True)])
-
-
-def test_mirror_frontier_wraps_topic_names_to_at_most_two_lines_glyph_on_the_last():
-    fig = X.mirror_frontier(_long_mirror_frame(), ["A", "B"], [0, 1])
-    tick = fig.layout.yaxis.ticktext[0]
-    assert tick.count("<br>") <= 1, "at most two lines under the shared pixel-wrap contract"
-    assert tick.startswith("<a href=") and tick.endswith("</a>")
-    assert tick.removesuffix("</a>").endswith(X.TOP_DECILE_GLYPH), (
-        "the glyph must sit on the LAST line, inside the single <a>")
-    # the href still wraps the WHOLE (possibly two-line) label, not just one line
-    assert tick.count("<a href") == 1 and tick.count("</a>") == 1
-
-
-def test_mirror_frontier_real_openalex_name_survives_whole():
-    """A realistic example (CHROME_CONTRACT.md SS13.8): a realistic
-    25-60 char OpenAlex topic name must render in full, never ellipsised,
-    inside `charts.WRAP_PX["compare"]` -- the SAME budget every other
-    Compare bar-family label wraps at."""
-    name = "Geological and Geochemical Analysis"
-    df = pd.DataFrame([dict(topic_id=1, topic_name=name, url_joint="https://openalex.org/works?x",
-                            vol_a=10.0, vol_b=8.0, vol_joint=6.0, expansion=0.1, acceleration=0.1,
-                            is_top_decile=False)])
-    fig = X.mirror_frontier(df, ["A", "B"], [0, 1])
-    tick = fig.layout.yaxis.ticktext[0]
-    assert tick.count("<br>") <= 1
-    inner = tick.removeprefix('<a href="https://openalex.org/works?x" target="_blank">').removesuffix("</a>")
-    assert inner.replace("<br>", " ") == name
-
-
-def test_mirror_frontier_row_height_is_the_constant_single_pitch_whatever_the_wrap():
-    """Bar-layout contract: `row_height_single` is a CONSTANT pitch per row --
-    a frame whose longest label wraps to two lines is EXACTLY as tall as one
-    whose labels fit on one line, reversing the earlier "taller for more
-    wrapped lines" behaviour (no `n_wrapped`-style correction survives)."""
-    short_df = pd.concat([mirror_frame(n_rows=1)] * 20, ignore_index=True)
-    short_df["topic_id"] = range(20)
-    short_df["url_joint"] = [f"https://openalex.org/works?x{i}" for i in range(20)]
-    long_df = pd.concat([_long_mirror_frame()] * 20, ignore_index=True)
-    long_df["topic_id"] = range(20)
-    long_df["url_joint"] = [f"https://openalex.org/works?y{i}" for i in range(20)]
-    one_line = X.mirror_frontier(short_df, ["A", "B"], [0, 1])
-    two_line = X.mirror_frontier(long_df, ["A", "B"], [0, 1])
-    assert one_line.layout.height == two_line.layout.height == C.row_height_single(20)
-
-
-def test_mirror_frontier_left_margin_is_the_constant_compare_column():
-    """Bar-layout contract: `margin.l` is the SAME `LABEL_COL_PX["compare"]`
-    constant every other Compare bar chart uses -- no per-frame measurement,
-    no cap, whatever the frame's own longest label."""
-    fig = X.mirror_frontier(_long_mirror_frame(), ["A", "B"], [0, 1])
-    short_fig = X.mirror_frontier(mirror_frame(), ["A", "B"], [0, 1])
-    assert fig.layout.margin.l == short_fig.layout.margin.l == C.LABEL_COL_PX["compare"]
 
 
 # ---------------------------------------------------------------------------
@@ -694,7 +534,6 @@ FIGURES = {
         two_tab_frame(IDS, grouped_by_field=True), "profile", NAMES, slots, grouped_by_field=True),
     "two_tab_bars_impact": lambda slots: X.two_tab_bars(
         two_tab_frame(IDS, grouped_by_field=False), "impact", NAMES, slots, grouped_by_field=False),
-    "mirror_frontier": lambda slots: X.mirror_frontier(mirror_frame(), ["A", "B"], [0, 1]),
     "yearly_domain_stack": lambda slots: X.yearly_domain_stack(yearly_frame()),
     "reciprocity_scatter": lambda slots: X.reciprocity_scatter(reciprocity_frame(), RECIP_NAMES, RECIP_SLOTS),
 }
@@ -848,5 +687,11 @@ def test_deleted_builders_are_actually_gone():
                 "MIRROR_LABEL_MAX_LINES", "MIRROR_LABEL_CHAR_BUDGET",
                 "MIRROR_MARGIN_CAP_PX", "MIRROR_THREE_LINE_FACTOR",
                 "_wrap_topic_label", "_mirror_row_height",
-                "BAR_GROUP_SPAN", "BAR_GROUP_FILL"):
+                "BAR_GROUP_SPAN", "BAR_GROUP_FILL",
+                # D31: the shared-frontier mirror itself is retired, absorbed
+                # into Compare's topic overlap (`lib.charts_topics`, a
+                # separate module) -- the function and its own now-orphaned
+                # constants leave no live consumer here.
+                "mirror_frontier", "JOINT_FLOOR", "HOVER_JOINT",
+                "HOVER_JOINT_UNAVAILABLE", "TOP_DECILE_GLYPH", "MIRROR_LINK_TARGET"):
         assert not re.search(rf"\b{name}\b", code_only), f"{name} should have been deleted"

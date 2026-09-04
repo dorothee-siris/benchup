@@ -45,8 +45,11 @@ APP_DIR = Path(__file__).resolve().parents[1]
 # 1. no compare_data function this page calls accepts tree/basis at all
 # ---------------------------------------------------------------------------
 
-PAGE_FUNCTIONS = ("cards", "top_subfields", "all_subfields", "sdg_frame",
-                  "frontier_positioning", "shared_frontier", "relationship")
+PAGE_FUNCTIONS = ("cards", "top_subfields", "all_subfields", "sdg_frame", "relationship")
+# D31: frontier_positioning/shared_frontier are DELETED (absorbed into
+# Compare's topic overlap, `lib.topic_data.pair_topics`, which is not a
+# `compare_data.py` function at all and so is outside this file's own
+# "no compare_data function this page calls accepts tree/basis" scope).
 
 
 def test_no_compare_data_function_this_page_calls_accepts_a_tree_or_basis_kwarg():
