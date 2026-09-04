@@ -124,6 +124,92 @@ def test_pp_and_fwci_suffix_labels_are_wired_at_their_hooks():
         assert OLD_PP == copy_mod.COMPARE["CARD_PP10"]
 
 
+# ============================================================================
+# methods + terminology press pass: consistent wording for the retired /
+# renamed readings, swept across every rendered string in copy.py
+# ============================================================================
+
+def test_no_rendered_string_names_the_retired_reference_mark_or_leader_cut():
+    """The reference-mark shape retired project-wide is the red dashed tick,
+    never a diamond; the leader cut is the world top twenty, never a
+    world-top-ten reading. Swept the same way as the baseline-phrasing test
+    above, over the same collector."""
+    strings = _rendered_copy_strings()
+    hits = [(loc, s) for loc, s in strings if "diamond" in s.lower()]
+    assert hits == [], hits
+
+    # VACUITY: the literal word, injected, IS caught by the same scan.
+    poisoned = strings + [("scratch::TEST_POISON", "a filled diamond marks the reference")]
+    poisoned_hits = [(loc, s) for loc, s in poisoned if "diamond" in s.lower()]
+    assert poisoned_hits, "the vacuity probe itself must be caught"
+
+
+def test_reference_mark_wording_is_the_red_dashed_tick_everywhere_it_appears():
+    """Every rendered sentence that describes a per-row reference (the
+    European mean share, the world PP10 reference, SI = 1) names the SAME
+    mark the same way: 'the red dashed tick', not 'the dashed red mark' or
+    any other phrasing a reader would have to reconcile by eye."""
+    strings = _rendered_copy_strings()
+    old_phrasing_hits = [(loc, s) for loc, s in strings if "dashed red mark" in s or "dashed line marks" in s]
+    assert old_phrasing_hits == [], old_phrasing_hits
+
+    ruled_hits = [s for _, s in strings if "red dashed tick" in s]
+    assert len(ruled_hits) >= 2, (
+        "expected the ruled phrase at more than one reference-describing site", ruled_hits)
+
+    # VACUITY: the OLD phrasing, injected, is a real, catchable hit.
+    poisoned = strings + [("scratch::TEST_POISON", "the dashed red mark is the European mean")]
+    poisoned_hits = [(loc, s) for loc, s in poisoned if "dashed red mark" in s]
+    assert poisoned_hits, "the vacuity probe itself must be caught"
+
+
+def test_no_rendered_string_carries_the_retired_scale_guard_band():
+    """The scale guard is a single flat ratio; the earlier banded rule
+    (8 times below 20,000 full works, 4 times at or above it) must not
+    survive in any rendered string."""
+    strings = _rendered_copy_strings()
+    banned = ("8x", "8\N{MULTIPLICATION SIGN}", "4x", "4\N{MULTIPLICATION SIGN}", "20,000")
+    hits = [(loc, term, s) for loc, s in strings for term in banned if term in s]
+    assert hits == [], hits
+
+    poisoned = strings + [("scratch::TEST_POISON", "8x below 20,000, 4x at or above it")]
+    poisoned_hits = [(loc, term, s) for loc, s in poisoned for term in banned if term in s]
+    assert poisoned_hits, "the vacuity probe itself must be caught"
+
+
+def test_no_rendered_string_ever_names_a_world_referenced_fwci():
+    """There is no world-referenced version of FWCI in this tool. PP10_WD
+    is the only world-referenced impact figure it ships; 'FWCI_WD' must never
+    appear in a rendered string."""
+    strings = _rendered_copy_strings()
+    hits = [(loc, s) for loc, s in strings if "FWCI_WD" in s]
+    assert hits == [], hits
+
+    poisoned = strings + [("scratch::TEST_POISON", "FWCI_WD sits beside FWCI_EU")]
+    poisoned_hits = [(loc, s) for loc, s in poisoned if "FWCI_WD" in s]
+    assert poisoned_hits, "the vacuity probe itself must be caught"
+
+
+def test_no_em_dash_or_double_hyphen_anywhere_in_copy_py():
+    """The VOICE rule at the top of lib/copy.py ('no em dash and no "--"
+    standing in for one inside a user-facing string') is stated file-wide,
+    not scoped to copy.METHODS alone (test_methods_note.py already covers
+    that section on its own); this is the project-wide sweep, over the same
+    collector every other check in this module and test_forbidden_
+    vocabulary.py already trusts."""
+    strings = _rendered_copy_strings()
+    hits = [(loc, s) for loc, s in strings if "\N{EM DASH}" in s or "--" in s]
+    assert hits == [], hits
+
+    # VACUITY: both banned forms, injected, are real, catchable hits.
+    poisoned = strings + [
+        ("scratch::TEST_POISON_EM_DASH", "a sentence \N{EM DASH} with an em dash"),
+        ("scratch::TEST_POISON_DOUBLE_HYPHEN", "a sentence -- with a double hyphen"),
+    ]
+    poisoned_hits = [(loc, s) for loc, s in poisoned if "\N{EM DASH}" in s or "--" in s]
+    assert len(poisoned_hits) == 2, poisoned_hits
+
+
 def test_suffix_tokens_are_digit_ban_allowlisted_project_wide():
     """PP10_WD/EU27 both carry digits, so both must clear `copy.py`'s own
     digit-ban scanner (a shared-infrastructure touch) -- checked live here

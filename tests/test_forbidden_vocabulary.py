@@ -69,6 +69,19 @@ FORBIDDEN_CI = [
     # ordinary word; "co-publication" and "joint" carry that meaning
     # instead).
     "v3", "phase 2", "basket", "collaborate",
+    # Methods + terminology press pass: retired readings that must never
+    # come back in a rendered string, each grepped clean before being added.
+    # "fair pool"/"university pool" -- the two-pool "topics led" reading,
+    # replaced by one world-wide ranking. "top 10 leaders" -- the old
+    # world-top-ten leader cut, replaced by the world top twenty. "diamond"
+    # -- the retired reference-mark shape, replaced everywhere by the red
+    # dashed tick. "8x"/"4x"/"20,000" -- the retired banded scale guard
+    # (8 times below 20,000 full works, 4 times at or above it), replaced by
+    # a single flat ratio. "fwci_wd" (case-insensitive, so it also catches
+    # "FWCI_WD") -- there is no world-referenced FWCI in this tool; PP10_WD
+    # is the only world-referenced impact figure it ships.
+    "fair pool", "university pool", "top 10 leaders", "diamond",
+    "8x", "4x", "20,000", "fwci_wd",
 ]
 FORBIDDEN_CODES = re.compile(
     r"\b(MU3|CP3|LP3|VS3|FA3|CD3|WT2?|P[1-6]|G2|H2|I2|2C|2D|2E)\b"

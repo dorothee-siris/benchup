@@ -10,15 +10,19 @@ and docs/data_contract.yaml's own prose. `docs/METHODS_NOTE.md` is the
 human-readable twin of the same sections (never rendered by the app; offered
 as a download at the foot of the page).
 
-Rewritten end to end for the trimmed app: the
-pre-trim sections describing retired surfaces (the aspirational view, ERC
-and SDG classifier detail, impact bootstrap intervals, gated type overrides,
-the earlier standalone pair-view page's topic/field floors) are gone along with the
-helpers that only ever fed them. Eleven sections remain, one per objection a
-reader is entitled to raise about the trimmed app: what the tool is; data
-and windows; counting bases and the Compare pin; the subject taxonomy; the
-two impact baselines; frontier scores; world leaders; star papers; the
-relationship block; matching; limits.
+Rewritten end to end for the trimmed app, then again to add the topic
+planes, the topic overlap and the momentum-evidence detail: sections
+describing a retired surface (the aspirational view's old detail, ERC and
+SDG classifier detail, impact bootstrap intervals, gated type overrides, the earlier
+standalone pair-view page's topic/field floors, the two-pool "topics led"
+reading, the pooled frontier positioning KPIs, the shared-frontier mirror
+chart and its diamond mark) are gone along with the helpers that only ever
+fed them. Fifteen sections remain, one per objection a reader is entitled to
+raise about the app as it stands: what the tool is; data and windows;
+counting bases and the Compare pin; the subject taxonomy; the two impact
+baselines; frontier scores; world leaders; star papers; the topic planes;
+Compare's topic overlap; the relationship block; reading momentum; matching;
+the scale guard; limits.
 """
 from __future__ import annotations
 
@@ -36,7 +40,12 @@ from lib.compare_data import ELITE_FRONTIER_PERCENTILE, PAIR_QUALIFYING_FLOOR
 from lib.data_cache import DATA_DIR, index, manifest, topics_dim
 from lib.engine import scenario_cache as SC
 from lib.palette import NA_MARK
-from lib.views_find import _sidebar_scenario
+from lib.topic_data import (
+    FWCI_MODE_FLOOR, N_MAX as TOPIC_N_MAX, N_MIN as TOPIC_N_MIN,
+    PAIR_N_MAX, PLANE_A_MIN_COVERED, emergence_threshold,
+)
+from lib.views_compare import TOPIC_TABLE_CAP
+from lib.views_find import TOPIC_N_DEFAULT, _sidebar_scenario
 
 DOCS_DIR = Path(__file__).resolve().parent.parent / "docs"
 CONTRACT_PATH = DOCS_DIR / "data_contract.yaml"
@@ -47,6 +56,24 @@ NOTE_PATH = DOCS_DIR / "METHODS_NOTE.md"
 # to any table, so it is named here exactly the way `views_find.CORE_TOP_N`
 # names an upstream constant with no data home of its own.
 STAR_TOP_PCT = 1  # percent
+
+# Two build-time facts about `inst_topic_impact.parquet` (the institution x
+# primary-topic impact table behind the topic planes and Compare's topic
+# overlap), each measured ONCE during that table's own pipeline build by
+# reconciling it against a SEPARATELY built table this app does not hold in
+# a joinable shape at page-load time (fwci_taxa.parquet's own frozen anchor
+# cells for the first; topics_all.parquet's own per-topic whole-run volume
+# for the second). Recomputing either live would mean re-deriving
+# institution attribution from the raw record a second time (the first) or
+# reading topics_all.parquet's own wide, per-topic-per-year columns across
+# the whole table (the second) -- both pipeline-scale operations, not a
+# Streamlit page-load one. Typed as constants rather than recomputed; the
+# total row count they are read against (p7_bound_total_rows) IS read live,
+# off the manifest, below. See copy.METHODS_SOURCES's own entries for these
+# two names.
+P7_FWCI_RESIDUAL_CELLS = 3   # of P7_FWCI_ANCHOR_CELLS anchor cells, each off by one or two works
+P7_FWCI_ANCHOR_CELLS = 561
+P7_BOUND_VIOLATION_N = 115   # rows sitting exactly one work above topics_all's own whole-run volume
 
 _DOC_TYPE_WORDS = {
     "article": "articles", "review": "reviews", "book": "books",
@@ -160,15 +187,18 @@ def _topicless_pct() -> object:
 
 COLLAB_FACTS_PATH = DATA_DIR / "collab_facts.json"
 
+_MOMENTUM_NA = {"momentum_w1": NA_MARK, "momentum_w2": NA_MARK,
+                "momentum_alpha": NA_MARK, "momentum_band": NA_MARK}
+
 
 @st.cache_resource(show_spinner=False)
 def _momentum_facts() -> dict:
-    """The two momentum windows and the significance level, read off
-    `data/collab_facts.json` (shipped) rather than typed in: `w1`/`w2` are
-    `[start, end]` year pairs, `alpha` a fraction formatted here as a whole
-    percent."""
+    """The two momentum windows, the significance level and the stable-band
+    width, read off `data/collab_facts.json` (shipped) rather than typed in:
+    `w1`/`w2` are `[start, end]` year pairs, `alpha`/`band` are fractions
+    formatted here as whole percents."""
     if not COLLAB_FACTS_PATH.is_file():
-        return {"momentum_w1": NA_MARK, "momentum_w2": NA_MARK, "momentum_alpha": NA_MARK}
+        return dict(_MOMENTUM_NA)
     try:
         facts = json.loads(COLLAB_FACTS_PATH.read_text(encoding="utf-8"))
         w1, w2 = facts["w1"], facts["w2"]
@@ -176,9 +206,34 @@ def _momentum_facts() -> dict:
             "momentum_w1": f"{w1[0]} to {w1[1]}",
             "momentum_w2": f"{w2[0]} to {w2[1]}",
             "momentum_alpha": f"{float(facts['alpha']) * 100:g}%",
+            "momentum_band": f"{float(facts['band']) * 100:g}%",
         }
     except Exception:
-        return {"momentum_w1": NA_MARK, "momentum_w2": NA_MARK, "momentum_alpha": NA_MARK}
+        return dict(_MOMENTUM_NA)
+
+
+@st.cache_resource(show_spinner=False)
+def _emergence_facts() -> dict:
+    """The frontier-emergence selector's own world top-decile cutoff:
+    `lib.topic_data.emergence_threshold()` (memoized there; the SAME value
+    both Find's frontier plane and Compare's topic overlap read for their
+    own 'top decile of emergence' mode), plus a live count of how many of
+    `topics_dim.parquet`'s own scored topics clear it -- measured off the
+    shipped table, never retyped from a past run."""
+    try:
+        td = topics_dim()
+        scored = td["frontier_score_latest"].notna()
+        threshold = float(emergence_threshold())
+        n_scored = int(scored.sum())
+        n_at_or_above = int((td.loc[scored, "frontier_score_latest"] >= threshold).sum())
+        return {
+            "emergence_threshold": f"{threshold:.3f}",
+            "n_scored_topics": f"{n_scored:,}",
+            "n_emergence_topics": f"{n_at_or_above:,}",
+        }
+    except Exception:
+        return {"emergence_threshold": NA_MARK, "n_scored_topics": NA_MARK,
+                "n_emergence_topics": NA_MARK}
 
 
 def methods_values() -> dict:
@@ -191,8 +246,11 @@ def methods_values() -> dict:
     taxonomy = _taxonomy_facts()
     stars = _star_share_example()
     momentum = _momentum_facts()
+    emergence = _emergence_facts()
 
     n_institutions = int(n_from_manifest) if n_from_manifest else int(len(idx))
+    n_inst_topic_rows = mf.get("files", {}).get("inst_topic_impact.parquet", {}).get("n_rows")
+    scale_guard_ratio = CFG.get("scale_guard", {}).get("ratio")
     return {
         "n_institutions": f"{n_institutions:,}",
         "n_countries": len(CFG["perimeter_countries"]),
@@ -218,8 +276,24 @@ def methods_values() -> dict:
         "momentum_w1": momentum["momentum_w1"],
         "momentum_w2": momentum["momentum_w2"],
         "momentum_alpha": momentum["momentum_alpha"],
+        "momentum_band": momentum["momentum_band"],
         "concordance_n": CFG["concordance_N"],
         "depth_max": CFG["depth"]["max"],
+        "plane_a_min_covered": PLANE_A_MIN_COVERED,
+        "fwci_mode_floor": FWCI_MODE_FLOOR,
+        "emergence_threshold": emergence["emergence_threshold"],
+        "n_scored_topics": emergence["n_scored_topics"],
+        "n_emergence_topics": emergence["n_emergence_topics"],
+        "n_topic_min": TOPIC_N_MIN,
+        "n_topic_max": TOPIC_N_MAX,
+        "topic_n_default": TOPIC_N_DEFAULT,
+        "pair_n_max": PAIR_N_MAX,
+        "topic_table_cap": TOPIC_TABLE_CAP,
+        "scale_guard_ratio": f"{scale_guard_ratio:g}" if scale_guard_ratio is not None else NA_MARK,
+        "p7_fwci_residual_cells": P7_FWCI_RESIDUAL_CELLS,
+        "p7_fwci_anchor_cells": P7_FWCI_ANCHOR_CELLS,
+        "p7_bound_violation_n": P7_BOUND_VIOLATION_N,
+        "p7_bound_total_rows": f"{int(n_inst_topic_rows):,}" if n_inst_topic_rows else NA_MARK,
     }
 
 

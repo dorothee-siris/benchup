@@ -18,21 +18,27 @@ institution's own key figures, including its star papers and the topics it leads
 count, alongside each candidate, states how many of the lenses defined for that seed place it in
 their own top 30, a measure of how many independent readings agree, never a score of its own. A
 further tab, aspirational, answers a different question: which of a seed's own subfield-lens
-candidates its own impact already exceeds. A 14-sheet workbook download carries every lens and
-every table on the page. Two toggles, taxonomy tree and counting basis, sit beside the search box
-and reshape every subfield and field figure on the page; a topic-grain figure, frontier scores,
-star papers and world leaders among them, is unaffected by either, since a topic is the
-taxonomy's base unit and a tree only decides which subfield it rolls up into.
+candidates its own impact already exceeds. A 15-sheet workbook download carries every lens and
+every table on the page, the institution's own topics among them. Two toggles, taxonomy tree and
+counting basis, sit beside the search box and reshape every subfield and field figure on the page;
+a topic-grain figure, frontier scores, star papers and world leaders among them, is unaffected by
+either, since a topic is the taxonomy's base unit and a tree only decides which subfield it rolls
+up into. An institution's own topics sit on two linked charts, volume against impact and expansion
+against acceleration, under one shared selector (top by volume, by FWCI_EU, topics led, topics
+with star papers, or the world top decile of emergence); a thin ring marks a topic the institution
+leads.
 
 **Compare** answers "where do these institutions differ, and by how much?" Put two institutions
-side by side: key figures, thematic and SDG shape, frontier positioning and the shared frontier,
-and the relationship between the two, in that order. Thematic and SDG shape each carry a Profile
-tab (share of own output, against the European mean) and an Impact tab (PP10_WD against the world
-reference). The shared frontier reads as a mirror chart, one institution's own topics either side
-of what the two publish together, with a link from every topic name straight to the joint
-publications on OpenAlex. Compare pins every figure to the best-fit taxonomy and full counting,
-so the two institutions on the page are always read the same way; the fractional count sits in
-hover. A 7-sheet workbook and a shareable link (`?compare=<id>,<id>`) close the page; opening an
+side by side, in this order: key figures, thematic shape, SDG profile, topic overlap, and the
+relationship between the two. Thematic shape carries a Profile tab (share of own output, against
+the European mean) and an Impact tab (PP10_WD against the world reference); SDG is profile only,
+with no Impact toggle. Topic overlap places both institutions' topics on the same frontier-style
+chart Find uses, over the union of each institution's own top topics under the shared selector,
+coloured by whichever institution's own set a topic came from, or by both when a topic is held by
+both; a balance-bar chart and a table sit beneath, every topic linked straight to its publications
+on OpenAlex. Compare pins every figure to the best-fit taxonomy and full counting, so the two
+institutions on the page are always read the same way; the fractional count sits in hover. A
+6-sheet workbook and a shareable link (`?compare=<id>,<id>`) close the page; opening an
 institution on Find seeds the first Compare slot, so a reader moving from one page to the other
 never re-types a name.
 
@@ -66,15 +72,15 @@ METHODS_NOTE.md` and the Methods page; this table is the one-line version.
 |---|---|---|
 | Publications | Full-counted publication count | 2020 to 2024 (fractional counting in hover) |
 | Change in mean annual volume | Mean annual publications, 2023 to 2024, against the same average, 2020 to 2022 | Same window pair, own counting basis |
-| FWCI_EU | Median field-weighted citation impact: an institution's own publications against the average publication of the same subfield, year and document type, over the European baseline (mean in hover) | Articles and reviews, 2020 to 2024 |
+| FWCI_EU | Mean field-weighted citation impact: an institution's own publications against the average publication of the same subfield, year and document type, over the European baseline (median in hover). No world-referenced version of FWCI exists in this tool; PP10_WD carries the world comparison instead | Articles and reviews, 2020 to 2024 |
 | PP10_WD | Share of articles and reviews landing in the world top decile of citations for their own subfield, year and document type | Articles and reviews, 2020 to 2024, against the world |
 | Star papers, star share | Star papers: an institution's count of the world's most-cited works within their own topic and year (the world top 1% by citations). Star share: that count against the institution's own article-and-review output, a size-free reading | Articles and reviews, 2020 to 2024 |
-| Topics led | Topics where the institution ranks among the world top ten publishers, read against the pool that fits its own type (the university leaderboard for a university, the all-institution leaderboard for everyone else, since a single ranking across every type favours large multi-site research organisations) | Articles and reviews, 2020 to 2024, world top ten |
+| Topics led | Topics where the institution ranks in the world top twenty publishers, one ranking across every institution type; a body running many institutes under one name accumulates more publications than any single university, so a handful of such organisations lead disproportionately many topics | Articles and reviews, 2020 to 2024, world top twenty |
 | Frontier share and frontier scores | Frontier share: share of output sitting in the global top quarter of frontier-scored topics. Expansion and acceleration (the two scores behind the pool) read how fast world attention to a topic is moving: expansion is a standardised reading of the topic's world publication growth over the latest period, acceleration a standardised reading of whether that growth is speeding up or slowing down. Neither measures novelty or quality, only attention | Own institution's output against the global topic pool |
 | SDG-tagged share | Share of output carrying at least one Sustainable Development Goal tag | 2020 to 2024 |
 | International, company co-publication | Share of eligible works with at least one co-authoring institution outside the focal institution's own country (international) or typed as a company (company) | 2020 to 2024 |
 | Momentum | A pair's mean annual joint output, 2023 to 2024, against 2020 to 2022, recentred against the same ratio's median across every eligible pair, shown only once a significance test on the two windows clears the 5% level | Joint articles and reviews, 2020 to 2024 |
-| Reciprocity | One bar per institution per field: each bar is that field's share of the institution's own output, so the two sides of a field compare directly; the pair's joint output in that field sits once, in a gutter column between the two bars | By field, own share; joint articles and reviews in the gutter |
+| Reciprocity | One bubble per shared field: its two positions are that field's share of each institution's own output, and its size is the pair's joint volume in the field; a dotted diagonal marks equal weight for both institutions | By field, both institutions' own shares; joint volume as bubble size |
 | Joint star papers | Count of star papers naming both institutions directly, with a link to the OpenAlex list, most cited first | Articles and reviews, 2020 to 2024 |
 
 Two impact figures, FWCI_EU and PP10_WD, are never averaged into one score: they read two
@@ -116,7 +122,7 @@ wherever a figure needs it.
 `docs/data_contract.yaml` is the one schema authority for every file `data/` ships: grain, keys,
 columns, dtypes, and the denominator of every share or ratio column, checked by `ops/
 contract_check.py`. `config.yaml` carries every threshold the app itself applies
-at run time (lens set, depth, the specialisation floor, the scale-guard bands), each with a
+at run time (lens set, depth, the specialisation floor, the scale-guard ratio), each with a
 one-line comment naming why the value is what it is.
 
 ## Run locally

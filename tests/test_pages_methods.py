@@ -30,7 +30,8 @@ PLACEHOLDER_RE = re.compile(r"\{[a-z_]+\}")
 
 EXPECTED_SECTION_KEYS = [
     "what_it_is", "data_windows", "counting_bases", "taxonomy", "two_baselines",
-    "frontier_scores", "world_leaders", "star_papers", "relationship", "matching", "limits",
+    "frontier_scores", "world_leaders", "star_papers", "topic_planes", "topic_overlap",
+    "relationship", "reading_momentum", "matching", "scale_guard", "limits",
 ]
 
 
@@ -69,19 +70,49 @@ def test_methods_page_verdict_line_present():
     assert copy.VERDICT_LINE in _page_text(at)
 
 
-def test_methods_page_has_exactly_eleven_sections_in_the_trimmed_order():
-    """ : one section per objection, eleven total, no
-    survivor of the pre-trim page (aspirational view, ERC/SDG classifier
-    detail, impact bootstrap intervals, gated overrides, the old
-    standalone pair-view floors block)."""
+def test_methods_page_has_exactly_fifteen_sections_in_order():
+    """One section per objection a reader is entitled to raise about the app
+    as it stands, fifteen total: the earlier trim's own eight unaffected
+    sections, plus the four sections added or split out for the topic
+    planes, topic overlap, reading momentum and scale guard content -- no
+    survivor of the pre-trim page (the aspirational view's old detail,
+    ERC/SDG classifier detail, impact bootstrap intervals, gated overrides,
+    the old standalone pair-view floors block, the two-pool topics-led
+    reading, the pooled frontier-positioning KPIs, the shared-frontier
+    mirror chart as its own section)."""
     assert list(copy.METHODS.keys()) == EXPECTED_SECTION_KEYS, list(copy.METHODS.keys())
 
     at = _methods_app().run()
     assert not at.exception
     labels = [e.label for e in at.expander]
-    assert len(labels) == 11, (len(labels), labels)
+    assert len(labels) == 15, (len(labels), labels)
     for key, section in copy.METHODS.items():
         assert section["title"] in labels, (key, section["title"], labels)
+
+
+def test_methods_page_carries_a_reading_momentum_section():
+    """The relationship's momentum tile points readers at a shortened,
+    restored 'Reading momentum' section, pinned by name on its own, since it
+    is the one section a tile '?' cross-references by title."""
+    assert copy.METHODS["reading_momentum"]["title"] == "Reading momentum"
+    at = _methods_app().run()
+    assert not at.exception
+    assert "Reading momentum" in [e.label for e in at.expander]
+
+
+def test_methods_page_carries_topic_planes_and_topic_overlap_sections():
+    """Find's two topic planes and Compare's topic overlap (absorbing the
+    earlier frontier-positioning and shared-frontier reading) each get
+    their own section, not folded into an older one."""
+    assert copy.METHODS["topic_planes"]["title"] == "Topic planes"
+    assert copy.METHODS["topic_overlap"]["title"] == "Topic overlap"
+
+
+def test_methods_page_carries_a_scale_guard_section():
+    """The flat-ratio scale guard, previously undocumented on this page,
+    gets a section of its own."""
+    assert copy.METHODS["scale_guard"]["title"] == "Scale guard"
+    assert "aspirational" in copy.METHODS["scale_guard"]["body"].lower()
 
 
 def test_methods_page_has_no_unfilled_placeholder():
@@ -161,6 +192,60 @@ def test_methods_values_match_sources_on_the_surviving_numbers():
         con.close()
     assert values["top_star_name"] == str(row["display_name"])
     assert values["top_star_share"] == f"{float(row['star_share']) * 100:.1f}%"
+
+
+def test_methods_values_carry_the_new_figures_pinned_independently():
+    """The topic-planes / topic-overlap / scale-guard figures added to
+    methods_values, each checked against an independent read of the same
+    shipped constant or table -- not merely 'the function returned
+    something'."""
+    from lib.app_config import CFG
+    from lib.data_cache import topics_dim
+    from lib.topic_data import (
+        FWCI_MODE_FLOOR, N_MAX, N_MIN, PAIR_N_MAX, PLANE_A_MIN_COVERED, emergence_threshold,
+    )
+    from lib.views_compare import TOPIC_TABLE_CAP
+    from lib.views_find import TOPIC_N_DEFAULT
+    from lib.views_methods import methods_values
+
+    values = methods_values()
+
+    assert values["plane_a_min_covered"] == PLANE_A_MIN_COVERED
+    assert values["fwci_mode_floor"] == FWCI_MODE_FLOOR
+    assert values["n_topic_min"] == N_MIN
+    assert values["n_topic_max"] == N_MAX
+    assert values["topic_n_default"] == TOPIC_N_DEFAULT
+    assert values["pair_n_max"] == PAIR_N_MAX
+    assert values["topic_table_cap"] == TOPIC_TABLE_CAP
+    assert values["scale_guard_ratio"] == f"{CFG['scale_guard']['ratio']:g}"
+
+    threshold = emergence_threshold()
+    assert values["emergence_threshold"] == f"{threshold:.3f}"
+    td = topics_dim()
+    scored = td["frontier_score_latest"].notna()
+    assert values["n_scored_topics"] == f"{int(scored.sum()):,}"
+    n_at_or_above = int((td.loc[scored, "frontier_score_latest"] >= threshold).sum())
+    assert values["n_emergence_topics"] == f"{n_at_or_above:,}"
+
+    # VACUITY: the emergence share the two live counts imply lands in the
+    # world top decile's own neighbourhood (a `quantile(0.9)` cut), not at
+    # some unrelated share a broken wiring could still pass silently.
+    share = n_at_or_above / int(scored.sum())
+    assert 0.08 <= share <= 0.12, (n_at_or_above, int(scored.sum()), share)
+
+
+def test_two_baselines_states_the_mean_as_the_headline_and_no_world_fwci():
+    """FWCI_EU's mean is the headline, the median sits beside it, and the
+    page states plainly that no world-referenced FWCI exists here."""
+    body = copy.METHODS["two_baselines"]["body"]
+    assert "the mean, across an institution's own" in body
+    assert "the median of the same distribution sits" in body
+    assert "no world-referenced version of FWCI" in body
+    assert "FWCI_WD" not in body
+
+    # VACUITY: the old median-headline phrasing is genuinely absent, not
+    # merely un-searched-for.
+    assert "the median, across an institution's own" not in body
 
 
 # ------------------------------------------------------------------ Menu ---

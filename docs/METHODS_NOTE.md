@@ -2,7 +2,7 @@
 
 **This file is not rendered by the app.** The Methods page renders `lib/copy.py`'s `METHODS`
 dict, whose numbers are `{placeholders}` filled at run time from the config, the manifest and
-the shipped tables. This file carries the same eleven sections with the numbers written out and
+the shipped tables. This file carries the same fifteen sections with the numbers written out and
 a citation per claim, so a reviewer can check what the page says without reading the data. Keep
 the two in step: `tests/test_methods_note.py` fails when a `METHODS` section has no `## ` heading
 here, or when a template grows a placeholder `METHODS_SOURCES` does not document.
@@ -82,15 +82,19 @@ taxonomy's base unit, and a tree only decides which subfield it rolls up into.
 Two impact figures sit behind the tool, and they are never averaged into one score, because they
 read two different things.
 
-FWCI_EU is a typical-level reading: the median, across an institution's own publications, of each
+FWCI_EU is a typical-level reading: the mean, across an institution's own publications, of each
 publication's citations set against the average publication of the same subfield, year and
 document type, computed over the tool's European baseline, the 31-country perimeter above. The
-mean of the same distribution sits in hover, beside the median.
+mean is the headline because it keeps the highly-cited tail a median would discard; the median of
+the same distribution sits beside it wherever this tool shows the figure (`index.parquet`
+`fwci_eu_mean`/`fwci_eu_median`).
 
 PP10_WD is an excellence-tail reading instead: the share of an institution's articles and
 reviews, 2020 to 2024, landing in the world top decile of citations for their own subfield, year
 and document type, computed against the whole world rather than the European baseline
-(`index.parquet` `pp_top10_frac`).
+(`index.parquet` `pp_top10_frac`). It is the only world-referenced impact figure this tool ships:
+there is no world-referenced version of FWCI here, so a reader wanting the world comparison reads
+PP10_WD, and a reader wanting the European comparison reads FWCI_EU.
 
 The two differ on two axes at once: what each one measures, a typical level against an excellence
 tail, and whom each one is measured against, Europe against the world. An institution can sit
@@ -112,10 +116,11 @@ outside the taxonomy's own subject scope, excluded by construction (`topics_dim.
 sign of expansion against the sign of acceleration (`topics_dim.parquet` `quadrant`).
 
 The frontier topic pool Compare measures an institution against is fixed at the global top
-quarter of scored topics (`topics_dim.parquet` `top25pct_frontier`). A further mark, a filled
-diamond in the shared-frontier table, flags a topic in the global top 10% of frontier score among
-every scored topic (`lib.compare_data.ELITE_FRONTIER_PERCENTILE` = 0.90), a stricter cut than the
-top-quarter pool it sits inside.
+quarter of scored topics (`topics_dim.parquet` `top25pct_frontier`), the same pool a bold outline
+marks on every frontier chart. A stricter cut of the same score, the world top 10%
+(`lib.compare_data.ELITE_FRONTIER_PERCENTILE` = 0.90), sits inside that pool: it powers the
+emergence selector on the topic planes and on Compare's topic overlap, and Topic planes, below,
+states the cutoff score itself (`lib.topic_data.emergence_threshold()`).
 
 ## World leaders
 
@@ -148,6 +153,68 @@ resting on a small output (measured live as the index row with the highest `star
 stars over 204 articles and reviews); the raw count sits beside the share for exactly
 this reason, so a high share is never read without its own denominator.
 
+Behind every star-paper figure sits one record, `star_works.parquet` (310,327 rows, one per star
+paper naming its own topic, year and every institution on it). The same record is read at
+whatever perimeter a chart needs, not only an institution's own total: a topic's own bubble size
+on the topic planes, an institution's own column in Compare's topic overlap table, and a pair's
+own joint star-papers tile are all counted straight off it.
+
+## Topic planes
+
+Find places an institution's topics on two charts, side by side, sharing one perimeter: articles
+and reviews, 2020 to 2024, full counting, the publication's primary topic only, regardless of the
+counting basis chosen in the sidebar (that choice still reshapes the subfield and field figures
+elsewhere on the page); this is `data/artefacts/inst_topic_impact.parquet`'s own perimeter
+(988,587 rows, one per institution and primary topic with at least three qualifying articles and
+reviews).
+
+The first plane reads volume against impact: publications on one axis, FWCI_EU on the other, mean
+by default with the same mean/median switch used everywhere else on this page, a topic's own star
+papers sized as the bubble. A topic needs at least three citation-eligible articles and reviews to
+be placed here at all (`lib.topic_data.PLANE_A_MIN_COVERED`); the chart's own caption counts how
+many of the institution's topics fall short. The second plane reads expansion against
+acceleration, the same two frontier scores defined in Frontier scores; a topic with no frontier
+score at all, every catch-all topic among them, cannot be placed here and is counted instead. A
+thin dark ring marks a topic where the institution ranks among the world top twenty, the same
+threshold "Topics led" counts.
+
+One selector governs both charts at once, so they always carry the same topics: top by volume,
+the default; top by FWCI_EU, restricted to topics with at least ten citation-eligible articles and
+reviews (`lib.topic_data.FWCI_MODE_FLOOR`); the topics the institution leads; the topics carrying
+at least one star paper; or the world top decile of emergence defined in Frontier scores, a raw
+frontier score of 0.360 on this snapshot (`lib.topic_data.emergence_threshold()`, measured live,
+`pandas.quantile(0.9)` over the taxonomy's 3,706 scored topics), clearing for 371 of them on this
+snapshot. A slider then sets how many topics show, from 10 to 100 (`lib.topic_data.N_MIN`/`N_MAX`),
+50 by default (`lib.views_find.TOPIC_N_DEFAULT`). Catch-all topics are shown in a lighter tint on
+the first plane, flagged in its tooltip, and left off the second entirely, since they carry no
+frontier score by construction.
+
+## Topic overlap
+
+Compare places both institutions' topics on the same two planes Find uses, under the same
+selector, applied to each institution separately and then combined: the union of each
+institution's own top 50 (`lib.topic_data.PAIR_N_MAX`), so the chart never carries more than 100
+topics in all. A topic held by both institutions' own top sets is drawn in one shared colour on
+the chart (`lib.palette.SHARED_FRONTIER`), whichever side it came from; a topic held by one
+institution only keeps that institution's own colour. The perimeter is the same as Find's topic
+planes: articles and reviews, 2020 to 2024, full counting, primary topic.
+
+A balance-bar chart carries exactly the topics on the plane, sorted by whichever metric the
+selector reads. Each bar has three segments: one institution's own publications on the topic to
+one side, the other institution's own publications to the other side, and, when the pair's joint
+output on that specific topic clears five joint articles and reviews
+(`lib.compare_data.PAIR_QUALIFYING_FLOOR`, the same floor the relationship block uses), a third,
+distinctly coloured segment (`lib.palette.JOINT_TOPIC_COLOR`, amber) between them for the joint
+count; below that floor the joint segment is left off rather than shown as zero, since the true
+count is not known precisely enough to state (a topic can clear one institution's own top set
+while the other holds fewer than three articles and reviews on it, `lib.topic_data.
+PLANE_A_MIN_COVERED`, the true count then unrecoverable between zero and two).
+
+A table beneath carries every topic on the chart, its keywords, both institutions' own figures and
+three links to OpenAlex; past 200 rows (`lib.views_compare.TOPIC_TABLE_CAP`) it shows only the
+first 200 by combined volume and says so, though the workbook download always carries the
+complete set, uncapped.
+
 ## The relationship
 
 A pair's joint total, at the top of Compare's relationship block, counts every publication naming
@@ -156,7 +223,14 @@ both institutions directly, any document type, over the whole run (`collab_pairs
 2020 to 2024, full counting (the CORE-AR basis), the same filter carried on every link, so the
 number on the page and the count the link opens on agree.
 
-The yearly stack breaks that joint total down by year and by the four OpenAlex domains
+Three tiles open the block: joint publications, on that narrower window (`collab_pairs.parquet`
+`core_total`); joint star papers, with a link straight to the pair's own joint articles and
+reviews on OpenAlex, most cited first (`lib.leaders_data.pair_stars`, read off `star_works.
+parquet`); and momentum, a glyph and a short label. Underneath the tiles, one sentence always
+states the pair's own figures behind the momentum glyph (`lib.collab_data.momentum_evidence`);
+Reading momentum, below, explains every state that sentence can take.
+
+The yearly stack breaks the joint total down by year and by the four OpenAlex domains
 (`collab_pair_domain_year.parquet`). A small share of joint publications, about 0.01% of joint
 volume across every qualifying pair, carries no subject topic and cannot be placed in a domain;
 the stack leaves them out, though the total above it still counts them (measured live: 1 minus
@@ -165,18 +239,47 @@ the sum of `collab_pair_domain_year.vol` over the sum of `collab_pairs.core_tota
 stay meaningful (`lib.compare_data.PAIR_QUALIFYING_FLOOR`); a pair below that floor keeps its
 joint total and a link to every shared publication, without the breakdown.
 
-Momentum compares a pair's mean annual joint output over 2023 to 2024 against 2020 to 2022,
-recentred against the same ratio's median across every eligible pair, so corpus-wide growth over
-those years does not read as growth specific to the pair (`data/collab_facts.json` `w1`/`w2`/
-`med`). A change is only shown once a significance test on the two windows' raw counts clears the
-5% level (`data/collab_facts.json` `alpha`); below it, the pair reads as no significant change
-rather than up or down (`collab_pairs.parquet` `mom_class`/`mom_rr`/`mom_p`).
+Reciprocity plots a pair's joint output in a field against each side's own portfolio
+(`lib.collab_data.reciprocity_frame`): one axis is that field's share of one institution's own
+output, the other axis is the same field's share of the other institution's own output, and the
+size of the mark is the pair's joint publications in the field. A dotted diagonal marks equal
+weight for both institutions; a field sitting well above or below it matters more to one side's
+own portfolio than to the other's. Its tooltip carries the field's own FWCI_EU, PP10_WD and
+star-paper count for the joint works alone; two different counts sit behind that FWCI figure
+(`collab_pair_fields.parquet` `n_fwci`/`n_covered`): one, `n_fwci`, counts every joint work
+carrying a computed FWCI; the other, `n_covered`, narrower, counts only the works eligible for
+the world top-decile share (a threshold-covered, non-retracted population); on the shipped table
+`n_fwci` is at least `n_covered` on every one of its 3,571,800 rows.
 
-Reciprocity reads a pair's joint output in a field against each side's own portfolio
-(`lib.collab_data.reciprocity_frame`): each field carries two bars, one institution's own share
-of its output sitting in that field, and the pair's joint publications in that field are shown
-once, between the two bars. A field that weighs heavily for both institutions and carries many
-joint publications is where the relationship matters to both sides.
+## Reading momentum
+
+Momentum reads whether a pair's joint output is speeding up or slowing down, on the same two
+windows the evidence sentence states, 2020 to 2022 against 2023 to 2024 (`data/collab_facts.json`
+`w1`/`w2`): the pair's mean annual joint articles and reviews in the later window, against the
+same average in the earlier one.
+
+A raw comparison of those two figures would read as growth for almost every pair, because joint
+output is itself growing across the corpus over the same years; before anything is classified,
+every eligible pair's own change is corrected against the median of that same change across every
+other eligible pair (`data/collab_facts.json` `med`), so what is left over is the pair's own
+change relative to how collaboration generally is moving, not corpus-wide drift dressed up as a
+finding about the pair.
+
+Seven readings cover what a corrected change can look like, matching `collab_pairs.parquet`
+`mom_class`'s own seven values: up and down, a rise or a fall confirmed by a significance test at
+the 5% level (`data/collab_facts.json` `alpha`); not significant (`ns`), a change large enough to
+look like a rise or a fall but not confirmed by that test; stable, a corrected change small
+enough, within 25% either way (`data/collab_facts.json` `band`), to be read as no real change;
+weak, too little joint output in the earlier window for a rate to mean anything; new, no joint
+output in the earlier window and a real amount since; and dormant, joint output in the earlier
+window and none since.
+
+The sentence under the momentum tile (`lib.collab_data.momentum_evidence`) always states the
+pair's own two figures in plain counts first. Where a rate can be read at all, it adds the
+corrected change and, once a significance test has run, that test's own result; a reading with no
+meaningful rate (weak, new, dormant, or a corrected change with too little joint work behind it
+for a test to run) states that in place of a percentage, so the sentence is never a bare,
+unexplained number.
 
 ## Matching
 
@@ -196,6 +299,17 @@ candidate the lenses do not already find on their own.
 A further tab, aspirational, answers a different question: which of a seed's own subfield-lens
 candidates its own impact already exceeds.
 
+## Scale guard
+
+A post-filter on Find's benchmark tables, off by default (`config.yaml` `scale_guard.ratio`).
+Switched on, it keeps only candidates within 3x of the seed's own size, in either direction, on
+full-counted publications (`lib.filters.apply_filters`); once it is on, the active-filters line
+states how many candidates it removed from the lens currently open.
+
+The aspirational tab is exempt: it is not a size-matched candidate list to begin with, so the
+guard never applies there, even when it is switched on for every other tab (`lib.views_find.
+_render_aspirational`, `scale_guard: False` on that one call regardless of the sidebar setting).
+
 ## Limits
 
 A lens places a candidate close to a seed by shared output shape. That is a resemblance signal a
@@ -209,6 +323,19 @@ no-fit placement, sitting in the tree without a confident match (`topics_dim.par
 co-publication share follows a small set of corrections SIRIS made to OpenAlex's own institution
 type (a locked, human-adjudicated override list applied at data-build time, upstream of what
 ships in `app/data/`); a type this tool has not reviewed keeps OpenAlex's own label.
+
+The institution-by-topic table behind the topic planes and the topic overlap
+(`inst_topic_impact.parquet`, 988,587 rows) carries two small, measured limits of its own, both
+found while building it and both typed here as fixed facts of that build rather than recomputed
+on every page load. On a reconciliation against `fwci_taxa.parquet`'s own anchor cells, 3 of 561
+land one or two works away from the same cell read the other way, from re-deriving which
+institutions share credit for a work straight off the raw record a second time rather than off
+the frozen internal file the reconciliation target itself was built from. Separately, 115 of its
+988,587 rows sit exactly one work above the same topic's own whole-run volume in
+`topics_all.parquet`, concentrated in 18 topics, where a publication's own year moved by one
+between the two tables' own snapshots, the ordinary kind of drift a living database produces
+between two extraction dates. Both gaps are small (0.53% and 0.01% of their own populations),
+one-directional and fully traced, never a broad drift.
 
 World leaders and star papers are pulled from OpenAlex on the day they were built, a different
 moment from the harvest snapshot behind every other figure on the page, so the two can drift a

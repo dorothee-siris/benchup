@@ -350,8 +350,8 @@ FIND = {
 
     # L20 panel captions.
     "CAPTION_SI": ("SI = the institution's share of a cell divided by the mean share across the "
-                   "institutions active in it, so the dashed line marks what an average institution "
-                   "holds"),
+                   "institutions active in it, so the red dashed tick marks what an average "
+                   "institution holds"),
     "CAPTION_SI_FLOOR": ("Solid marks: at least {floor_solid} fractional publications in the cell. "
                          "Hollow marks: between {floor_thin} and {floor_solid}. Below {floor_thin}, "
                          "no mark at all. The similarity lenses keep their own {floor_solid} rule."),
@@ -484,7 +484,7 @@ FIND = {
     "TOPIC_FWCI_STAT_MEAN": "Mean",
     "TOPIC_FWCI_STAT_MEDIAN": "Median",
     "CAPTION_TOPIC_PERIMETER": (
-        "Articles and reviews {y0}-{y1}, full counting, primary topic -- independent of the "
+        "Articles and reviews {y0}-{y1}, full counting, primary topic, independent of the "
         "counting basis chosen in the sidebar. Whole-run volumes on both bases still ride along "
         "in the hover."),
     "TOPIC_PLANE_A_TITLE": "Volume and impact",
@@ -665,8 +665,7 @@ NAV = {
 
     "COMPARE_LABEL": "Compare",
     "COMPARE_BLURB": ("Put two institutions side by side: key figures, thematic and SDG shape, "
-                      "frontier positioning and the shared frontier, and the relationship "
-                      "between the two."),
+                      "topic overlap, and the relationship between the two."),
 
     "METHODS_LABEL": "How it is built",
     "METHODS_BLURB": ("Every definition, threshold and known weakness behind the figures, one "
@@ -743,7 +742,7 @@ COMPARE = {
     "SHAPE_BASIS_CAPTION": ("Top {n} subfields by the pair's combined volume, best-fit "
                             "taxonomy, full counting."),
     "SHAPE_NOTE_PROFILE": ("Each bar is a subfield's share of that institution's own output; "
-                           "the dashed red mark is the European mean."),
+                           "the red dashed tick marks the European mean."),
     "SHAPE_NOTE_IMPACT": ("Each bar is PP10_WD against the world reference; a row resting on "
                           "fewer than {floor} covered works carries a dagger."),
 
@@ -752,7 +751,7 @@ COMPARE = {
     "SDG_BASIS_CAPTION": ("Every Sustainable Development Goal this taxonomy tags, best-fit "
                           "taxonomy, full counting."),
     "SDG_NOTE_PROFILE": ("Each bar is a goal's share of that institution's own tagged output; "
-                         "the dashed red mark is the European mean."),
+                         "the red dashed tick marks the European mean."),
     "SDG_NOTE_IMPACT": ("Each bar is PP10_WD against the world reference; a row resting on "
                         "fewer than {floor} covered works carries a dagger."),
     "SDG_UNTAGGED": "{name}: {share} of output carries no Sustainable Development Goal tag.",
@@ -843,8 +842,8 @@ COMPARE = {
     "MOMENTUM_LINE_NUMERIC": (
         "{c1} joint articles and reviews a year in {w1}, {c2} in {w2}: {pct} once both "
         "institutions' own growth is taken out. {significance}"),
-    "MOMENTUM_LINE_SIG_SIGNIFICANT": "The change is significant at the {alpha} level ({p}).",
-    "MOMENTUM_LINE_SIG_NOT_SIGNIFICANT": "The change is not significant at the {alpha} level ({p}).",
+    "MOMENTUM_LINE_SIG_SIGNIFICANT": "The change is significant at the {alpha} level, p {p}.",
+    "MOMENTUM_LINE_SIG_NOT_SIGNIFICANT": "The change is not significant at the {alpha} level, p {p}.",
     "MOMENTUM_LINE_SIG_STABLE": "That is inside the \N{PLUS-MINUS SIGN}{band} % band the tool reads as "
                                 "stable, so no direction is called.",
     "MOMENTUM_LINE_SIG_NO_TEST": "There is too little joint work over the window for a significance test.",
@@ -870,9 +869,9 @@ COMPARE = {
 
     # ---- 6. the workbook -------------------------------------------------------
     "EXPORT_BUTTON": "Download this view (Excel)",
-    "EXPORT_HELP": ("One workbook: the key figures, every subfield, the SDG profile, frontier "
-                    "positioning, the shared frontier with its links, and the relationship's "
-                    "yearly and reciprocity figures."),
+    "EXPORT_HELP": ("One workbook: the key figures, every subfield, the SDG profile, the topic "
+                    "overlap with its links, and the relationship's yearly and reciprocity "
+                    "figures."),
     "XLSX_SHEET_CARDS": "Cards",
     "XLSX_SHEET_SUBFIELDS": "Subfields",
     "XLSX_SHEET_SDG": "SDG",
@@ -993,15 +992,19 @@ METHODS = {
         "body": (
             "Two impact figures sit behind the tool, and they are never averaged into one score, "
             "because they read two different things.\n\n"
-            "FWCI_EU is a typical-level reading: the median, across an institution's own "
+            "FWCI_EU is a typical-level reading: the mean, across an institution's own "
             "publications, of each publication's citations set against the average publication of "
             "the same subfield, year and document type, computed over the tool's European baseline, "
-            "the {n_countries}-country perimeter above. The mean of the same distribution sits in "
-            "hover, beside the median.\n\n"
+            "the {n_countries}-country perimeter above. The mean is the headline because it keeps "
+            "the highly-cited tail a median would discard; the median of the same distribution sits "
+            "beside it wherever this tool shows the figure.\n\n"
             "PP10_WD is an excellence-tail reading instead: the share of an institution's articles "
             "and reviews, {y0} to {y1}, landing in the world top decile of citations for their own "
             "subfield, year and document type, computed against the whole world rather than the "
-            "European baseline.\n\n"
+            "European baseline. It is the only world-referenced impact figure this tool ships: "
+            "there is no world-referenced version of FWCI here, so a reader wanting the world "
+            "comparison reads PP10_WD, and a reader wanting the European comparison reads "
+            "FWCI_EU.\n\n"
             "The two differ on two axes at once: what each one measures, a typical level against an "
             "excellence tail, and whom each one is measured against, Europe against the world. An "
             "institution can sit close to the European typical level on FWCI_EU and still stand out, "
@@ -1021,9 +1024,11 @@ METHODS = {
             "construction. Every scored topic sits in one of four quadrants, crossing the sign of "
             "expansion against the sign of acceleration.\n\n"
             "The frontier topic pool Compare measures an institution against is fixed at the global "
-            "top quarter of scored topics. A further mark, a filled diamond in the shared-frontier "
-            "table, flags a topic in the global top {top_decile_pct} of frontier score among every "
-            "scored topic, a stricter cut than the top-quarter pool it sits inside."),
+            "top quarter of scored topics, the same pool a bold outline marks on every frontier "
+            "chart. A stricter cut of the same score, the world top {top_decile_pct}, sits inside "
+            "that pool: it powers the emergence selector on the topic planes and on Compare's "
+            "topic overlap, and Topic planes, further down this page, states the cutoff score "
+            "itself."),
     },
     "world_leaders": {
         "title": "World leaders",
@@ -1051,7 +1056,63 @@ METHODS = {
             "handful of highly cited papers can post a very high share on a very small base. "
             "{top_star_name} illustrates the case on this snapshot, with a {top_star_share} star "
             "share resting on a small output; the raw count sits beside the share for exactly this "
-            "reason, so a high share is never read without its own denominator."),
+            "reason, so a high share is never read without its own denominator.\n\n"
+            "Behind every star-paper figure sits one record, one row per star paper naming its own "
+            "topic, year and every institution on it; the same record is read at whatever "
+            "perimeter a chart needs, not only an institution's own total: a topic's own bubble "
+            "size on the topic planes, an institution's own column in Compare's topic overlap "
+            "table, and a pair's own joint star-papers tile are all counted straight off it."),
+    },
+    "topic_planes": {
+        "title": "Topic planes",
+        "body": (
+            "Find places an institution's topics on two charts, side by side, sharing one "
+            "perimeter: {core_ar_window}, the publication's primary topic only, regardless of "
+            "the counting basis chosen in the sidebar (that choice still reshapes the subfield "
+            "and field figures elsewhere on the page).\n\n"
+            "The first plane reads volume against impact: publications on one axis, FWCI_EU on "
+            "the other, mean by default with the same mean/median switch used everywhere else on "
+            "this page, a topic's own star papers sized as the bubble. A topic needs at least "
+            "{plane_a_min_covered} citation-eligible articles and reviews to be placed here at "
+            "all; the chart's own caption counts how many of the institution's topics fall "
+            "short. The second plane reads expansion against acceleration, the same two frontier "
+            "scores defined in Frontier scores; a topic with no frontier score at all, every "
+            "catch-all topic among them, cannot be placed here and is counted instead. A thin "
+            "dark ring marks a topic where the institution ranks among the world top twenty, the "
+            "same threshold 'Topics led' counts.\n\n"
+            "One selector governs both charts at once, so they always carry the same topics: top "
+            "by volume, the default; top by FWCI_EU, restricted to topics with at least "
+            "{fwci_mode_floor} citation-eligible articles and reviews; the topics the institution "
+            "leads; the topics carrying at least one star paper; or the world top decile of "
+            "emergence defined in Frontier scores, a raw frontier score of {emergence_threshold} "
+            "on this snapshot, clearing for {n_emergence_topics} of the taxonomy's "
+            "{n_scored_topics} scored topics. A slider then sets how many topics show, from "
+            "{n_topic_min} to {n_topic_max}, {topic_n_default} by default. Catch-all topics are "
+            "shown in a lighter tint on the first plane, flagged in its tooltip, and left off the "
+            "second entirely, since they carry no frontier score by construction."),
+    },
+    "topic_overlap": {
+        "title": "Topic overlap",
+        "body": (
+            "Compare places both institutions' topics on the same two planes Find uses, under "
+            "the same selector, applied to each institution separately and then combined: the "
+            "union of each institution's own top {pair_n_max}, so the chart never carries more "
+            "than {n_topic_max} topics in all. A topic held by both institutions' own top sets "
+            "is drawn in one shared colour on the chart, whichever side it came from; a topic "
+            "held by one institution only keeps that institution's own colour. The perimeter is "
+            "the same as Find's topic planes: {core_ar_window}, primary topic.\n\n"
+            "A balance-bar chart carries exactly the topics on the plane, sorted by whichever "
+            "metric the selector reads. Each bar has three segments: one institution's own "
+            "publications on the topic to one side, the other institution's own publications to "
+            "the other side, and, when the pair's joint output on that specific topic clears "
+            "{pair_qualifying_floor} joint articles and reviews, a third, distinctly coloured "
+            "segment between them for the joint count; below that floor the joint segment is "
+            "left off rather than shown as zero, since the true count is not known precisely "
+            "enough to state.\n\n"
+            "A table beneath carries every topic on the chart, its keywords, both institutions' "
+            "own figures and three links to OpenAlex; past {topic_table_cap} rows it shows only "
+            "the first {topic_table_cap} by combined volume and says so, though the workbook "
+            "download always carries the complete set, uncapped."),
     },
     "relationship": {
         "title": "The relationship",
@@ -1061,6 +1122,12 @@ METHODS = {
             "Everything below it reads a narrower window instead: {core_ar_window}, the same filter "
             "carried on every link, so the number on the page and the count the link opens on "
             "agree.\n\n"
+            "Three tiles open the block: joint publications, on that narrower window; joint star "
+            "papers, with a link straight to the pair's own joint articles and reviews on "
+            "OpenAlex, most cited first; and momentum, a glyph and a short label. Underneath the "
+            "tiles, one sentence always states the pair's own figures behind the momentum glyph; "
+            "Reading momentum, further down this page, explains every state that sentence can "
+            "take.\n\n"
             "The yearly stack breaks that joint total down by year and by the four OpenAlex domains. "
             "A small share of joint publications, about {topicless_pct} of joint volume across every "
             "qualifying pair, carries no subject topic and cannot be placed in a domain; the stack "
@@ -1068,17 +1135,43 @@ METHODS = {
             "breakdown needs at least {pair_qualifying_floor} shared articles and reviews to stay "
             "meaningful; a pair below that floor keeps its joint total and a link to every shared "
             "publication, without the breakdown.\n\n"
-            "Momentum compares a pair's mean annual joint output over {momentum_w2} against "
-            "{momentum_w1}, recentred against the same ratio's median across every eligible pair, so "
-            "corpus-wide growth over those years does not read as growth specific to the pair. A "
-            "change is only shown once a significance test on the two windows' raw counts clears the "
-            "{momentum_alpha} level; below it, the pair reads as no significant change rather than "
-            "up or down.\n\n"
-            "Reciprocity reads a pair's joint output in a field against each side's own portfolio: "
-            "each field carries two bars, one institution's own share of its output sitting in "
-            "that field, and the pair's joint publications in that field are shown once, between "
-            "the two bars. A field that weighs heavily for both institutions and carries many "
-            "joint publications is where the relationship matters to both sides."),
+            "Reciprocity plots a pair's joint output in a field against each side's own portfolio: "
+            "one axis is that field's share of one institution's own output, the other axis is the "
+            "same field's share of the other institution's own output, and the size of the mark is "
+            "the pair's joint publications in the field. A dotted diagonal marks equal weight for "
+            "both institutions; a field sitting well above or below it matters more to one side's "
+            "own portfolio than to the other's. Its tooltip carries the field's own FWCI_EU, "
+            "PP10_WD and star-paper count for the joint works alone; two different counts sit "
+            "behind that FWCI figure, one counting every joint work carrying a computed FWCI, the "
+            "other, narrower, counting only the works eligible for the world top-decile share, "
+            "and the first is always the larger or equal of the two."),
+    },
+    "reading_momentum": {
+        "title": "Reading momentum",
+        "body": (
+            "Momentum reads whether a pair's joint output is speeding up or slowing down, on the "
+            "same two windows the evidence sentence states, {momentum_w1} against {momentum_w2}: "
+            "the pair's mean annual joint articles and reviews in the later window, against the "
+            "same average in the earlier one.\n\n"
+            "A raw comparison of those two figures would read as growth for almost every pair, "
+            "because joint output is itself growing across the corpus over the same years; before "
+            "anything is classified, every eligible pair's own change is corrected against the "
+            "median of that same change across every other eligible pair, so what is left over is "
+            "the pair's own change relative to how collaboration generally is moving, not "
+            "corpus-wide drift dressed up as a finding about the pair.\n\n"
+            "Seven readings cover what a corrected change can look like: up and down, a rise or a "
+            "fall confirmed by a significance test at the {momentum_alpha} level; not significant, "
+            "a change large enough to look like a rise or a fall but not confirmed by that test; "
+            "stable, a corrected change small enough, within {momentum_band} either way, to be "
+            "read as no real change; weak, too little joint output in the earlier window for a "
+            "rate to mean anything; new, no joint output in the earlier window and a real amount "
+            "since; and dormant, joint output in the earlier window and none since.\n\n"
+            "The sentence under the momentum tile always states the pair's own two figures in "
+            "plain counts first. Where a rate can be read at all, it adds the corrected change "
+            "and, once a significance test has run, that test's own result; a reading with no "
+            "meaningful rate (weak, new, dormant, or a corrected change with too little joint "
+            "work behind it for a test to run) states that in place of a percentage, so the "
+            "sentence is never a bare, unexplained number."),
     },
     "matching": {
         "title": "Matching",
@@ -1095,6 +1188,16 @@ METHODS = {
             "further tab, aspirational, answers a different question: which of a seed's own "
             "subfield-lens candidates its own impact already exceeds."),
     },
+    "scale_guard": {
+        "title": "Scale guard",
+        "body": (
+            "A post-filter on Find's benchmark tables, off by default. Switched on, it keeps only "
+            "candidates within {scale_guard_ratio}\N{MULTIPLICATION SIGN} of the seed's own size, "
+            "in either direction, on full-counted publications; once it is on, the active-filters "
+            "line states how many candidates it removed from the lens currently open.\n\n"
+            "The aspirational tab is exempt: it is not a size-matched candidate list to begin with, "
+            "so the guard never applies there, even when it is switched on for every other tab."),
+    },
     "limits": {
         "title": "Limits",
         "body": (
@@ -1107,6 +1210,16 @@ METHODS = {
             "match. The type behind a company or international co-publication share follows a "
             "small set of corrections SIRIS made to OpenAlex's own institution type; a type this "
             "tool has not reviewed keeps OpenAlex's own label.\n\n"
+            "The institution-by-topic table behind the topic planes and the topic overlap carries "
+            "two small, measured limits of its own. On a reconciliation against the table it "
+            "extends, {p7_fwci_residual_cells} of {p7_fwci_anchor_cells} anchor cells land one or "
+            "two works away from the same cell read the other way, from re-deriving which "
+            "institutions share credit for a work straight off the record rather than off an "
+            "internal file built once and reused. Separately, {p7_bound_violation_n} of its "
+            "{p7_bound_total_rows} rows sit exactly one work above the same topic's own whole-run "
+            "volume, concentrated in a handful of topics, where a publication's own year moved by "
+            "one between the two tables' own snapshots. Both gaps are small, one-directional and "
+            "fully traced, never a broad drift.\n\n"
             "World leaders and star papers are pulled from OpenAlex on the day they were built, a "
             "different moment from the harvest snapshot behind every other figure on the page, so "
             "the two can drift a little apart. OpenAlex itself keeps changing: a rerun on a later "
@@ -1140,8 +1253,31 @@ METHODS_SOURCES = {
     "momentum_w1": "data/collab_facts.json, the earlier momentum window",
     "momentum_w2": "data/collab_facts.json, the later momentum window",
     "momentum_alpha": "data/collab_facts.json's own alpha value, formatted as a percent",
+    "momentum_band": "data/collab_facts.json's own band value, formatted as a percent",
     "concordance_n": "CFG concordance_N",
     "depth_max": "CFG depth.max",
+    "plane_a_min_covered": "lib.topic_data.PLANE_A_MIN_COVERED",
+    "fwci_mode_floor": "lib.topic_data.FWCI_MODE_FLOOR",
+    "emergence_threshold": "measured live: lib.topic_data.emergence_threshold(), the world top-decile cutoff over topics_dim.parquet's own scored population, formatted to three decimals",
+    "n_scored_topics": "measured live: count of topics_dim.parquet rows carrying a frontier_score_latest value",
+    "n_emergence_topics": "measured live: count of topics_dim.parquet rows at or above emergence_threshold()",
+    "n_topic_min": "lib.topic_data.N_MIN",
+    "n_topic_max": "lib.topic_data.N_MAX",
+    "topic_n_default": "lib.views_find.TOPIC_N_DEFAULT",
+    "pair_n_max": "lib.topic_data.PAIR_N_MAX",
+    "topic_table_cap": "lib.views_compare.TOPIC_TABLE_CAP",
+    "scale_guard_ratio": "CFG scale_guard.ratio",
+    "p7_fwci_residual_cells": ("a fixed build-time count, not recomputed live: measured once, during the "
+                               "institution-by-topic table's own pipeline build, by reconciling its cells "
+                               "against fwci_taxa.parquet's anchor cells (a comparison against a frozen "
+                               "artefact this app does not hold in a joinable shape at page-load time; "
+                               "see the code comment beside this constant in lib/views_methods.py)"),
+    "p7_fwci_anchor_cells": "a fixed build-time count: the anchor-cell denominator of that same reconciliation",
+    "p7_bound_violation_n": ("a fixed build-time count, not recomputed live: measured once by comparing the "
+                             "institution-by-topic table against topics_all.parquet's own per-topic whole-run "
+                             "volume, a comparison this app does not repeat at page-load time; see the code "
+                             "comment beside this constant in lib/views_methods.py"),
+    "p7_bound_total_rows": "measured live: manifest()'s own row count for inst_topic_impact.parquet",
 }
 
 # ------------------------------------------------ Methods page chrome

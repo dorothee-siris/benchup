@@ -6,7 +6,7 @@ trimmed app: Menu (3 cards, no sidebar search) -> Find (free-text
 search -> one profile, sidebar taxonomy/basis selectboxes, 8 KPI tiles, one
 end-of-page workbook) -> Compare (two independent search slots, PINNED to
 best-fit/full, six sections in order, one end-of-page workbook, a share
-box) -> Methods ("How it is built", 11 expanders + a note download). Every
+box) -> Methods ("How it is built", 15 expanders + a note download). Every
 pair page / shortlist / pooled-scatter / depth-radio /
 per-section-download check from the earlier harness is DELETED, not
 ported: those surfaces do not exist in this app any more. The ERC profile panel on Find is IN scope
@@ -107,7 +107,8 @@ COMPARE_XLSX_SHEETS = ["Cards", "Subfields", "SDG", "Topic overlap",
 METHODS_SECTION_TITLES = [
     "What the tool is", "Data and windows", "Counting bases, and the Compare pin",
     "The subject taxonomy", "Two baselines, kept apart", "Frontier scores",
-    "World leaders", "Star papers", "The relationship", "Matching", "Limits",
+    "World leaders", "Star papers", "Topic planes", "Topic overlap",
+    "The relationship", "Reading momentum", "Matching", "Scale guard", "Limits",
 ]
 DATA_CAPTION_RE = re.compile(
     r"[\d,]+\s+institutions\s+" + re.escape(SEP) + r"\s+data from\s+[A-Za-z]+\s+\d{1,2},\s+\d{4}")
