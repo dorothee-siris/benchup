@@ -22,10 +22,12 @@ CONTRACT_PATH = ROOT / "docs" / "data_contract.yaml"
 NEW_TABLES = [
     "collab_pairs.parquet",
     "collab_pair_fields.parquet",   # pair x field, uncapped, bestfit-only
-    "sdg_fields.parquet",
     "sdg_year.parquet",
     # impact_fields.parquet REMOVED: dead,
     # deleted from app/data + contract.
+    # sdg_fields.parquet REMOVED (v1.7): its only non-key columns
+    # (mass_any_frac, mass_any_full) had no caller in lib/; the whole
+    # table is dropped from app/data + contract.
 ]
 
 
@@ -63,7 +65,7 @@ def test_new_table_exists_with_exact_columns(contract: dict, fname: str) -> None
     )
 
 
-def test_contract_declares_25_files(contract: dict) -> None:
+def test_contract_declares_24_files(contract: dict) -> None:
     # History of this count (each step live-verified against the deploy
     # step's own printed total, not typed in twice): ... -> 23 ->
     # 22 (impact_fields.parquet deleted, dead, superseded by impact_taxa.parquet)
@@ -73,18 +75,22 @@ def test_contract_declares_25_files(contract: dict) -> None:
     # rollup) -> 23 (contract v1.6): impact_cells.parquet and
     # collab_pair_topics.parquet deleted (dead, no code path read either);
     # type_overrides.csv and pool_exclusions.csv moved to a private build
-    # tree (the app never read them at run time either) -> 25 (contract v1.7):
-    # two new tables -- inst_topic_impact.parquet (institution x primary-topic
-    # impact) and star_works.parquet (the per-work star-paper table); none
-    # dropped. `collab_facts.json` (momentum constants) and the build-internal
-    # `fwci_ref.parquet`/`fwci_work.parquet` do NOT join this count -- all are
-    # DELIBERATELY excluded from `contract["files"]` by the contract's own
-    # documented design (not a parquet table this app/data/ directory ships
-    # with a column schema to check). `data/scenarios/` (the ranking engine's
-    # precomputed substrates) is ALSO not counted here -- it is validated
-    # separately via `contract["scenario_files"]`, since its members are not
-    # one-row-per-key tables.
-    assert len(contract["files"]) == 25, sorted(contract["files"])
+    # tree (the app never read them at run time either) -> 25 (contract v1.7,
+    # additions): two new tables -- inst_topic_impact.parquet (institution x
+    # primary-topic impact) and star_works.parquet (the per-work star-paper
+    # table) -> 24 (contract v1.7, drops, same version): sdg_fields.parquet
+    # deleted whole (its only non-key columns, mass_any_frac/mass_any_full,
+    # had no caller in lib/) alongside column-level drops on index.parquet,
+    # topics_dim.parquet, topic_leaders.parquet and fwci_taxa_ref.parquet that
+    # do not change the FILE count. `collab_facts.json` (momentum constants)
+    # and the build-internal `fwci_ref.parquet`/`fwci_work.parquet` do NOT
+    # join this count -- all are DELIBERATELY excluded from `contract["files"]`
+    # by the contract's own documented design (not a parquet table this
+    # app/data/ directory ships with a column schema to check). `data/scenarios/`
+    # (the ranking engine's precomputed substrates) is ALSO not counted here --
+    # it is validated separately via `contract["scenario_files"]`, since its
+    # members are not one-row-per-key tables.
+    assert len(contract["files"]) == 24, sorted(contract["files"])
 
 
 # ---------------------------------------------------------------------------
@@ -178,10 +184,11 @@ def test_window_strings_appear_verbatim_on_the_columns_that_use_them(contract_te
         "CORE_WINDOW string must appear on window_conventions + intl_share + company_share "
         "at minimum -- a drop here silently un-names a denominator's window"
     )
-    # sdg_mass_window: sdg.parquet.share, sdg.parquet.mass, sdg_fields.mass, sdg_year.mass
-    assert contract_text.count(SDG_MASS_WINDOW) >= 5, (
+    # sdg_mass_window: sdg.parquet.share, sdg.parquet.mass, sdg_year.mass (sdg_fields.parquet's
+    # own mention dropped with the whole table, v1.7 -- was 5, now 4)
+    assert contract_text.count(SDG_MASS_WINDOW) >= 4, (
         "SDG_MASS_WINDOW string must appear on window_conventions + sdg.share + sdg.mass + "
-        "sdg_fields.mass + sdg_year.mass at minimum"
+        "sdg_year.mass at minimum"
     )
 
 

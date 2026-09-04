@@ -28,9 +28,7 @@ APP_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = APP_DIR / "data"
 
 STRASBOURG = "I68947357"
-IFPEN = "I265217849"
 CNRS = "I1294671590"
-FIELD_DECISION_SCIENCES = 18   # topics_dim.parquet: field_id 18 == "Decision Sciences"
 FIELD_PHYSICS = 31             # OpenAlex field "Physics and Astronomy"
 FIELD_AG_BIO = 11              # "Agricultural and Biological Sciences"
 
@@ -45,47 +43,12 @@ def ctx():
 
 
 # ============================================================================
-# (a) IFPEN Decision Sciences sdg_share -- derived by hand from sdg_fields.
-# parquet + fields.parquet directly (never `_sdg_share_field_frame`'s own
-# code). A prior one-off probe measured 0.6197 (fractional basis) on the
-# live data; this derivation is independent and only cross-checks
-# against that number as a sanity anchor, not a copied source.
-# ============================================================================
-
-def test_ifpen_decision_sciences_sdg_share_hand_derived():
-    sdg_fields = pd.read_parquet(DATA_DIR / "sdg_fields.parquet")
-    fields = pd.read_parquet(DATA_DIR / "fields.parquet")
-
-    s = sdg_fields[(sdg_fields["institution_id"] == IFPEN) & (sdg_fields["tree"] == "bestfit")
-                   & (sdg_fields["field_id"] == FIELD_DECISION_SCIENCES)]
-    f = fields[(fields["institution_id"] == IFPEN) & (fields["tree"] == "bestfit")
-              & (fields["field_id"] == FIELD_DECISION_SCIENCES)]
-    assert len(s) == 1 and len(f) == 1, "expected exactly one sdg_fields row and one fields row for IFPEN/field 18"
-
-    # numerator: distinct-tagged (>=1 SDG) fractional/full mass in this field.
-    # denominator: the field's OWN total fractional/full mass. SAME window
-    # (core_window, 2020-2024) and SAME basis on both sides by construction
-    # of sdg_fields.parquet (window_conventions.core_window) -- this is
-    # the exact numerator/denominator pair `_sdg_share_field_frame` computes,
-    # derived here from the raw tables, not that function.
-    num_frac = float(s["mass_any_frac"].iloc[0])
-    den_frac = float(f["vol_frac"].iloc[0])
-    num_full = float(s["mass_any_full"].iloc[0])
-    den_full = float(f["vol_full"].iloc[0])
-
-    hand_frac = num_frac / den_frac
-    hand_full = num_full / den_full
-
-    # sanity anchor against a prior live probe (0.6197, fractional basis)
-    np.testing.assert_allclose(hand_frac, 0.6197183399393414, atol=1e-6)
-    np.testing.assert_allclose(hand_full, 0.6666666666666666, atol=1e-6)  # = 2/3 exactly (num_full=2.0, den_full=3)
-    assert 0.0 <= hand_frac <= 1.0 and 0.0 <= hand_full <= 1.0
-    # (no live-app cross-check here: the trimmed Compare surface has no
-    # field x SDG share view any more -- the SDG profile is capped at SDG
-    # grain, 17 rows -- so this stays a pure sdg_fields/fields data-quality
-    # golden, not a UI regression guard.)
-
-
+# (a) IFPEN Decision Sciences sdg_share -- REMOVED v1.7: sdg_fields.parquet's
+# only non-key columns (mass_any_frac, mass_any_full) had no caller in lib/,
+# so the whole table was dropped. This golden
+# was already disclaimed as "not a UI regression guard" (the trimmed Compare
+# surface has no field x SDG share view) -- with the source table gone too,
+# there is nothing left to hand-derive it from; removed rather than kept red.
 # ============================================================================
 # (b) Strasbourg x CNRS pair core_total + field 31 row (vol/n_top10/n_covered)
 # recomputed from collab_pairs.parquet/collab_pair_fields.parquet directly --

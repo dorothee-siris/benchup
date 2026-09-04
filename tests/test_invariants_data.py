@@ -63,33 +63,13 @@ def subs_full(ctx):
 
 
 # ============================================================================
-# item 1 -- sdg mass_any <= field mass, SAME basis, FULL TABLE, both bases
-# ============================================================================
-
-def test_sdg_mass_any_le_field_mass_full_table():
-    """`sdg_fields.parquet`'s distinct-tagged `mass_any_frac`/`mass_any_full`
-    can never exceed `fields.parquet`'s own `vol_frac`/`vol_full` for the SAME
-    (institution, field, tree=bestfit) cell -- a work counting once toward a
-    field's SDG-tagged mass cannot exceed the field's own total mass. Checked
-    on EVERY row of both tables (bestfit only -- `fields.parquet` ships no
-    other tree), both bases, vectorised (no Python row loop)."""
-    sdg_fields = pd.read_parquet(DATA_DIR / "sdg_fields.parquet")
-    fields = pd.read_parquet(DATA_DIR / "fields.parquet",
-                             columns=["institution_id", "field_id", "tree", "vol_frac", "vol_full"])
-    sub = sdg_fields[(sdg_fields["tree"] == "bestfit") & (sdg_fields["field_id"] != -1)]
-    fb = fields[fields["tree"] == "bestfit"].set_index(["institution_id", "field_id"])
-    merged = sub.set_index(["institution_id", "field_id"]).join(fb[["vol_frac", "vol_full"]], how="left")
-
-    missing = merged["vol_frac"].isna().sum()
-    assert missing == 0, f"{missing} sdg_fields cells have no matching fields.parquet row (should be impossible: fields.parquet ships every nonzero-mass cell)"
-
-    bad_frac = merged[merged["mass_any_frac"] > merged["vol_frac"] + 1e-4]
-    assert bad_frac.empty, f"mass_any_frac > vol_frac (fractional basis): {len(bad_frac)} / {len(merged):,} cells"
-    bad_full = merged[merged["mass_any_full"] > merged["vol_full"] + 1e-4]
-    assert bad_full.empty, f"mass_any_full > vol_full (full basis): {len(bad_full)} / {len(merged):,} cells"
-    assert len(merged) > 50_000, f"suspiciously few cells checked: {len(merged)}"
-
-
+# item 1 -- sdg mass_any <= field mass -- REMOVED v1.7: sdg_fields.parquet's
+# only non-key columns (mass_any_frac, mass_any_full) had no caller in lib/,
+# so the whole table was dropped. No shipped
+# table carries the field-cross, distinct-tagged SDG mass this test checked
+# any more -- removed here rather than duplicated against data that no longer
+# ships, the same disposition this file's own module docstring already
+# applies to its other superseded checks.
 # ============================================================================
 # item 2 -- n_top10 <= n_covered <= vol on EVERY row of the collab tables
 # (full table, vectorised)

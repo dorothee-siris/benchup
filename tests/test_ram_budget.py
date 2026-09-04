@@ -100,11 +100,13 @@ from rss_probe import process_rss_mb  # noqa: E402
 DATA_DIR = APP_ROOT / "data"
 
 # Every lib/data_cache.py loader that returns a DataFrame (`manifest`
-# returns a dict, not a frame, and is deliberately excluded). Unchanged from
-# the earlier census -- aliased five of these onto bundle["ctx"]
-# but added or removed no loader.
+# returns a dict, not a frame, and is deliberately excluded). v1.7 drops
+# `sdg_fields` (the whole table + accessor removed -- its only non-key
+# columns had no caller in lib/); every other loader is unchanged from the
+# earlier census -- aliased five of these onto bundle["ctx"] but added or
+# removed no loader beyond that one drop.
 DATAFRAME_LOADERS = ["index", "fields", "subfields", "topics_dim", "erc", "sdg",
-                     "doctype_by_year", "sdg_fields", "sdg_year"]
+                     "doctype_by_year", "sdg_year"]
 
 # The five loaders aliased onto scenario_cache.bundle["ctx"]
 # `data_cache.<name>` must be the SAME OBJECT as `ctx["<key>"]`, not merely
@@ -126,16 +128,17 @@ ALIASED_TABLES = {"index": "index_df", "fields": "fields_df", "subfields": "subf
 # process-level signal than the frame census below).
 RSS_DELTA_BUDGET_MB = 700.0
 
-# Measured on the shipped data: frame census 91.42 MB DEDUPED BY IDENTITY (index
+# Measured on the shipped data: frame census 86.12 MB DEDUPED BY IDENTITY (index
 # 17.12 + fields 4.84 + subfields 23.47 + topics_dim 3.55 + erc 5.53 +
 # sdg 2.99 + doctype_by_year
-# 2.97 + sdg_fields 5.30 + sdg_year 8.02 + ctx.index_by_id 17.12 +
+# 2.97 + sdg_year 8.02 + ctx.index_by_id 17.12 +
 # ctx.topics_dim_df 0.51; ctx.index_df/fields_df/subfields_df/erc_df/sdg_df
 # contribute ZERO extra -- same objects as their data_cache.* counterparts)
 # ~3x headroom under this ceiling (recalibrated DOWN from the earlier file's
 # 600 MB: the earlier census counted every aliased table TWICE, once as a
 # data_cache frame and once as a separate ctx frame from an independent
-# `load_context` call).
+# `load_context` call; v1.7 additionally drops sdg_fields' own ~5.30 MB
+# entry -- that loader is gone, not merely unmeasured).
 FRAME_BUDGET_MB = 450.0
 
 # The scenario-swap ceiling:

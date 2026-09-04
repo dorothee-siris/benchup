@@ -78,13 +78,16 @@ def test_sdg_share_bounds_per_row() -> None:
     print(f"sdg.share sum per institution (multi-label, NOT bounded by 1): max={per_inst_sum.max():.4f}")
 
 
-def test_topics_dim_exclusion_reason_codes() -> None:
+def test_topics_dim_exclusion_reason_labels() -> None:
+    """v1.7 dropped exclusion_reason_code (its single-letter code -- no page ever
+    read it, only exclusion_reason_label); this test now pins the SAME
+    non-null-iff-excluded coverage rule one level up, on the label column."""
     td = _read("topics_dim.parquet")
     excluded = td[td["is_excluded"] == True]  # noqa: E712
     non_excluded = td[td["is_excluded"] == False]  # noqa: E712
     print(f"topics_dim: {len(excluded)} excluded (811-list), {len(non_excluded)} not excluded")
-    assert excluded["exclusion_reason_code"].notna().all()
-    assert non_excluded["exclusion_reason_code"].isna().all()
+    assert excluded["exclusion_reason_label"].notna().all()
+    assert non_excluded["exclusion_reason_label"].isna().all()
 
 
 def test_index_ci_ordering() -> None:
@@ -170,10 +173,13 @@ def test_index_coverage_ratios_are_bounded():
     erc_over_total = idx["erc_classified_mass_frac"] / idx["total_frac"]
     assert erc_over_total.notna().all()
     assert (erc_over_total <= 1 + tol).all(), f"ERC-classified / total_frac max {erc_over_total.max()}"
-    assert (idx["erc_classified_mass_frac"] <= idx["erc_eligible_mass_frac"] * (1 + tol)).all()
+    # erc_eligible_mass_frac dropped v1.7 (no page read it); the coverage-ratio
+    # bound this test exists for (the "109%" defect) is still the erc_over_total
+    # assertion above, which needs no eligible-mass comparator to hold.
     assert (idx["total_frac_2020_2024"] <= idx["total_frac"] * (1 + tol)).all(), \
         "the analytical-window total must never exceed the whole-run total"
-    for col in ("sdg_tagged_share", "frontier_top25_share", "frontier_excluded_share",
-                "frontier_unscored_share", "pp_top10_frac", "pp_ci_low", "pp_ci_high"):
+    # frontier_excluded_share/frontier_unscored_share dropped v1.7 (no page read
+    # either) -- the two remaining frontier/pp share columns still get their [0,1] check.
+    for col in ("sdg_tagged_share", "frontier_top25_share", "pp_top10_frac", "pp_ci_low", "pp_ci_high"):
         s = idx[col].dropna()
         assert ((s >= -tol) & (s <= 1 + tol)).all(), f"{col} outside [0, 1]: min {s.min()} max {s.max()}"

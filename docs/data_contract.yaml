@@ -15,7 +15,7 @@
 # here because they are still part of the contract between the shipped data and what the UI
 # is allowed to claim.
 #
-# Current state: 25 declared files (24 parquet tables + 1 override CSV) plus the
+# Current state: 24 declared files (23 parquet tables + 1 override CSV) plus the
 # `data/scenarios/` folder (the ranking engine's precomputed per-scenario substrates,
 # documented separately in `scenario_files` below -- its members are not one-row-per-key
 # tables, so the column/key contract shape does not fit them).
@@ -45,7 +45,7 @@ window_conventions:
   # index.total_full_2020_2024/total_frac_2020_2024, intl_share, company_share, and the
   # impact/pp_denominator_frac family all use this 5-year analytical window.
   sdg_mass_window: "2020-2025 (SDG mass basis, six-year)"
-  # sdg.parquet.share/esi, sdg_fields.parquet.mass, sdg_year.parquet.mass are ALL denominated
+  # sdg.parquet.share/esi, sdg_year.parquet.mass are ALL denominated
   # on the WHOLE run window (2020-2025, incl. the 2025 bonus year) -- the SDG and ERC classifiers
   # apply no year filter to the corpus they are handed. This is NOT core_window: summing
   # sdg_year.parquet to 2020-2024 only recovers a median 84.96% of sdg.parquet's mass, not 100%
@@ -57,8 +57,8 @@ window_conventions:
   core_ar_window: "articles+reviews, 2020-2024, full counting (CORE-AR basis)"
   # The basis for every Collaborate TABLE number (collab_pairs.core_total/c1/c2/n_top10/
   # n_covered/n_sdg/fwci_median/mom_*, collab_pair_fields.parquet, the retired pair-topic table,
-  # collab_topic_vols.parquet, index.total_ar_full_w1/w2) and sdg_fields.parquet's
-  # mass_any_frac/mass_any_full. NARROWER than core_window on TWO axes at once: type-restricted
+  # collab_topic_vols.parquet, index.total_ar_full_w1/w2).
+  # NARROWER than core_window on TWO axes at once: type-restricted
   # (article+review only, core_window is all doc types) AND it is core_window's own year span
   # (2020-2024) with full counting only (no fractional variant shipped for the collab tables).
   # Every OpenAlex deep-link for a CORE-AR number carries `type:article|review,
@@ -92,8 +92,6 @@ files:
       - {name: pool_excluded, dtype: bool, meaning: "True for 3 institution_ids (I4210092262 Romanian Ministry of Education, I4210164678 Shell UK, I4210125590 INESC) -- a funder/regulator surfacing as a performer or the secondary id of a duplicate institution pair (Shell NL/UK, INESC/INESC-ID), False otherwise. Flags a row OUT of lens/aspirational CANDIDATE POOLS only (wired in lib/engine); never removes the row, never changes ranking, denominators or any other column -- excluded rows keep all their data (removing the row outright would shrink the population and move every SI value for everyone else). The exclusion list itself is a data-build input, not shipped in this repo."}
       - {name: country_code, dtype: category, meaning: "ISO 3166-1 alpha-2; perimeter = EU27 + GB/CH/NO/IS (config.yaml perimeter_countries)"}
       - {name: city, dtype: category, meaning: null}
-      - {name: lat, dtype: float32, meaning: "latitude"}
-      - {name: lng, dtype: float32, meaning: "longitude"}
       - {name: homepage_url, dtype: category, meaning: "38 nulls (of 7,557) -- unresolved homepage"}
       - {name: total_full_2020_2024, dtype: float32, meaning: "full (unfractionalized) work count, analytical window 2020-2024 (config.yaml window_analytical). Denominator for the scale-guard band test (max(a,b)/min(a,b) <= 8 below 20k works, <= 4 at/above 20k -- recall_v2.py:722) and for the umbrella-badge size test (> 5x country x type median on this column, PATCHED type basis)."}
       - {name: total_frac_2020_2024, dtype: float32, meaning: "fractional-counted work count, same window"}
@@ -106,14 +104,7 @@ files:
       - {name: total_full_this_run, dtype: float32, meaning: "run-scoped bookkeeping total (r2 build internals); not a headline KPI"}
       - {name: total_frac_this_run, dtype: float32, meaning: "run-scoped bookkeeping total; not a headline KPI"}
       - {name: total_frac, dtype: float32, meaning: "fractional total across the FULL corpus window used by this run (superset of total_frac_2020_2024's window in some cases) -- verified equal to sum(topics_all.vol_frac) for a spot-checked institution; treat as the denominator when reconciling topics_all against index-level totals"}
-      - {name: mass_retracted_excluded, dtype: float32, meaning: "grey accounting (fractional mass units): mass excluded as retracted. Shipped per-institution only, no country x field breakdown -- institution-level only, by design."}
-      - {name: mass_unusable, dtype: float32, meaning: "grey accounting: unusable mass (Europe total: grey_totals_frac_mass.unusable). Same institution-level-only ruling as above."}
-      - {name: mass_title_only, dtype: float32, meaning: "grey accounting: title-only (no abstract) mass (Europe total: grey_totals_frac_mass.title_only). Same ruling."}
-      - {name: mass_lang_uncertain, dtype: float32, meaning: "grey accounting: language-uncertain mass (Europe total: grey_totals_frac_mass.lang_uncertain). Same ruling."}
-      - {name: mass_untranslated_grey, dtype: float32, meaning: "grey accounting: untranslated-but-non-English mass (Europe total: grey_totals_frac_mass.untranslated_grey). Same ruling."}
-      - {name: mass_classified_eligible, dtype: float32, meaning: "grey accounting: mass that cleared every exclusion and is eligible for classification (Europe total: grey_totals_frac_mass.classified_eligible, 4,618,728.8). Same ruling."}
-      - {name: erc_eligible_mass_frac, dtype: float32, meaning: "fractional mass eligible for ERC classification"}
-      - {name: erc_classified_mass_frac, dtype: float32, meaning: "fractional mass actually assigned an ERC panel; DENOMINATOR of erc.parquet's `share` column (verified: mass/share is constant per institution and equals this column exactly, e.g. 784.2579731515212). The 'ERC-classified share' coverage line (L4/L5) is erc_classified_mass_frac / total_frac -- BOTH on the whole-run mass basis (2020-2025). CORRECTED: dividing by total_frac_2020_2024 mixed bases and printed 109.1 % for Universite de Strasbourg (5,147.74 / 4,716.26); on total_frac (5,590.98) it is 92.1 %, the remainder being grey mass (retracted, unusable, title-only, language-uncertain, untranslated)."}
+      - {name: erc_classified_mass_frac, dtype: float32, meaning: "fractional mass actually assigned an ERC panel; DENOMINATOR of erc.parquet's `share` column (verified: mass/share is constant per institution and equals this column exactly, e.g. 784.2579731515212). The 'ERC-classified share' coverage line (L4/L5) is erc_classified_mass_frac / total_frac -- BOTH on the whole-run mass basis (2020-2025). CORRECTED: dividing by total_frac_2020_2024 mixed bases and printed 109.1 % for Universite de Strasbourg (5,147.74 / 4,716.26); on total_frac (5,590.98) it is 92.1 %, the remainder being grey mass (retracted, unusable, title-only, language-uncertain, untranslated -- the six per-category grey-mass columns themselves shipped in earlier contract versions and were dropped in v1.7, no page ever reading them individually rather than through this one coverage ratio)."}
       - {name: sdg_eligible_mass_frac, dtype: float32, meaning: "fractional mass eligible for SDG classification"}
       - {name: sdg_classified_mass_frac, dtype: float32, meaning: "fractional mass actually run through the SDG classifier (may include works that received ZERO keyword hits, i.e. classified-but-untagged -- see sdg_tagged_share)"}
       - {name: sdg_tagged_share, dtype: float32, meaning: "fraction of sdg_eligible_mass_frac that received AT LEAST ONE SDG keyword hit. Verified: sdg_tagged_share * sdg_eligible_mass_frac == the exact DENOMINATOR of sdg.parquet's per-row `share` column (spot-checked to float32 precision) -- i.e. sdg.share's denominator is the institution's SDG-TAGGED mass, not its classified or eligible mass, matching DESIGN.md's 'any-keyword-hit => 0-N SDGs/doc' semantics (some classified works get 0 tags)."}
@@ -121,17 +112,13 @@ files:
       - {name: pp_eu_relative, dtype: float32, meaning: "secondary impact metric: EU-relative percentile (free, labeled per DESIGN.md S4; not a top10% flag)"}
       - {name: pp_ci_low, dtype: float32, meaning: "bootstrap 95% CI lower bound on pp_top10_frac"}
       - {name: pp_ci_high, dtype: float32, meaning: "bootstrap 95% CI upper bound on pp_top10_frac"}
-      - {name: frontier_top25_share, dtype: float32, meaning: "share of this institution's mass in topics scored in the global top-25% frontier_score (ACCORD); denominator = the institution's frontier-SCORABLE mass (excludes frontier_excluded_share and frontier_unscored_share)"}
+      - {name: frontier_top25_share, dtype: float32, meaning: "share of this institution's mass in topics scored in the global top-25% frontier_score (ACCORD); denominator = the institution's frontier-SCORABLE mass (excludes the 811 catch-all exclusion list and any other topic lacking a frontier score for another reason -- topics_dim.is_frontier_scored is false for both)"}
       - {name: frontier_quadrant_mix, dtype: category, meaning: "packed string 'quadrant:share|quadrant:share|...' over {accelerating_expansion, accelerating_contraction, decelerating_expansion, decelerating_contraction}; shares sum to ~1 over the institution's frontier-scored mass"}
-      - {name: frontier_excluded_share, dtype: float32, meaning: "share of mass in topics on the 811 catch-all exclusion list (no frontier score by construction); denominator = institution total_frac"}
-      - {name: frontier_unscored_share, dtype: float32, meaning: "share of mass in topics NOT on the exclusion list but still lacking a frontier score for another reason; denominator = institution total_frac"}
       - {name: hhi_class, dtype: category, meaning: "{generalist, focused, specialised} -- discretisation of hhi_subfield"}
-      - {name: shape_field_original, dtype: category, meaning: "packed string 'field_id:share_frac|field_id:share_frac|...', ORIGINAL taxonomy tree, field-level shape"}
-      - {name: shape_field_conservative, dtype: category, meaning: "same packed format, CONSERVATIVE tree"}
-      - {name: shape_field_bestfit, dtype: category, meaning: "same packed format, BESTFIT tree (the shipped default scenario tree)"}
+      - {name: shape_field_bestfit, dtype: category, meaning: "same packed format, BESTFIT tree (the shipped default scenario tree). v1.7 dropped the ORIGINAL- and CONSERVATIVE-tree siblings of this column (shape_field_original, shape_field_conservative) -- no page ever read a packed field-shape string for either non-default tree; when the app needs an original/conservative field shape it derives it at query time from topics_all.parquet (the topic-grain master table), the same mechanism fields.parquet's own tree column note already documents, not from a second packed string here."}
       - {name: vol_full_by_year_this_run, dtype: category, meaning: "packed string 'YEAR:value|YEAR:value|...', full work counts per year, this run's window (2020-2025 incl. the 2025 bonus year)"}
       - {name: vol_frac_by_year_this_run, dtype: category, meaning: "packed string 'YEAR:value|YEAR:value|...', fractional work counts per year"}
-      - {name: intl_share, dtype: float32, meaning: "share of this institution's eligible works, WINDOW = 2020-2024 (core window) (window_conventions.core_window; full counting), with >=1 direct authorship institution whose country_code is non-null AND differs from this institution's own country_code. NOT the sdg_mass_window (2020-2025, six-year) that sdg.parquet/sdg_fields.parquet/sdg_year.parquet use -- the two windows differ (window_conventions), never conflate them. Denominator = the institution's eligible full-count works 2020-2024, verified equal to total_full_2020_2024 exactly, including for GB/CH/NO/IS institutions. Computed over the union of the harvested corpus for the perimeter countries, with the harvest's own institution-id-overlap rule applied when a work appears in more than one source."}
+      - {name: intl_share, dtype: float32, meaning: "share of this institution's eligible works, WINDOW = 2020-2024 (core window) (window_conventions.core_window; full counting), with >=1 direct authorship institution whose country_code is non-null AND differs from this institution's own country_code. NOT the sdg_mass_window (2020-2025, six-year) that sdg.parquet/sdg_year.parquet use -- the two windows differ (window_conventions), never conflate them. Denominator = the institution's eligible full-count works 2020-2024, verified equal to total_full_2020_2024 exactly, including for GB/CH/NO/IS institutions. Computed over the union of the harvested corpus for the perimeter countries, with the harvest's own institution-id-overlap rule applied when a work appears in more than one source."}
       - {name: company_share, dtype: float32, meaning: "share of this institution's eligible works, WINDOW = 2020-2024 (core window) (window_conventions.core_window; same denominator as intl_share, NOT the sdg_mass_window), with >=1 direct authorship institution (any, including the focal institution itself) typed 'company' -- type source: corrected index.type for indexed institutions, raw OpenAlex type from inst_meta_all.parquet for the rest."}
       - {name: total_ar_full_w1, dtype: float32, meaning: "full-counted (weight_full=1 per appearing indexed institution) work count, WINDOW = 2020-2022 (dynamics window 1, mean annual) SLICE of window_conventions.core_ar_window (articles+reviews ONLY, NOT total_full_2020_2024's all-doc-types basis). The momentum d1 denominator for a pair (a,b): d1 = total_ar_full_w1[a] + total_ar_full_w1[b] (collab_pairs.mom_rr = (c2/d2)/(c1/d1)). Computed in the same per-year pass as collab_pairs.core_total/c1/c2 -- not derivable from any other shipped index column (total_full_2020_2024 has no type restriction and no window split)."}
       - {name: total_ar_full_w2, dtype: float32, meaning: "same rule as total_ar_full_w1, WINDOW = 2023-2024 (dynamics window 2, mean annual). The momentum d2 denominator."}
@@ -268,18 +255,14 @@ files:
       - {name: frontier_score_latest, dtype: float32, meaning: "most recent period's composite frontier score; null for topics with is_frontier_scored=false"}
       - {name: quadrant, dtype: category, meaning: "{accelerating_expansion, accelerating_contraction, decelerating_expansion, decelerating_contraction}; null when not frontier-scored"}
       - {name: top25pct_frontier, dtype: boolean, meaning: "true iff frontier_score_latest is in the global top 25%; NULLABLE (pandas 'boolean', 810 nulls of 4,516) for topics without a frontier score -- 'unscored', not 'false'."}
-      - {name: is_frontier_scored, dtype: bool, meaning: "non-nullable; false for the 811 excluded topics (frontier_excluded_share) and for any other topic lacking a score (frontier_unscored_share)"}
-      - {name: exclusion_reason_code, dtype: category, meaning: "single-letter code (T/K/V/E/X/B/H/M/P/Y observed); non-null iff is_excluded=true (Verified: 811/811 excluded rows have a code, 0/3,705 non-excluded rows have one)"}
-      - {name: exclusion_reason_label, dtype: category, meaning: "human-readable label for exclusion_reason_code"}
+      - {name: is_frontier_scored, dtype: bool, meaning: "non-nullable; false for the 811 excluded topics and for any other topic lacking a score for another reason -- both categories feed the app's own frontier-coverage caption, computed live from this column, not from a separate shipped index-level share"}
+      - {name: exclusion_reason_label, dtype: category, meaning: "human-readable label for the topic's exclusion reason (its single-letter code, T/K/V/E/X/B/H/M/P/Y, dropped v1.7 -- no page ever read the code itself, only this label); non-null iff is_excluded=true"}
       - {name: is_excluded, dtype: bool, meaning: "the 811 catch-all exclusion list (DESIGN.md 811 references); COMPUTED count, never a typed constant in app code (L10) -- read as topics_dim.is_excluded.sum"}
-      - {name: exclusion_list_version, dtype: category, meaning: "single value shipped: '2026-08-21' (verified); the versioning DESIGN.md S4 requires for the 811 list"}
-      - {name: review_status, dtype: category, meaning: "single value shipped: 'unreviewed'"}
       - {name: original_subfield_id, dtype: int16, meaning: "subfield assignment under the ORIGINAL taxonomy tree"}
       - {name: conservative_subfield_id, dtype: int16, meaning: "subfield assignment under the CONSERVATIVE tree"}
       - {name: bestfit_subfield_id, dtype: int16, meaning: "subfield assignment under the BESTFIT tree (shipped default)"}
-      - {name: change_level, dtype: category, meaning: "{none, domain, subfield, field} -- how far the taxonomy repair moved this topic from its original OpenAlex placement"}
       - {name: fit_quality, dtype: category, meaning: "{no_fit, forced, fits}"}
-      - {name: repair_status, dtype: category, meaning: "16 distinct adjudication-provenance values observed (e.g. changed_by_escalation, unchanged_confirmed, reverted_by_audit); taxonomy_repair_v1.3 audit trail"}
+    dropped_columns: "v1.7: exclusion_reason_code, exclusion_list_version, review_status, change_level, repair_status -- single-letter-code, single-value-shipped, or free-text adjudication-trail columns no page in this app ever reads (a contract test covered exclusion_reason_code's own excluded/non-excluded coverage rule without the app itself selecting it by name -- that test now reads exclusion_reason_label's own non-null-iff-excluded rule instead, the same coverage property one level up)."
 
   # ---- erc.parquet ----
   erc.parquet:
@@ -306,22 +289,9 @@ files:
       - {name: esi, dtype: float32, meaning: "SDG specialisation index = institution SDG-tagged share / the Europe-wide average SDG-tagged share for that SDG, i.e. esi = share / europe_avg_tagged where europe_avg_tagged = SUM_index(sdg.mass) / SUM_index(sdg_tagged_share * sdg_eligible_mass_frac) -- the SDG-tagged-mass basis. Note: a separate, classified-mass-basis average (SUM(sdg.mass) / SUM(index.sdg_classified_mass_frac)) is a DIFFERENT statistic and understates the true divisor by a constant factor (about 4.2x) if used in esi's place -- do not substitute it. The shipped esi column is on the tagged-mass basis throughout. esi/share is a constant, deterministic rescaling within each sdg_idx -- esi and share rank institutions identically within one SDG."}
       - {name: mass, dtype: float32, meaning: "fractional work-mass tagged with this SDG, WINDOW = 2020-2025 (SDG mass basis, six-year) (window_conventions.sdg_mass_window; a work's mass is NOT divided across its SDG tags -- it counts in full toward every SDG it is tagged with, which is why Sigma(mass) over an institution's 16 rows can exceed its tagged mass)"}
 
-  # ---- sdg_fields.parquet ----
-  sdg_fields.parquet:
-    grain: "institution x field_id x tree (per-goal sdg_idx grain REMOVED -- v1's grain was institution x sdg x field x tree); 284,673 rows, sparse to nonzero cells. A work now counts AT MOST ONCE per (institution, field, tree) regardless of how many SDGs it carries -- this is the STRUCTURAL fix for the SDG-share bug found live in compare_data._sdg_share_field_frame (l.934-938 groups by (institution_id, field_id) WITHOUT sdg_idx, so v1's per-goal `mass` summed across up to 16 rows, producing shares > 100% e.g. 264.8%). field_id=-1 'untopiced' residual row KEPT, same convention as v1: 6 such rows shipped (a distinct-tagged work with no primary_topic_id still needs a mass home)."
-    keys: [institution_id, field_id, tree]
-    columns:
-      - {name: inst_key, dtype: int32, meaning: "join key to index.inst_key"}
-      - {name: institution_id, dtype: category, meaning: null}
-      - {name: field_id, dtype: int16, meaning: "OpenAlex field id (topics_dim.field_id), OR the sentinel -1 for the 'untopiced' residual (only 6 rows shipped, institution x tree combos with any untopiced distinct-tagged mass -- far rarer than v1's per-goal residual since this table no longer fans out x16 goals)."}
-      - {name: tree, dtype: category, meaning: "{bestfit, conservative, original} -- all 3 shipped, since a work's field bucket can move between trees (its DISTINCT-tagged status never does)"}
-      - {name: mass_any_frac, dtype: float32, meaning: "fractional work-mass DISTINCT->=1-goal-tagged (a work counts ONCE regardless of how many SDGs it carries), attributed to this institution in this field (or the -1 residual). WINDOW = articles+reviews... NO -- all doc types, 2020-2024 (core window) (window_conventions.core_window) -- a DELIBERATE NARROWING from v1's WINDOW = 2020-2025 (SDG mass basis, six-year) (window_conventions.sdg_mass_window): the field cross must share Compare's own analytical window so mass_any_frac / fields.vol_frac (SAME window, SAME basis) is provably a bounded 0-1 share (§2.5 CD4 assert), which summing across the six-year sdg_mass_window against a five-year field-vol denominator could never guarantee. THE FIELD-CROSS NUMERATOR (Compare's SDG-share metric denominator is fields.parquet's vol_frac/vol_full, same core_window). Verified: Sigma_field(mass_any_frac) INCLUDING the -1 residual <= sdg_year.parquet's per-goal mass_frac summed over the SAME 2020-2024 window, SAME institution (distinct-tagged can only be <= per-goal-summed, since per-goal counts a multi-SDG work once per goal) -- 0 violations on 20 random institutions x 3 trees (60 cells checked)."}
-      - {name: mass_any_full, dtype: float32, meaning: "full-counted (weight_full) analogue of mass_any_frac, same distinct-tagged population/window/residual convention. Verified: mass_any_full >= mass_any_frac on all 284,673 rows (weight_full=1 per appearing institution is always >= weight_frac's 0-1 split, 0 exceptions -- a plain arithmetic fact, not a sampled reconciliation)."}
-    build_note: "Topic-to-field lookup is per tree, same taxonomy map every other tree-aware table uses. The distinct-tagged work list is any work that is SDG-eligible, SDG-classified and carries at least one non-empty tag (a work counts once per field regardless of how many SDGs it carries), filtered to publication_year in [2020,2024] before aggregation."
-
   # ---- sdg_year.parquet ----
   sdg_year.parquet:
-    grain: "institution x sdg x year (2020-2025, the FULL run window incl. the 2025 bonus year) -- UNCHANGED grain/window from v1 (only the field cross had the double-counting bug this phase fixes; dynamics/volume-by-year never summed across the hidden sdg_idx dimension the way the field groupby did, so no regrain needed here); 427,687 rows, sparse to nonzero cells. Tree-independent (SDG tagging has no tree dependency at all -- only sdg_fields's field bucket does)."
+    grain: "institution x sdg x year (2020-2025, the FULL run window incl. the 2025 bonus year) -- UNCHANGED grain/window from v1 (only the field cross had the double-counting bug this phase fixes; dynamics/volume-by-year never summed across the hidden sdg_idx dimension the way the field groupby did, so no regrain needed here); 427,687 rows, sparse to nonzero cells. Tree-independent (SDG tagging has no tree dependency at all -- a work's SDG tags never change with the taxonomy tree, unlike a field bucket)."
     keys: [institution_id, sdg_idx, year]
     columns:
       - {name: inst_key, dtype: int32, meaning: "join key to index.inst_key"}
@@ -434,13 +404,13 @@ files:
 
   # ---- fwci_taxa_ref.parquet ----
   fwci_taxa_ref.parquet:
-    grain: "grain x taxon_id, ALL taxa that appear at least once in the CORE-AR corpus (no floor -- contrast with fwci_taxa.parquet's n_covered>=3); 317 rows (field 26, subfield 247, sdg 16, erc 28), 0.01 MB zstd. Dense within each grain's known taxon range (every field/subfield/sdg/erc taxon that exists in this snapshot has a row here)."
+    grain: "grain x taxon_id, ALL taxa that appear at least once in the CORE-AR corpus (no floor -- contrast with fwci_taxa.parquet's n_covered>=3); 317 rows (field 26, subfield 247, sdg 16, erc 28), 0.005 MB zstd. Dense within each grain's known taxon range (every field/subfield/sdg/erc taxon that exists in this snapshot has a row here)."
     keys: [grain, taxon_id]
     columns:
       - {name: grain, dtype: category, meaning: "{field, subfield, sdg, erc} -- SAME categories/taxon_id convention as fwci_taxa.parquet.grain (read that column's meaning first)."}
       - {name: taxon_id, dtype: int32, meaning: "SAME convention as fwci_taxa.parquet.taxon_id -- interpret only together with `grain`."}
-      - {name: eu_median_work_fwci, dtype: float32, meaning: "the chart reference: the MEDIAN FWCI over ALL CORE-AR works (articles+reviews, 2020-2024, window_conventions.core_ar_window) mapped to this (grain, taxon_id), across the WHOLE European reference corpus (the local EU27+GB/CH/NO/IS harvest union -- NEVER world OpenAlex) -- NOT institution-filtered. Drawn as a per-row varying dashed reference line; hover/caption copy must read 'European median work in this [grain]', never 'average' (the corpus MEAN is pinned to ~1.000 by construction and would misrepresent the skewed distribution as neutral). CAN BE EXACTLY 0.0 on a well-populated taxon: field_id=12 'Arts and Humanities' has eu_median_work_fwci=0.0 on 270,268 works because 62.9% of them have zero citations -- a genuine, well-known humanities citation-practice fact, not a defect. 27 (grain, taxon_id) rows total have eu_median_work_fwci==0.0 with n_works>=50 (field: 1; subfield: 23, mostly History/Arts/Literature/Philosophy/Religion subfields; erc: 3, mostly SH panels)."}
-      - {name: n_works, dtype: int64, meaning: "count of CORE-AR works this eu_median_work_fwci was computed over (the corpus-wide denominator, unrelated to any single institution's n_covered)."}
+      - {name: eu_median_work_fwci, dtype: float32, meaning: "the chart reference: the MEDIAN FWCI over ALL CORE-AR works (articles+reviews, 2020-2024, window_conventions.core_ar_window) mapped to this (grain, taxon_id), across the WHOLE European reference corpus (the local EU27+GB/CH/NO/IS harvest union -- NEVER world OpenAlex) -- NOT institution-filtered. Drawn as a per-row varying dashed reference line; hover/caption copy must read 'European median work in this [grain]', never 'average' (the corpus MEAN is pinned to ~1.000 by construction and would misrepresent the skewed distribution as neutral). CAN BE EXACTLY 0.0 on a well-populated taxon: field_id=12 'Arts and Humanities' has eu_median_work_fwci=0.0 on 270,268 works because 62.9% of them have zero citations -- a genuine, well-known humanities citation-practice fact, not a defect. 27 (grain, taxon_id) rows total have eu_median_work_fwci==0.0 on a well-populated taxon (>=50 works observed at build time, before v1.7 dropped the row-count column itself)."}
+    dropped_columns: "v1.7: n_works (the corpus-wide work count eu_median_work_fwci was computed over) -- no page reads this corpus-wide denominator; the app's own per-institution n_covered (fwci_taxa.parquet) is the denominator every rendered hover actually uses."
     build_note: "Built from the same joins as fwci_taxa.parquet, minus the institution-attribution split (this table is corpus-wide, not per-institution). Invariant-checked alongside fwci_taxa.parquet."
 
   # ---- inst_topic_impact.parquet ----
@@ -495,14 +465,14 @@ files:
 
   # ---- topic_leaders.parquet ----
   topic_leaders.parquet:
-    grain: "topic x rank, rank 1..n (n<=200, the OpenAlex group_by page cap) per topic_id, one ranking across every institution type (v1.7 retires the earlier two-pool split); 890,415 rows, 2.35 MB, zstd. Covers all 4,516 topics."
+    grain: "topic x rank, rank 1..n (n<=200, the OpenAlex group_by page cap) per topic_id, one ranking across every institution type (v1.7 retires the earlier two-pool split); 890,415 rows, 1.93 MB, zstd. Covers all 4,516 topics."
     keys: [topic_id, rank]
     columns:
       - {name: topic_id, dtype: category, meaning: "OpenAlex topic id (topics_dim.topic_id)"}
-      - {name: rank, dtype: int16, meaning: "1-based rank by n_works within topic_id, dense, contiguous, no gaps, capped at 200"}
+      - {name: rank, dtype: int16, meaning: "1-based rank by world publication count (articles+reviews, 2020-2024) within topic_id, dense, contiguous, no gaps, capped at 200"}
       - {name: institution_id, dtype: category, meaning: "OpenAlex institution id of the ranked publisher (NOT restricted to this app's 7,557-institution index -- world publishers include non-indexed institutions, e.g. large non-European research organisations)"}
       - {name: display_name, dtype: string, meaning: "OpenAlex display name; populated for rank<=10 only (null beyond, since only the top-10 names are ever shown in the app), and can be null even at rank<=10 on the rare topic where OpenAlex returned no name for that institution id (9 such rows shipped -- the app falls back to the institution id, or this app's own index display_name when the id happens to be an indexed institution)"}
-      - {name: n_works, dtype: int32, meaning: "world publication count (articles+reviews, 2020-2024) this rank was computed on; non-increasing with rank within topic_id"}
+    dropped_columns: "v1.7: n_works (the world publication count each rank was computed on) -- no page reads the raw count, only the rank itself; the ranking rule it fed is now stated directly on the `rank` column above."
     build_note: "A live OpenAlex sweep, one query per topic, grouped by publishing institution, every institution type ranked together (a body that runs many institutes under one name accumulates more publications than any single university -- the app's own Methods page states the resulting skew). Pulled on 2026-09-03 -- a different date from the OpenAlex harvest snapshot behind every other table; report both vintages in any Methods text, they are not interchangeable."
 
   # ---- topics_led.parquet ----
@@ -603,7 +573,7 @@ derived_views:
     how: "intervals rendered, not just point estimates; a PP-sort is a UI option, never the default"
 
   seed_card:
-    fields: "type + type-corrected badge, umbrella badge, country, size (total_full_2020_2024 + total_frac_2020_2024), hhi_class, top fields (shape_field_bestfit, top-3), top subfields (subfields.parquet, top-5 by share_frac at the default scenario), evidence lines (n_eligible_subfields for L2f = count of this institution's subfields with vol_frac>=30; sdg_tagged_share; erc_classified_mass_frac/total_frac_2020_2024; frontier_top25_share; frontier_excluded_share as the catch-all/811 tooltip), pp_top10_frac with pp_ci_low/pp_ci_high, OpenAlex works link (authorships.institutions.id:<id>,publication_year:2020-2024), ROR link, homepage_url"
+    fields: "type + type-corrected badge, umbrella badge, country, size (total_full_2020_2024 + total_frac_2020_2024), hhi_class, top fields (shape_field_bestfit, top-3), top subfields (subfields.parquet, top-5 by share_frac at the default scenario), evidence lines (n_eligible_subfields for L2f = count of this institution's subfields with vol_frac>=30; sdg_tagged_share; erc_classified_mass_frac/total_frac_2020_2024; frontier_top25_share; a live-computed catch-all/811 share, lib.engine.catchall_811_share from topics_dim.is_excluded, as its own tooltip), pp_top10_frac with pp_ci_low/pp_ci_high, OpenAlex works link (authorships.institutions.id:<id>,publication_year:2020-2024), ROR link, homepage_url"
 
   umbrella_badge:
     rule: "type ∈ {government, funder, facility, nonprofit} (on the PATCHED index.type, never type_openalex) AND total_full_2020_2024 > 5x the country x type median (median computed live, over the index, on the SAME patched type column) -- config.yaml's umbrella_badge block, multiplier=5, reference=country_type_median."

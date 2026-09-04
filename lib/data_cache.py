@@ -121,16 +121,6 @@ def doctype_by_year() -> pd.DataFrame:
 
 
 @st.cache_resource
-def sdg_fields() -> pd.DataFrame:
-    """Institution x sdg x field x tree, fractional SDG-tagged mass, full
-    2020-2025 run window.
-    `field_id == -1` is the explicit 'untopiced' residual row (a work with
-    SDG-tagged mass but no primary topic, ~0.14% of the corpus) -- never
-    silently folded into a real field. 1,736,925 rows, 5.9 MB."""
-    return pd.read_parquet(DATA_DIR / "sdg_fields.parquet")
-
-
-@st.cache_resource
 def sdg_year() -> pd.DataFrame:
     """Institution x sdg x year (2020-2025), fractional SDG-tagged mass,
     tree-independent. SUM over all 6 years equals
