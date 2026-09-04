@@ -240,6 +240,10 @@ charts:
       - {field: acceleration, label: "acceleration", format: score_2dp}
       - {field: owner, label: "", format: owner_clause}
 
+  # {A}/{B} in the labels below render as each institution's own SHORT
+  # name, never the bare letter: index.display_name_acronyms' first entry
+  # when the institution carries one (e.g. "CNRS"), otherwise display_name
+  # cut at 24 characters with an ellipsis.
   compare_topic_table:
     view: compare
     kind: table
@@ -251,17 +255,17 @@ charts:
       - {field: frontier_score, label: "Frontier score", format: score_2dp}
       - {field: expansion, label: "Expansion", format: score_2dp}
       - {field: acceleration, label: "Acceleration", format: score_2dp}
-      - {field: vol_a, label: "Publications, A", format: int_thousands, note: "2020-2024, full counting"}
-      - {field: vol_b, label: "Publications, B", format: int_thousands}
+      - {field: vol_a, label: "Publications, {A}", format: int_thousands, note: "2020-2024, full counting"}
+      - {field: vol_b, label: "Publications, {B}", format: int_thousands}
       - {field: vol_joint, label: "Joint", format: joint_or_floor}
-      - {field: change_a, label: "Change, A", format: pct_signed_0dp, note: "own volume, 2023-2024 against 2020-2022"}
-      - {field: change_b, label: "Change, B", format: pct_signed_0dp}
-      - {field: rank_a, label: "World rank, A", format: int_thousands, note: "topics_led rank, blank past 20"}
-      - {field: rank_b, label: "World rank, B", format: int_thousands}
-      - {field: stars_a, label: "Star papers, A", format: int_thousands}
-      - {field: stars_b, label: "Star papers, B", format: int_thousands}
-      - {field: url_a, label: "A on OpenAlex", format: text}
-      - {field: url_b, label: "B on OpenAlex", format: text}
+      - {field: change_a, label: "Change, {A}", format: pct_signed_0dp, note: "own volume, 2023-2024 against 2020-2022"}
+      - {field: change_b, label: "Change, {B}", format: pct_signed_0dp}
+      - {field: rank_a, label: "World rank, {A}", format: int_thousands, note: "topics_led rank, blank past 20"}
+      - {field: rank_b, label: "World rank, {B}", format: int_thousands}
+      - {field: stars_a, label: "Star papers, {A}", format: int_thousands}
+      - {field: stars_b, label: "Star papers, {B}", format: int_thousands}
+      - {field: url_a, label: "{A} on OpenAlex", format: text}
+      - {field: url_b, label: "{B} on OpenAlex", format: text}
       - {field: url_joint, label: "Joint on OpenAlex", format: text}
 
   # ----------------------------------------------------- Compare relationship

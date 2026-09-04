@@ -10,10 +10,10 @@ types a value into a rendered string.
 PAGE ORDER (top to bottom): title + the pin caption -> two search slots
 (`lib.selection.render_slots`) -> Key figures (nine cards per pair)
 -> Thematic shape (Profile/Impact tabs) -> SDG profile (same tab shape)
--> Frontier (positioning figures, then the shared-frontier mirror chart
-+ full table) -> The relationship (momentum, yearly-by-domain, strategic
-reciprocity, joint star papers) -> one Excel download -> the share-link
-box.
+-> Topic overlap (the shared selector, the owner-coloured plane, the
+balance bars, the shared table) -> The relationship (momentum,
+yearly-by-domain, strategic reciprocity, joint star papers) -> one Excel
+download -> the share-link box.
 
 PIN: Compare never offers a taxonomy/basis toggle -- every figure is
 best-fit + full counting, named once in the caption under the title, with
@@ -29,6 +29,7 @@ function, never passed as arguments.
 """
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
@@ -37,8 +38,10 @@ from lib import charts as C
 from lib import compare_data as CD
 from lib import copy
 from lib import charts_compare as X
+from lib import charts_topics as XT
 from lib import palette as P
-from lib import selection, tiles
+from lib import selection, state, tiles
+from lib import topic_data as TD
 from lib.app_config import CFG
 from lib.charts_compare import _esc, _fmt_frontier, _fmt_pct as _pct, _fmt_si, _fmt_vol as _count
 from lib.engine import scenario_cache as SC
@@ -51,8 +54,11 @@ WHOLE_Y1 = CFG["bonus_year"]
 COMPARE_SLOTS = int(CFG.get("compare_slots", 2))
 
 TOP_N_SUBFIELDS = 20        # the pair's top-20 subfields by combined volume
-MIRROR_TOP_N_DEFAULT = 20   # the mirror chart's own default cut, "show all N" past it
 PVAL_FLOOR = 0.001          # below this, the significance line reads "< 0.001"
+
+TOPIC_N_DEFAULT = 50        # the "Topics per institution" slider's own default
+TOPIC_N_STEP = 10
+TOPIC_TABLE_CAP = 200       # O3: no topic table ever shows more than this many rows
 
 TAB_KEYS = {"profile": ("share_full", "eu_mean_share"), "impact": ("pp10_wd", "eu_mean_pp10_wd")}
 
@@ -72,6 +78,17 @@ def _pval(p) -> str:
         return NA_MARK
     p = float(p)
     return f"< {PVAL_FLOOR}" if p < PVAL_FLOOR else f"{p:.3f}"
+
+
+def _pct_signed_0dp(v) -> str:
+    """`pct_signed_0dp`: a signed percentage, no decimal, e.g. "+18%" /
+    "-7%" -- the topic-overlap table's own `change_a`/`change_b` (a
+    genuine ratio, `topic_data.pair_topics`' `change_w1_w2`, unlike the
+    retired shared-frontier table's absolute-delta reading of the same
+    name)."""
+    if v is None or pd.isna(v):
+        return NA_MARK
+    return format(float(v), "+.0%")
 
 
 def _names_and_slots(ctx: dict, ids: list[str]) -> tuple[dict, dict]:
@@ -319,52 +336,138 @@ def _render_sdg(ctx: dict, subs: dict, ids: list[str], names: dict, slots: dict)
 
 
 # ---------------------------------------------------------------------------
-# 4. Frontier -- positioning figures, then the shared-frontier deep dive.
+# 4. Topic overlap -- the shared selector, the owner-coloured plane, the
+#    balance bars, and their shared table (D31; absorbs the earlier
+#    Frontier positioning + "who holds the shared frontier" pair).
 # ---------------------------------------------------------------------------
 
-def _render_frontier_positioning(ctx: dict, subs: dict, ids: list[str], names: dict, slots: dict) -> pd.DataFrame:
-    Cw = copy.COMPARE
-    st.subheader(Cw["FRONTIER_HEADER"])
-    pos = CD.frontier_positioning(ctx, subs, ids)
-    cells = pos.set_index("institution_id")
-    cols = st.columns(len(ids))
-    for col, iid in zip(cols, ids):
-        row = cells.loc[iid]
-        with col:
-            colour = P.institution_color(slots[iid])
-            st.markdown(f'<span style="color:{colour}">●</span> **{_esc(names[iid])}**',
-                        unsafe_allow_html=True)
-            st.metric(Cw["FRONTIER_POSITIONING_SHARE"], _pct(row["share_top25"]))
-            st.metric(Cw["FRONTIER_POSITIONING_PUBLISHED"], _count(row["n_top25_topics_published"]))
-            st.metric(Cw["FRONTIER_POSITIONING_TOP_DECILE"], _count(row["n_of_those_top_decile"]))
-            st.metric(Cw["FRONTIER_POSITIONING_LED"], _count(row["n_topics_led_fair"]))
-            st.metric(Cw["FRONTIER_POSITIONING_STARS"], _count(row["n_stars_in_frontier_topics"]))
-    st.caption(Cw["FRONTIER_SHARED_LINE"].format(n=_count(pos.attrs.get("n_shared", 0))))
-    st.markdown(X.basis_caption(Cw["FRONTIER_POSITIONING_TIP"].format(y0=CORE_Y0, y1=CORE_Y1)),
+_PAIR_TOPIC_MODE_BY_LABEL: dict[str, str] = {}   # filled just below, once copy.FIND exists
+
+
+def _pair_topic_mode_options() -> list[str]:
+    """The five "Topics shown" mode labels, in the fixed order the
+    segmented control shows them -- SAME labels Find's own topic planes
+    use (`copy.FIND`, never duplicated into `copy.COMPARE`), reverse-mapped
+    into a module-level dict OF THIS FILE'S OWN (never `lib.views_find`'s:
+    no view module in this app imports another view module, and a shared
+    mutable global would let the two pages silently race on it)."""
+    order = [
+        (copy.FIND["TOPIC_MODE_VOLUME"], TD.MODE_VOLUME),
+        (copy.FIND["TOPIC_MODE_FWCI"], TD.MODE_FWCI),
+        (copy.FIND["TOPIC_MODE_LED"], TD.MODE_LED),
+        (copy.FIND["TOPIC_MODE_STARS"], TD.MODE_STARS),
+        (copy.FIND["TOPIC_MODE_EMERGENCE"], TD.MODE_EMERGENCE),
+    ]
+    _PAIR_TOPIC_MODE_BY_LABEL.clear()
+    _PAIR_TOPIC_MODE_BY_LABEL.update(dict(order))
+    return [label for label, _ in order]
+
+
+@st.cache_data(show_spinner=False, max_entries=8, ttl=1800)
+def _pair_topics_frame(a: str, b: str, mode: str, n: int, fwci_stat: str) -> pd.DataFrame:
+    """Bounded per-(pair, mode, n, fwci_stat) cache (D26) -- `ctx` is read
+    from the process-wide scenario cache inside, never passed as an
+    argument, so the cache key stays a small hashable tuple."""
+    return TD.pair_topics(SC.bundle()["ctx"], a, b, mode, n, fwci_stat)
+
+
+# ---------------------------------------------------------------------------
+# The topic-overlap table's own per-institution column headers -- a SHORT
+# name per slot (`index.display_name_acronyms`' first entry when present,
+# else `display_name` cut at `SHORT_NAME_CUT` characters with an ellipsis),
+# so a header reads "Publications, CNRS" rather than the bare letter
+# "Publications, A". `docs/tooltip_spec.yaml`'s own `compare_topic_table`
+# entry documents the SAME five templates verbatim (with `{A}`/`{B}`
+# placeholders); mirrored here as plain Python constants, a deliberate,
+# narrow exception to this module's own "every string from `lib.copy`"
+# convention, scoped to exactly these five short-name templates.
+# ---------------------------------------------------------------------------
+SHORT_NAME_CUT = 24   # characters, before the ellipsis
+
+_COL_PUBLICATIONS_TMPL = "Publications, {name}"
+_COL_CHANGE_TMPL = "Change, {name}"
+_COL_WORLD_RANK_TMPL = "World rank, {name}"
+_COL_STAR_PAPERS_TMPL = "Star papers, {name}"
+_COL_ON_OPENALEX_TMPL = "{name} on OpenAlex"
+
+
+def _short_institution_name(ctx: dict, iid: str) -> str:
+    """`index.display_name_acronyms`'s own first pipe-delimited entry when
+    the institution carries one (e.g. "CNRS", never the empty string this
+    column ships for an institution with no recorded acronym); otherwise
+    `display_name` cut at `SHORT_NAME_CUT` characters with a single
+    ellipsis character appended -- never a mid-word hard cut with no
+    indication anything was removed."""
+    row = ctx["index_by_id"].loc[iid]
+    acronyms = row.get("display_name_acronyms")
+    if isinstance(acronyms, str) and acronyms.strip():
+        return acronyms.split("|")[0].strip()
+    name = str(row.get("display_name") or iid)
+    if len(name) > SHORT_NAME_CUT:
+        return name[:SHORT_NAME_CUT] + "\N{HORIZONTAL ELLIPSIS}"
+    return name
+
+
+def _render_topic_overlap(ctx: dict, ids: list[str], names: dict, slots: dict) -> tuple[str, int, str]:
+    """Returns `(mode, n, fwci_stat)` -- the resolved control state, so
+    `render()` can thread the SAME selection into the workbook download
+    (JOB 3: the "Topic overlap" sheet reflects the CURRENT mode, not a
+    fixed default)."""
+    Cw, Fw = copy.COMPARE, copy.FIND
+    st.subheader(Cw["TOPIC_OVERLAP_HEADER"])
+
+    mode_label = st.segmented_control(Fw["TOPIC_MODE_LABEL"], _pair_topic_mode_options(),
+                                      default=Fw["TOPIC_MODE_VOLUME"], required=True,
+                                      key="compare_topic_mode", **state.PERSIST)
+    mode = _PAIR_TOPIC_MODE_BY_LABEL.get(mode_label or Fw["TOPIC_MODE_VOLUME"], TD.MODE_VOLUME)
+    c_n, c_stat = st.columns([3, 2])
+    with c_n:
+        n = st.slider(Cw["TOPIC_N_LABEL"], TD.PAIR_N_MIN, TD.PAIR_N_MAX,
+                      TOPIC_N_DEFAULT, step=TOPIC_N_STEP, key="compare_topic_n", **state.PERSIST)
+    with c_stat:
+        stat_label = st.radio(Fw["TOPIC_FWCI_STAT_LABEL"],
+                              [Fw["TOPIC_FWCI_STAT_MEAN"], Fw["TOPIC_FWCI_STAT_MEDIAN"]],
+                              index=0, horizontal=True, key="compare_topic_fwci_stat", **state.PERSIST)
+    fwci_stat = (TD.FWCI_STAT_MEAN if stat_label != Fw["TOPIC_FWCI_STAT_MEDIAN"]
+                else TD.FWCI_STAT_MEDIAN)
+
+    a, b = ids
+    pairs = _pair_topics_frame(a, b, mode, n, fwci_stat)
+    if pairs.empty:
+        st.caption(Cw["TOPIC_OVERLAP_EMPTY"])
+        return mode, n, fwci_stat
+
+    name_a, name_b = names[a], names[b]
+    st.markdown(X.legend_strip(ids, slots=slots, names=names, shared=True,
+                               extra=[(Cw["LEGEND_JOINT"], P.JOINT_TOPIC_COLOR)]),
                unsafe_allow_html=True)
-    return pos
 
+    facts = TD.pair_topic_set_caption(pairs)
+    st.markdown(X.basis_caption(Cw["CAPTION_TOPIC_OVERLAP_PERIMETER"].format(
+        y0=CORE_Y0, y1=CORE_Y1, name_a=name_a, name_b=name_b,
+        n_shared=_count(facts["n_shared"]), n_a_only=_count(facts["n_a_only"]),
+        n_b_only=_count(facts["n_b_only"]), n_catchall=_count(facts["n_catchall"]),
+        n_no_frontier=_count(facts["n_no_frontier"]))), unsafe_allow_html=True)
 
-def _toggle_frontier_show_all() -> None:
-    """on_click target -- a plain session_state flip, with no manual rerun
-    call after it (known lesson: stacking one on top of a widget's own rerun
-    poisons every `st.download_button` for the session)."""
-    st.session_state["compare_frontier_show_all"] = True
+    scored = pairs[np.isfinite(pd.to_numeric(pairs["expansion_latest"], errors="coerce"))
+                  & np.isfinite(pd.to_numeric(pairs["acceleration_latest"], errors="coerce"))]
+    if scored.empty:
+        st.caption(Cw["TOPIC_OVERLAP_PLANE_EMPTY"])
+    else:
+        fig = XT.fig_plane_frontier(pairs, color_by="owner", slots=slots, names=names, ids=ids)
+        st.plotly_chart(fig, width="stretch", key="fig_topic_overlap_plane")
+    st.caption(Fw["AXIS_DEF_TOPIC_PLANES"])
 
+    bars_df = pairs.rename(columns={"expansion_latest": "expansion", "acceleration_latest": "acceleration"})
+    fig = XT.balance_bars(bars_df, ids, slots=slots, names=names, sort_col="combined_vol")
+    st.plotly_chart(fig, width="stretch", key="fig_topic_overlap_bars")
+    st.markdown(X.chart_note(
+        Cw["TOPIC_OVERLAP_BARS_NOTE"],
+        Cw["TOPIC_OVERLAP_BARS_TIP"].format(floor=int(TD.PAIR_JOINT_FLOOR))),
+        unsafe_allow_html=True)
 
-def _rank_label(rank, pool) -> str:
-    if pd.isna(rank):
-        return NA_MARK
-    pool_label = (copy.COMPARE["RANK_POOL_UNIVERSITIES"] if pool == "education"
-                 else copy.COMPARE["RANK_POOL_ALL"])
-    return f"#{int(rank)} · {pool_label}"
-
-
-def _change_label(change, low) -> str:
-    if pd.isna(change):
-        return NA_MARK
-    dagger = X.LOW_VOLUME_GLYPH if low else ""
-    return f"{change:+.1f}{dagger}"
+    _render_topic_overlap_table(ctx, pairs, ids, names)
+    return mode, n, fwci_stat
 
 
 def _join_keywords(raw) -> str:
@@ -380,79 +483,76 @@ def _join_keywords(raw) -> str:
     return ", ".join(str(raw).split("|"))
 
 
-def _render_shared_frontier_table(frame: pd.DataFrame, ids: list[str], names: dict) -> None:
+def _render_topic_overlap_table(ctx: dict, pairs: pd.DataFrame, ids: list[str], names: dict) -> None:
+    """`compare_topic_table` (`docs/tooltip_spec.yaml`), exactly: 18
+    columns in the spec's own order, sorted like the bars (`pairs` already
+    arrives sorted by combined volume descending -- `topic_data.
+    pair_topics`' own return order), capped at `TOPIC_TABLE_CAP` rows.
+    The per-institution column headers carry each institution's own SHORT
+    name (`_short_institution_name`), never the bare letter "A"/"B" -- the
+    caller passes `ctx` only for this lookup, `pairs` itself never keys on
+    it."""
     Cw = copy.COMPARE
     a, b = ids
     name_a, name_b = names[a], names[b]
+    short_a, short_b = _short_institution_name(ctx, a), _short_institution_name(ctx, b)
+    n_total = len(pairs)
+    capped = pairs.head(TOPIC_TABLE_CAP) if n_total > TOPIC_TABLE_CAP else pairs
     disp = pd.DataFrame({
-        "topic": [f"{t}{' ' + X.TOP_DECILE_GLYPH if d else ''}"
-                 for t, d in zip(frame["topic_name"], frame["is_top_decile"])],
-        "keywords": [_join_keywords(v) for v in frame["keywords"]],
-        "frontierness": [_fmt_frontier(v) for v in frame["frontier_score"]],
-        "expansion": [_fmt_frontier(v) for v in frame["expansion"]],
-        "acceleration": [_fmt_frontier(v) for v in frame["acceleration"]],
-        "vol_a": frame["vol_a"],
-        "vol_b": frame["vol_b"],
-        "vol_joint": [NA_MARK if not k else _count(v)
-                     for k, v in zip(frame["joint_known"], frame["vol_joint"])],
-        "change_a": [_change_label(c, low) for c, low in zip(frame["change_a"], frame["low_volume_a"])],
-        "change_b": [_change_label(c, low) for c, low in zip(frame["change_b"], frame["low_volume_b"])],
-        "rank_a": [_rank_label(r, p) for r, p in zip(frame["rank_a"], frame["pool_a"])],
-        "rank_b": [_rank_label(r, p) for r, p in zip(frame["rank_b"], frame["pool_b"])],
-        "stars_a": frame["stars_a"],
-        "stars_b": frame["stars_b"],
-        "url_a": frame["url_a"],
-        "url_b": frame["url_b"],
-        "url_joint": frame["url_joint"],
+        "topic": [XT._fmt_topic_name_flagged(t, e, r) for t, e, r in
+                 zip(capped["topic_name"], capped["is_excluded"], capped["exclusion_reason_label"])],
+        "held_by": [XT._fmt_owner_clause(o, name_a, name_b) for o in capped["owner"]],
+        "keywords": [_join_keywords(v) for v in capped["keywords"]],
+        "frontier_score": [_fmt_frontier(v) for v in capped["frontier_score_latest"]],
+        "expansion": [_fmt_frontier(v) for v in capped["expansion_latest"]],
+        "acceleration": [_fmt_frontier(v) for v in capped["acceleration_latest"]],
+        "vol_a": capped["vol_a"],
+        "vol_b": capped["vol_b"],
+        "vol_joint": [XT._fmt_joint_or_floor(v) for v in capped["vol_joint"]],
+        "change_a": [_pct_signed_0dp(v) for v in capped["change_a"]],
+        "change_b": [_pct_signed_0dp(v) for v in capped["change_b"]],
+        "rank_a": [_count(v) for v in capped["rank_a"]],
+        "rank_b": [_count(v) for v in capped["rank_b"]],
+        "stars_a": capped["stars_a"],
+        "stars_b": capped["stars_b"],
+        "url_a": capped["url_a"],
+        "url_b": capped["url_b"],
+        "url_joint": capped["url_joint"],
     })
     st.dataframe(
-        disp, hide_index=True, width="stretch", key="tbl_shared_frontier",
+        disp, hide_index=True, width="stretch", key="tbl_topic_overlap",
         column_config={
             "topic": st.column_config.TextColumn(Cw["COL_TOPIC"]),
+            "held_by": st.column_config.TextColumn(Cw["COL_HELD_BY"]),
             "keywords": st.column_config.TextColumn(Cw["COL_KEYWORDS"]),
-            "frontierness": st.column_config.TextColumn(Cw["COL_FRONTIERNESS"]),
+            "frontier_score": st.column_config.TextColumn(Cw["COL_FRONTIER_SCORE"]),
             "expansion": st.column_config.TextColumn(Cw["COL_EXPANSION"]),
             "acceleration": st.column_config.TextColumn(Cw["COL_ACCELERATION"]),
-            "vol_a": st.column_config.NumberColumn(Cw["COL_VOL"].format(name=name_a)),
-            "vol_b": st.column_config.NumberColumn(Cw["COL_VOL"].format(name=name_b)),
-            "vol_joint": st.column_config.TextColumn(Cw["COL_VOL_JOINT"]),
-            "change_a": st.column_config.TextColumn(Cw["COL_CHANGE"].format(name=name_a)),
-            "change_b": st.column_config.TextColumn(Cw["COL_CHANGE"].format(name=name_b)),
-            "rank_a": st.column_config.TextColumn(Cw["COL_RANK"].format(name=name_a)),
-            "rank_b": st.column_config.TextColumn(Cw["COL_RANK"].format(name=name_b)),
-            "stars_a": st.column_config.NumberColumn(Cw["COL_STARS"].format(name=name_a)),
-            "stars_b": st.column_config.NumberColumn(Cw["COL_STARS"].format(name=name_b)),
-            "url_a": st.column_config.LinkColumn(Cw["COL_LINK"].format(name=name_a), display_text=name_a),
-            "url_b": st.column_config.LinkColumn(Cw["COL_LINK"].format(name=name_b), display_text=name_b),
-            "url_joint": st.column_config.LinkColumn(Cw["COL_LINK_JOINT"], display_text=Cw["COL_LINK_JOINT"]),
+            "vol_a": st.column_config.NumberColumn(_COL_PUBLICATIONS_TMPL.format(name=short_a)),
+            "vol_b": st.column_config.NumberColumn(_COL_PUBLICATIONS_TMPL.format(name=short_b)),
+            "vol_joint": st.column_config.TextColumn(Cw["COL_JOINT"]),
+            "change_a": st.column_config.TextColumn(_COL_CHANGE_TMPL.format(name=short_a)),
+            "change_b": st.column_config.TextColumn(_COL_CHANGE_TMPL.format(name=short_b)),
+            "rank_a": st.column_config.TextColumn(_COL_WORLD_RANK_TMPL.format(name=short_a)),
+            "rank_b": st.column_config.TextColumn(_COL_WORLD_RANK_TMPL.format(name=short_b)),
+            "stars_a": st.column_config.NumberColumn(_COL_STAR_PAPERS_TMPL.format(name=short_a)),
+            "stars_b": st.column_config.NumberColumn(_COL_STAR_PAPERS_TMPL.format(name=short_b)),
+            "url_a": st.column_config.LinkColumn(_COL_ON_OPENALEX_TMPL.format(name=short_a), display_text=name_a),
+            "url_b": st.column_config.LinkColumn(_COL_ON_OPENALEX_TMPL.format(name=short_b), display_text=name_b),
+            "url_joint": st.column_config.LinkColumn(Cw["COL_JOINT_ON_OPENALEX"],
+                                                      display_text=Cw["COL_JOINT_ON_OPENALEX"]),
         },
     )
-    st.caption(Cw["SHARED_FRONTIER_TABLE_CAPTION"].format(
-        w1=_window(CD.DYNAMICS_W1), w2=_window(CD.DYNAMICS_W2), floor=int(CD.LOW_VOLUME_FLOOR)))
-
-
-def _render_shared_frontier(ctx: dict, subs: dict, ids: list[str], names: dict, slots: dict) -> pd.DataFrame:
-    Cw = copy.COMPARE
-    st.subheader(Cw["SHARED_FRONTIER_HEADER"])
-    frame = CD.shared_frontier(ctx, subs, ids)
-    if frame.empty:
-        st.caption(Cw["SHARED_FRONTIER_TIP"].format(floor=int(X.JOINT_FLOOR)))
-        return frame
-    st.markdown(X.legend_strip(ids, slots=slots, names=names, shared=True), unsafe_allow_html=True)
-    st.markdown(X.basis_caption(Cw["SHARED_FRONTIER_BASIS_CAPTION"]), unsafe_allow_html=True)
-    show_all = bool(st.session_state.get("compare_frontier_show_all", False))
-    top_n = None if show_all else MIRROR_TOP_N_DEFAULT
-    fig = X.mirror_frontier(frame, [names[ids[0]], names[ids[1]]], [slots[ids[0]], slots[ids[1]]],
-                            top_n=top_n)
-    st.plotly_chart(fig, width="stretch", key="fig_mirror_frontier")
-    if not show_all and len(frame) > MIRROR_TOP_N_DEFAULT:
-        st.button(Cw["SHOW_ALL"].format(n=len(frame)), key="btn_frontier_show_all",
-                 on_click=_toggle_frontier_show_all)
-    st.markdown(X.chart_note(Cw["SHARED_FRONTIER_NOTE"],
-                             Cw["SHARED_FRONTIER_TIP"].format(floor=int(X.JOINT_FLOOR))),
-               unsafe_allow_html=True)
-    _render_shared_frontier_table(frame, ids, names)
-    return frame
+    # The "A is {name}; B is {name}" caption is DROPPED -- every header
+    # that used to read the bare letter "A"/"B" now carries the
+    # institution's own short name directly, so decoding a letter into a
+    # name is no longer a real reading gap the caption needs to close.
+    # `Cw["TOPIC_OVERLAP_TABLE_AB_CAPTION"]` itself stays defined in `lib/
+    # copy.py`, simply no longer called from here.
+    n_caption = (Cw["TOPIC_OVERLAP_TABLE_CAPTION_CAPPED"].format(cap=int(TOPIC_TABLE_CAP), n=_count(n_total))
+                if n_total > TOPIC_TABLE_CAP
+                else Cw["TOPIC_OVERLAP_TABLE_CAPTION_FULL"].format(n=_count(n_total)))
+    st.caption(n_caption)
 
 
 # ---------------------------------------------------------------------------
@@ -593,16 +693,20 @@ def _render_relationship(ctx: dict, subs: dict, ids: list[str], names: dict, slo
 # 6. One Excel at the end, then the share-link box.
 # ---------------------------------------------------------------------------
 
-def _workbook_sheets(ctx: dict, subs: dict, ids: list[str]) -> list[tuple[str, pd.DataFrame]]:
-    """The SEVEN sheets `copy.COMPARE` names, in that order -- pure function (no
-    Streamlit), so it is directly unit-testable and directly what
-    `_workbook_bytes` (the cached wrapper) calls."""
+def _workbook_sheets(ctx: dict, subs: dict, ids: list[str], mode: str, n: int,
+                     fwci_stat: str) -> list[tuple[str, pd.DataFrame]]:
+    """The SIX sheets `copy.COMPARE` names, in that order -- pure function
+    (no Streamlit), so it is directly unit-testable and directly what
+    `_workbook_bytes` (the cached wrapper) calls. `mode`/`n`/`fwci_stat`
+    (JOB 3): the "Topic overlap" sheet is `topic_data.pair_topics` for the
+    CURRENT selector state, uncapped -- every row, every column, no
+    `TOPIC_TABLE_CAP` applied (that cap is the on-page table's own, not the
+    export's)."""
     Cw = copy.COMPARE
     cards_df = CD.cards(ctx, ids)
     subfields_df = CD.all_subfields(ctx, subs, ids)
     sdg_df = CD.sdg_frame(ctx, subs, ids)
-    pos_df = CD.frontier_positioning(ctx, subs, ids)
-    shared_df = CD.shared_frontier(ctx, subs, ids)
+    overlap_df = TD.pair_topics(ctx, ids[0], ids[1], mode, n, fwci_stat)
     rel = CD.relationship(ctx, ids, subs)
     if rel["yearly_qualifies"] and len(rel["yearly"]):
         yearly_df = rel["yearly"].copy()
@@ -623,27 +727,28 @@ def _workbook_sheets(ctx: dict, subs: dict, ids: list[str]) -> list[tuple[str, p
         (Cw["XLSX_SHEET_CARDS"], cards_df),
         (Cw["XLSX_SHEET_SUBFIELDS"], subfields_df),
         (Cw["XLSX_SHEET_SDG"], sdg_df),
-        (Cw["XLSX_SHEET_POSITIONING"], pos_df),
-        (Cw["XLSX_SHEET_SHARED_FRONTIER"], shared_df),
+        (Cw["XLSX_SHEET_TOPIC_OVERLAP"], overlap_df),
         (Cw["XLSX_SHEET_RELATIONSHIP_YEARLY"], yearly_df),
         (Cw["XLSX_SHEET_RECIPROCITY"], recip_df),
     ]
 
 
 @st.cache_data(show_spinner=False, max_entries=8, ttl=1800)
-def _workbook_bytes(ids: tuple[str, str]) -> bytes:
-    """Keyed on the hashable id pair ALONE -- ctx/subs are fetched
-    inside, from the process-wide scenario cache, never passed in as
-    arguments."""
+def _workbook_bytes(ids: tuple[str, str], mode: str, n: int, fwci_stat: str) -> bytes:
+    """Keyed on the hashable id pair PLUS the topic-overlap selector state
+    -- ctx/subs are fetched inside, from the process-wide scenario cache,
+    never passed in as arguments. The selector state must be part of the
+    key: two different selections must not silently share one cached
+    workbook."""
     ctx = SC.bundle()["ctx"]
     subs = SC.get("bestfit", "full")
-    return workbook_bytes(_workbook_sheets(ctx, subs, list(ids)))
+    return workbook_bytes(_workbook_sheets(ctx, subs, list(ids), mode, n, fwci_stat))
 
 
-def _render_export(ids: list[str]) -> None:
+def _render_export(ids: list[str], mode: str, n: int, fwci_stat: str) -> None:
     Cw = copy.COMPARE
     st.download_button(
-        Cw["EXPORT_BUTTON"], lambda: _workbook_bytes(tuple(ids)),
+        Cw["EXPORT_BUTTON"], lambda: _workbook_bytes(tuple(ids), mode, n, fwci_stat),
         file_name=workbook_filename(ids), mime=XLSX_MIME,
         help=Cw["EXPORT_HELP"], key="dl_compare_workbook")
 
@@ -674,10 +779,9 @@ def render() -> None:
     _render_cards(ctx, ids, names, slots)
     _render_shape(ctx, subs, ids, names, slots)
     _render_sdg(ctx, subs, ids, names, slots)
-    _render_frontier_positioning(ctx, subs, ids, names, slots)
-    _render_shared_frontier(ctx, subs, ids, names, slots)
+    topic_mode, topic_n, topic_fwci_stat = _render_topic_overlap(ctx, ids, names, slots)
     _render_relationship(ctx, subs, ids, names, slots)
 
     st.divider()
-    _render_export(ids)
+    _render_export(ids, topic_mode, topic_n, topic_fwci_stat)
     selection.share_link_block("compare", ids, caption=copy.COMPARE["DEEPLINK_LABEL"])

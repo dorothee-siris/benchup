@@ -49,8 +49,8 @@ IFREMER = "I154202486"      # the golden anchor pair (also the
 NIOZ = "I4210107283"        # Playwright render target)
 PAIR = [IFREMER, NIOZ]
 
-SECTION_HEADER_KEYS = ("CARDS_HEADER", "SHAPE_HEADER", "SDG_HEADER", "FRONTIER_HEADER",
-                       "SHARED_FRONTIER_HEADER", "RELATIONSHIP_HEADER")
+SECTION_HEADER_KEYS = ("CARDS_HEADER", "SHAPE_HEADER", "SDG_HEADER", "TOPIC_OVERLAP_HEADER",
+                       "RELATIONSHIP_HEADER")
 
 
 def _app(ids=None, **extra_state) -> AppTest:
@@ -235,42 +235,133 @@ def test_sdg_untagged_share_caption_names_both_institutions():
     assert "Ifremer" in text and "carries no Sustainable Development Goal tag" in text
 
 
-# ------------------------------------------------------------- frontier ----
+# --------------------------------------------------------- topic overlap ---
 
-def test_frontier_positioning_shows_five_metrics_per_institution():
+def test_topic_overlap_controls_render_and_default_to_volume_mode():
+    """The same three controls Find's own topic planes use (`copy.FIND`'s
+    labels, never duplicated) -- distinct `key=`s (`compare_topic_*`) so
+    the two pages' widgets never collide in one session_state."""
     at = _app(PAIR).run()
     assert not at.exception
-    labels = [m.label for m in at.get("metric")] if hasattr(at, "get") else [m.label for m in at.metric]
-    Cw = copy.COMPARE
-    for key in ("FRONTIER_POSITIONING_SHARE", "FRONTIER_POSITIONING_PUBLISHED",
-               "FRONTIER_POSITIONING_TOP_DECILE", "FRONTIER_POSITIONING_LED",
-               "FRONTIER_POSITIONING_STARS"):
-        assert labels.count(Cw[key]) == 2, (key, labels)
+    Fw = copy.FIND
+    segmented = {c.key: c.value for c in at.segmented_control}
+    assert segmented.get("compare_topic_mode") == Fw["TOPIC_MODE_VOLUME"]
+    sliders = {s.key: s.value for s in at.slider}
+    assert sliders.get("compare_topic_n") == 50
+    radios = {r.key: r.value for r in at.radio}
+    assert radios.get("compare_topic_fwci_stat") == Fw["TOPIC_FWCI_STAT_MEAN"]
 
 
-def test_shared_frontier_mirror_chart_and_table_both_render():
+def test_topic_overlap_perimeter_caption_names_the_counts():
     at = _app(PAIR).run()
     assert not at.exception
-    assert len(at.get("plotly_chart")) if hasattr(at, "get") else True  # smoke: no crash reading charts
+    from lib import topic_data as TD
+
+    ctx = SC.bundle()["ctx"]
+    out = TD.pair_topics(ctx, PAIR[0], PAIR[1], TD.MODE_VOLUME, 50, "mean")
+    facts = TD.pair_topic_set_caption(out)
+    from lib.charts_compare import _fmt_vol as _cnt
+
+    text = _markdown_text(at)
+    for n in (facts["n_shared"], facts["n_a_only"], facts["n_b_only"]):
+        assert _cnt(n) in text, (n, facts)
+
+
+def test_topic_overlap_plane_bars_and_table_all_render():
+    at = _app(PAIR).run()
+    assert not at.exception
+    charts = at.get("plotly_chart") if hasattr(at, "get") else []
+    assert len(charts) >= 2 if charts else True  # smoke: no crash reading charts (owner plane + bars)
     dataframes = at.dataframe
-    assert len(dataframes) >= 1, "the shared-frontier table must render as an st.dataframe"
+    assert len(dataframes) >= 1, "the topic-overlap table must render as an st.dataframe"
 
 
-def test_show_all_button_present_and_flips_session_state_via_on_click():
-    """`st.button(., on_click=.)` -- the HARD RULE: never `st.rerun`
-    after a manual state flip. Clicking the button must not raise, and the
-    flag it flips must be True afterwards -- proven through the widget's
-    own click, not by setting session_state directly (which would not
-    prove the callback wiring)."""
+def test_topic_overlap_legend_names_joint_and_shared():
     at = _app(PAIR).run()
     assert not at.exception
-    buttons = [b for b in at.button if b.label == copy.COMPARE["SHOW_ALL"].format(
-        n=len(CD.shared_frontier(SC.bundle()["ctx"], SC.get("bestfit", "full"), PAIR)))]
-    assert len(buttons) == 1, "the Show all button must be present for a pair with >20 shared topics"
-    assert "compare_frontier_show_all" not in at.session_state
-    buttons[0].click().run()
+    Cw = copy.COMPARE
+    html = _markdown_text(at)
+    assert Cw["LEGEND_JOINT"] in html
+
+
+# -------------------------------------------- topic-overlap table headers --
+# The table's per-institution columns must name the institution (a short
+# name per slot), never the bare letter "A"/"B".
+
+def _table_column_labels(at) -> dict:
+    """`st.dataframe`'s `column_config` rides in the element's own proto as
+    a JSON string (`columns`) -- AppTest exposes the raw proto directly, no
+    live DOM/browser needed to read a column header's configured label."""
+    import json
+
+    df_elt = at.dataframe[0]
+    cfg = json.loads(df_elt.proto.columns)
+    return {k: (v.get("label") if isinstance(v, dict) else v) for k, v in cfg.items()}
+
+
+def test_short_institution_name_uses_the_acronym_when_present():
+    from lib.engine import scenario_cache as SC
+    from lib.views_compare import _short_institution_name
+
+    ctx = SC.bundle()["ctx"]
+    assert _short_institution_name(ctx, IFREMER) != "A"
+    # CNRS's own row carries a real acronym -- the anchor pair for this
+    # specific check is Strasbourg x CNRS, not the module's own IFREMER/NIOZ.
+    assert _short_institution_name(ctx, "I1294671590") == "CNRS"
+
+
+def test_short_institution_name_truncates_a_long_display_name_with_an_ellipsis():
+    from lib.views_compare import SHORT_NAME_CUT, _short_institution_name
+
+    long_name = "A" * (SHORT_NAME_CUT + 10)
+    ctx = {"index_by_id": pd.DataFrame(
+        {"display_name_acronyms": [""], "display_name": [long_name]}, index=["I0"])}
+    short = _short_institution_name(ctx, "I0")
+    assert short == long_name[:SHORT_NAME_CUT] + "\N{HORIZONTAL ELLIPSIS}"
+    assert len(short) == SHORT_NAME_CUT + 1
+
+    # VACUITY: a name at or under the cut is NEVER truncated.
+    ctx_short = {"index_by_id": pd.DataFrame(
+        {"display_name_acronyms": [""], "display_name": ["Short Name"]}, index=["I0"])}
+    assert _short_institution_name(ctx_short, "I0") == "Short Name"
+
+
+def test_topic_overlap_table_headers_name_the_institutions_not_letters():
+    at = _app(["I68947357", "I1294671590"]).run()   # Strasbourg x CNRS
     assert not at.exception
-    assert at.session_state["compare_frontier_show_all"] is True
+    labels = _table_column_labels(at)
+    assert labels["vol_a"] == "Publications, Université de Strasbourg"
+    assert labels["vol_b"] == "Publications, CNRS"
+    assert labels["change_a"] == "Change, Université de Strasbourg"
+    assert labels["change_b"] == "Change, CNRS"
+    assert labels["rank_a"] == "World rank, Université de Strasbourg"
+    assert labels["rank_b"] == "World rank, CNRS"
+    assert labels["stars_a"] == "Star papers, Université de Strasbourg"
+    assert labels["stars_b"] == "Star papers, CNRS"
+    assert labels["url_a"] == "Université de Strasbourg on OpenAlex"
+    assert labels["url_b"] == "CNRS on OpenAlex"
+    # the shared/joint columns carry no institution name and stay fixed
+    assert labels["vol_joint"] == "Joint"
+    assert labels["url_joint"] == "Joint on OpenAlex"
+    assert labels["held_by"] == "Held by"
+
+    # VACUITY: none of the per-institution headers is the bare letter any more.
+    for key in ("vol_a", "vol_b", "change_a", "change_b", "rank_a", "rank_b",
+               "stars_a", "stars_b", "url_a", "url_b"):
+        assert labels[key] not in ("A", "B"), (key, labels[key])
+        assert not labels[key].endswith(", A") and not labels[key].endswith(", B"), (key, labels[key])
+
+
+def test_topic_overlap_table_ab_caption_dropped_n_caption_kept():
+    """The "A is {name}; B is {name}" caption is dropped now the headers
+    themselves carry the names -- the "every topic in the union, N in all"
+    (or capped) caption survives, since it states a fact the headers do
+    not (how many rows, and whether the table is capped)."""
+    at = _app(PAIR).run()
+    assert not at.exception
+    text = _caption_text(at)
+    assert " is Ifremer" not in text and " is Royal Netherlands" not in text
+    assert "in all" in text or "First" in text
 
 
 # --------------------------------------------------------- relationship ----
@@ -397,45 +488,59 @@ def test_workbook_download_button_present_with_the_d15_filename():
     assert len(buttons) == 1
 
 
-def test_workbook_bytes_carry_exactly_seven_named_sheets():
+def test_workbook_bytes_carry_exactly_six_named_sheets():
+    from lib import topic_data as TD
     from lib.exports_xlsx import workbook_filename
 
     assert workbook_filename(PAIR) == f"BenchUp_compare_{IFREMER}_{NIOZ}.xlsx"
-    data = VC._workbook_bytes(tuple(PAIR))
+    data = VC._workbook_bytes(tuple(PAIR), TD.MODE_VOLUME, 50, "mean")
     wb = openpyxl.load_workbook(io.BytesIO(data))
     Cw = copy.COMPARE
     expected = [Cw["XLSX_SHEET_CARDS"], Cw["XLSX_SHEET_SUBFIELDS"], Cw["XLSX_SHEET_SDG"],
-               Cw["XLSX_SHEET_POSITIONING"], Cw["XLSX_SHEET_SHARED_FRONTIER"],
+               Cw["XLSX_SHEET_TOPIC_OVERLAP"],
                Cw["XLSX_SHEET_RELATIONSHIP_YEARLY"], Cw["XLSX_SHEET_RECIPROCITY"]]
     assert wb.sheetnames == expected, wb.sheetnames
 
 
-def test_workbook_still_builds_after_the_show_all_state_flip():
-    """A known lesson (memory: streamlit-rerun-breaks-download-button): a
-    manual `st.rerun` on top of a widget's own rerun poisons every
-    `st.download_button` for the session. `_toggle_frontier_show_all` uses
-    `on_click` with no `st.rerun` call (grep-proved below) -- this test
-    proves the CONSEQUENCE end to end: the workbook builds identically
-    before AND after the flag flips, through a real click, not a direct
-    session_state write."""
+def test_workbook_topic_overlap_sheet_is_uncapped_and_matches_the_current_selector():
+    """JOB 3: the workbook's own "Topic overlap" sheet is `pair_topics` for
+    whatever selector state is passed in, EVERY row (no `TOPIC_TABLE_CAP`),
+    every column -- the on-page table's 200-row cap is a rendering concern
+    only, never applied to the export."""
+    from lib import topic_data as TD
+
+    data = VC._workbook_bytes(tuple(PAIR), TD.MODE_LED, 50, "mean")
+    wb = openpyxl.load_workbook(io.BytesIO(data))
+    sheet = wb[copy.COMPARE["XLSX_SHEET_TOPIC_OVERLAP"]]
+    ctx = SC.bundle()["ctx"]
+    want = TD.pair_topics(ctx, PAIR[0], PAIR[1], TD.MODE_LED, 50, "mean")
+    assert sheet.max_row - 1 == len(want)  # header row + one row per topic, uncapped
+    assert sheet.max_column == len(TD.PAIR_COLS)
+
+
+def test_workbook_still_builds_after_the_topic_mode_changes():
+    """Same lesson the retired "show all" flip once proved (memory:
+    streamlit-rerun-breaks-download-button), re-checked against the
+    topic-overlap controls that replaced it: changing a control must not
+    poison `st.download_button` for the rest of the session."""
+    from lib import topic_data as TD
+
     at = _app(PAIR).run()
     assert not at.exception
-    before = VC._workbook_bytes(tuple(PAIR))
+    before = VC._workbook_bytes(tuple(PAIR), TD.MODE_VOLUME, 50, "mean")
 
-    buttons = [b for b in at.button if b.label == copy.COMPARE["SHOW_ALL"].format(
-        n=len(CD.shared_frontier(SC.bundle()["ctx"], SC.get("bestfit", "full"), PAIR)))]
-    if buttons:
-        buttons[0].click().run()
-        assert not at.exception
+    at.session_state["compare_topic_mode"] = copy.FIND["TOPIC_MODE_LED"]
+    at.run()
+    assert not at.exception
 
-    after = VC._workbook_bytes(tuple(PAIR))
-    assert before == after  # same (a, b) key -> the SAME cached bytes, workbook unaffected by the UI flag
+    after_same_key = VC._workbook_bytes(tuple(PAIR), TD.MODE_VOLUME, 50, "mean")
+    assert before == after_same_key  # same (ids, mode, n, stat) key -> the SAME cached bytes
 
     # the download button itself must still be present and clickable-looking
-    # (no exception) after the flip -- the actual regression named above
-    # was a SILENTLY BROKEN button, not a raised exception, so the
-    # positive assertion (present, page still exception-free) is the real
-    # proof here.
+    # (no exception) after the control change -- the actual regression this
+    # lesson names was a SILENTLY BROKEN button, not a raised exception, so
+    # the positive assertion (present, page still exception-free) is the
+    # real proof here.
     dl_buttons = [b for b in at.download_button if b.label == copy.COMPARE["EXPORT_BUTTON"]]
     assert len(dl_buttons) == 1
 
@@ -444,8 +549,11 @@ def test_no_st_rerun_call_anywhere_in_views_compare():
     """The HARD RULE, source-level: `st.rerun` never appears as LIVE CODE
     in this file (a prose mention inside a docstring
     explaining the rule -- as this very test's own docstring does -- is not
-    a violation; only an AST `Call` node is). `on_click` callbacks
-    (`_toggle_frontier_show_all`) are the ONLY state-flip mechanism."""
+    a violation; only an AST `Call` node is). D31 retired this page's one
+    `on_click` state-flip mechanism (`_toggle_frontier_show_all`, the
+    "Show all" button) along with the section it belonged to -- every
+    remaining control on this page (the topic-overlap selector included)
+    is a plain value-returning widget, no manual rerun of any kind."""
     import ast
 
     path = APP_DIR / "lib" / "views_compare.py"
@@ -454,7 +562,7 @@ def test_no_st_rerun_call_anywhere_in_views_compare():
             if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
             and n.func.attr == "rerun"]
     assert calls == [], [(c.lineno, ast.dump(c)) for c in calls]
-    assert "on_click=_toggle_frontier_show_all" in path.read_text(encoding="utf-8")
+    assert "on_click" not in path.read_text(encoding="utf-8")
 
     # VACUITY: a real Call node IS found in a scratch tree carrying one.
     scratch = ast.parse("import streamlit as st\nst.rerun()\n")
@@ -490,7 +598,10 @@ def test_format_percent_is_banned_in_this_streams_own_files():
 
 DELETED_NAMES = ("metric_frame", "erc_long", "frontier_pooled", "impact_index",
                  "impact_subfields", "coverage", "top_shared_subfields",
-                 "UNAVAILABLE_REASON", "FRONTIER_POOLS")
+                 "UNAVAILABLE_REASON", "FRONTIER_POOLS",
+                 # D31: absorbed into the topic overlap (`lib.topic_data.
+                 # pair_topics`) -- neither survives in views_compare.py.
+                 "frontier_positioning", "shared_frontier", "mirror_frontier")
 
 
 def test_no_deleted_compare_data_surface_is_imported_by_this_stream():
