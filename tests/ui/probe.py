@@ -214,6 +214,22 @@ def _probe_find(page) -> None:
         check(got_score is not None and float(got_score) >= 0,
               f"Find golden: workbook L1 rank-1 carries a real, non-negative score value ({got_score})")
 
+    # --- the workbook's uncapped "Topics" sheet, row count golden
+    #     against `TopicData.institution_topics` recomputed off the engine
+    #     directly (the SAME frame the topic-planes panel reads) -----------
+    from lib import topic_data as TD
+
+    topics_ws_name = next((s for s in book.sheetnames if s == "Topics"), None)
+    check(topics_ws_name is not None, f"Find golden: a 'Topics' sheet exists in the workbook ({book.sheetnames})")
+    if topics_ws_name:
+        ws = book[topics_ws_name]
+        header = [c.value for c in ws[1]]
+        check(header == TD.TOPIC_COLS, f"Find golden: the Topics sheet header matches TOPIC_COLS ({header})")
+        expected_rows = len(TD.institution_topics(ctx, IFREMER_ID, TREE))
+        got_rows = ws.max_row - 1
+        check(got_rows == expected_rows,
+              f"Find golden: the Topics sheet is uncapped ({got_rows} rows vs {expected_rows} expected)")
+
 
 # ================================================================== compare
 
@@ -265,6 +281,16 @@ def _probe_compare(page) -> None:
                   f"row count ({btn_n} vs {n_shared})")
     else:
         check(btn.count() == 0, f"Compare golden: no 'Show all' button when recomputed n={n_shared} <= 20")
+
+    # --- relationship tile recompute: Joint publications (core_total), off
+    #     `compare_data.relationship` (pure), matched against the tile's own
+    #     rendered text -- the SAME thin-space thousands formatter as the
+    #     cards above (`charts_compare._fmt_vol`, the same `fr_int`
+    #     convention `charts.py::_fmt_vol` uses). ---
+    rel = CD.relationship(ctx, ids, subs)
+    formatted_core = format(int(round(float(rel["core_total"]))), ",").replace(",", thin_space)
+    ok = _wait_for(page, lambda: formatted_core in _full_text(page), timeout_ms=20_000)
+    check(ok, f"Compare golden: recomputed Joint-publications figure {formatted_core!r} renders on the page")
 
     check(_n_figures(page) >= 3, f"Compare: at least 3 Plotly figures render (found {_n_figures(page)})")
     _no_exception(page, "Compare (end of probe)")

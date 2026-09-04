@@ -103,10 +103,11 @@ TREE_LABELS = {
 BASIS_LABELS = {"frac": "Fractional counting", "full": "Full counting"}
 COMPARE_SECTION_HEADERS = ["Key figures", "Thematic shape", "SDG profile", "Frontier",
                            "Who holds the shared frontier", "The relationship"]
+COMPARE_TILE_LABELS = ["Joint publications", "Joint star papers", "Momentum"]
 COMPARE_TAB_LABELS = ["Profile", "Impact"]
 PROMPT_NEED_TWO = "Pick two institutions above to compare them."
 SLOT_EMPTY_LABEL = "Empty slot"
-FIND_XLSX_SHEET_COUNT = 14   # Profile + Overview + 10 ALL_LENSES sheets + Aspirational + leaders sheet
+FIND_XLSX_SHEET_COUNT = 15   # Profile + Overview + 10 ALL_LENSES sheets + Aspirational + leaders sheet + Topics
 COMPARE_XLSX_SHEETS = ["Cards", "Subfields", "SDG", "Positioning", "Shared frontier",
                        "Relationship yearly", "Reciprocity"]
 METHODS_SECTION_TITLES = [
@@ -357,7 +358,7 @@ def check_find(page) -> None:
     _pick_option(page, BASIS_LABELS["frac"])
     _settle(page, 2500)
 
-    # --- ERC profile panel (one of the six collapsed profile panels) -------
+    # --- ERC profile panel (one of the five collapsed profile panels) ------
     erc_summary = page.locator(".st-key-panel_erc summary")
     check(erc_summary.count() == 1, "Find: the 'ERC profile' panel expander renders")
     erc_summary.click(timeout=ACTION_TIMEOUT_MS)
@@ -371,6 +372,28 @@ def check_find(page) -> None:
     check(sort_erc_options.count() == 2,
           f"Find: the ERC panel's sort control renders (found {sort_erc_options.count()} options)")
     _no_exception(page, "Find (ERC panel)")
+
+    # --- the topic planes: "Topics: volume, impact and frontier" panel ----
+    topics_summary = page.locator(".st-key-panel_topic_planes summary")
+    check(topics_summary.count() == 1, "Find: the topic-planes panel expander renders")
+    topics_summary.click(timeout=ACTION_TIMEOUT_MS)
+    _settle(page, 1500)
+    check("Topics: volume, impact and frontier" in _full_page_text(page),
+          "Find: the opened topic-planes panel shows its title")
+    plane_a_traces = page.evaluate(
+        "(() => { const el = document.querySelector('.st-key-fig_plane_impact .js-plotly-plot');"
+        " return el && el.data ? el.data.length : -1; })()")
+    check(plane_a_traces > 0, f"Find: plane A (volume/impact) renders with data (n_traces={plane_a_traces})")
+    plane_b_traces = page.evaluate(
+        "(() => { const el = document.querySelector('.st-key-fig_plane_frontier .js-plotly-plot');"
+        " return el && el.data ? el.data.length : -1; })()")
+    check(plane_b_traces > 0, f"Find: plane B (frontier) renders with data (n_traces={plane_b_traces})")
+    topic_mode_options = page.locator(".st-key-topic_mode button[data-variant='segmented_control']")
+    check(topic_mode_options.count() == 5,
+          f"Find: the 'Topics shown' selector offers 5 modes (found {topic_mode_options.count()})")
+    check(page.locator(".st-key-topic_n").count() == 1, "Find: the topics-shown slider renders")
+    check(page.locator(".st-key-topic_fwci_stat").count() == 1, "Find: the FWCI mean/median radio renders")
+    _no_exception(page, "Find (topic planes panel)")
 
     # --- lens tabs present and switchable -----------------------------------
     tabs = page.locator('[data-testid="stTab"]')
@@ -420,6 +443,16 @@ def check_compare_deeplink(page) -> None:
     headings = page.locator('[data-testid="stHeading"]').all_text_contents()
     missing = [h for h in COMPARE_SECTION_HEADERS if h not in headings]
     check(not missing, f"Compare: every section header renders ({missing or 'all present'}; got {headings})")
+
+    # --- the relationship's three tiles + the always-visible evidence line -
+    n_tiles = page.locator('div[class*="benchup-kpi"]').count()
+    check(n_tiles == 21, f"Compare: 18 card tiles + 3 relationship tiles render (found {n_tiles})")
+    body_text = page.locator("body").inner_text()
+    for label in COMPARE_TILE_LABELS:
+        check(label in body_text, f"Compare: relationship tile {label!r} renders")
+    check("joint articles" in body_text, "Compare: the momentum evidence line renders (every state says so)")
+    check(page.locator('[class*="st-key-fig_reciprocity"] .js-plotly-plot').count() >= 1,
+          "Compare: the reciprocity scatter renders")
 
     # --- Profile/Impact tabs present and switchable (Thematic shape) -------
     # DOM FACT: Compare renders TWO separate st.tabs() widgets with the SAME

@@ -117,19 +117,6 @@ def subfields_df(dim) -> pd.DataFrame:
 
 
 @pytest.fixture(scope="module")
-def topics_df(dim) -> pd.DataFrame:
-    """Top topics for Strasbourg, taken from the SHIPPED topic dimension joined
-    to a real per-institution volume slice. `topics_all.parquet` is the deep
-    frame the app reads column-subsetted; here a bounded read is enough."""
-    t = pd.read_parquet(DATA / "topics_all.parquet",
-                        columns=["institution_id", "topic_id", "share_frac", "vol_frac", "vol_full"])
-    t = t[t["institution_id"] == GDANSK]
-    out = t.merge(dim, on="topic_id", how="left")
-    out["share"] = out["share_frac"]
-    return out.sort_values("share", ascending=False).head(30).reset_index(drop=True)
-
-
-@pytest.fixture(scope="module")
 def sdg_df(seed_id) -> pd.DataFrame:
     s = pd.read_parquet(DATA / "sdg.parquet")
     s = s[s["institution_id"] == seed_id].copy()
@@ -229,8 +216,14 @@ def test_fig_share_si_nan_si_draws_no_mark(subfields_df):
     assert len(stems) == 0
     # the n/a rows are still on the y axis of the share panel
     assert len(_bar_traces(fig)[0].y) == len(subfields_df)
-    # and their hover names the missing value explicitly
-    assert any(P.NA_MARK in h for h in _bar_traces(fig)[0].customdata)
+    # (topic planes / spec compliance): a line whose `when` fails is
+    # OMITTED entirely, never shown as an empty "specialisation index n/a"
+    # -- so the specialisation-index hover label appears on exactly the rows
+    # that HAVE a defined si, never once more.
+    hovers = list(_bar_traces(fig)[0].customdata)
+    n_with_si_label = sum(1 for h in hovers if C.HOVER_SPECIALISATION_INDEX in h)
+    assert n_with_si_label == n_defined, (n_with_si_label, n_defined)
+    assert P.NA_MARK not in "".join(hovers), "no hover line is ever an empty n/a value"
 
 
 def test_fig_share_si_all_na_si_collapses_to_one_panel(subfields_df):
@@ -341,81 +334,6 @@ def test_fig_share_si_unit_grid_retired_for_outer_end_value_labels(fields_df):
     lo, hi = fig.layout.xaxis2.range
     assert lo < min(C.SI_NEUTRAL, si_vals.min())
     assert hi > max(C.SI_NEUTRAL, si_vals.max())
-
-
-def test_fig_topics_flags_excluded_rows(topics_df):
-    fig = C.fig_topics(topics_df, sort="volume")
-    bars = _bar_traces(fig)
-    assert len(bars) == 1 and bars[0].orientation == "h"
-    n_excl = int(topics_df["is_excluded"].fillna(False).sum())
-    glyphed = [y for y in bars[0].y if y.startswith(C.EXCLUDED_GLYPH)]
-    assert len(glyphed) == n_excl
-    opac = list(bars[0].marker.opacity)
-    assert sum(1 for o in opac if o == P.MUTED_OPACITY) == n_excl
-    if n_excl:
-        assert any(C.HOVER_EXCLUDED in h for h in bars[0].customdata)
-    assert set(bars[0].marker.color) <= set(P.OA_DOMAIN_COLORS.values()) | {P.COMPARISON}
-
-
-def test_fig_frontier_scatter_quadrants_and_outline(topics_df):
-    fig = C.fig_frontier(topics_df)
-    pts = [t for t in fig.data if isinstance(t, go.Scatter)]
-    assert len(pts) == 1 and pts[0].mode == "markers"
-    scored = topics_df[np.isfinite(topics_df["expansion_latest"])
-                       & np.isfinite(topics_df["acceleration_latest"])]
-    assert len(pts[0].x) == len(scored), "unscored topics are dropped and must be captioned"
-    shapes = list(fig.layout.shapes)
-    assert len(shapes) == 2, "one vertical and one horizontal quadrant line"
-    assert {s.type for s in shapes} == {"line"}
-    top = int(scored["top25pct_frontier"].fillna(False).sum())
-    widths = list(pts[0].marker.line.width)
-    assert sum(1 for w in widths if w == P.OUTLINE_WIDTH) == top
-    assert set(pts[0].marker.color) <= set(P.OA_DOMAIN_COLORS.values()) | {P.COMPARISON}
-
-
-# ---------------------------------------------------------------------------
-# L33: the frontier panel's two modes -- top-N by volume
-# (`rank_volume <= FRONTIER_TOP_N`) and the global top-quartile set
-# (`top25pct_frontier == True`, NOT a subset of the top-N) -- are both just
-# CALLERS handing `fig_frontier` a pre-filtered frame; the builder's API is
-# unchanged ( interface contract). `rank_volume` is built
-# INLINE here.
-# ---------------------------------------------------------------------------
-def test_fig_frontier_on_a_rank_volume_le_200_subset(dim):
-    t = pd.read_parquet(DATA / "topics_all.parquet",
-                        columns=["institution_id", "topic_id", "share_frac", "vol_frac", "vol_full"])
-    t = t[t["institution_id"] == GDANSK].merge(dim, on="topic_id", how="left")
-    t["share"] = t["share_frac"]
-    t["rank_volume"] = t["vol_full"].rank(ascending=False, method="first").astype(int)
-    subset = t[t["rank_volume"] <= 200].reset_index(drop=True)
-    assert 0 < len(subset) <= 200
-
-    fig = C.fig_frontier(subset)
-    pts = [tr for tr in fig.data if isinstance(tr, go.Scatter)][0]
-    scored = subset[np.isfinite(subset["expansion_latest"]) & np.isfinite(subset["acceleration_latest"])]
-    assert len(pts.x) == len(scored), "unscored topics are dropped from this mode too"
-    # hover carries the full topic name for the topics actually plotted
-    for name in scored["topic_name"].head(3):
-        assert any(name in h for h in pts.customdata)
-
-
-def test_fig_frontier_on_a_top25pct_frontier_subset(dim):
-    t = pd.read_parquet(DATA / "topics_all.parquet",
-                        columns=["institution_id", "topic_id", "share_frac", "vol_frac", "vol_full"])
-    t = t[t["institution_id"] == GDANSK].merge(dim, on="topic_id", how="left")
-    t["share"] = t["share_frac"]
-    subset = t[t["top25pct_frontier"] == True].reset_index(drop=True)  # noqa: E712
-    assert len(subset) > 0, "fixture must contain at least one top-quartile frontier topic"
-
-    fig = C.fig_frontier(subset)
-    pts = [tr for tr in fig.data if isinstance(tr, go.Scatter)][0]
-    scored = subset[np.isfinite(subset["expansion_latest"]) & np.isfinite(subset["acceleration_latest"])]
-    assert len(pts.x) == len(scored)
-    # every plotted point in this mode IS top-quartile by construction, so
-    # every outline is the INK/OUTLINE_WIDTH treatment, never the hairline
-    assert all(w == P.OUTLINE_WIDTH for w in pts.marker.line.width)
-    for name in scored["topic_name"].head(3):
-        assert any(name in h for h in pts.customdata), "hover carries the full topic name"
 
 
 def test_fig_sdg_uses_un_colours_in_goal_order(sdg_df):
@@ -650,20 +568,6 @@ def test_row_height_single_and_pair_are_the_constant_pitch_formulas():
     assert C.row_height_pair(30) == C.ROW_PITCH_PAIR * 30 + C.BASE_PX
 
 
-def test_fig_topics_wraps_the_longest_labels_in_the_app_to_at_most_two_lines(topics_df):
-    """Topic names are the app's longest labels, so this panel is the
-    hardest test of the pixel-wrap contract: every label -- wrapped or not --
-    survives in full, at most two lines, inside the CONSTANT Find column."""
-    fig = C.fig_topics(topics_df, sort="volume")
-    tickvals = list(fig.layout.yaxis.tickvals)
-    ticktext = list(fig.layout.yaxis.ticktext)
-    for name in fig.data[0].y:
-        shown = ticktext[tickvals.index(name)]
-        assert shown.count("<br>") <= 1, f"{name!r} wrapped past two lines"
-        assert shown.replace("<br>", " ") == name, f"{name!r} lost text or gained an ellipsis"
-    assert fig.layout.margin.l == C.LABEL_COL_PX["find"] + C.GUTTER_COL_PX["find"] + C.COL_PAD_PX
-
-
 def test_fig_erc_uses_the_same_pixel_wrap_and_gutter_mechanism(erc_df):
     """ERC panel labels run up to ~68 chars in the real app; `fig_erc`
     delegates to `fig_share_si`, so whatever labels arrive get the identical
@@ -683,92 +587,16 @@ def test_fig_erc_uses_the_same_pixel_wrap_and_gutter_mechanism(erc_df):
 
 
 # ---------------------------------------------------------------------------
-# : fig_topics' retired sort toggle -- the keyword survives (nothing
-# calling it breaks) but the panel is now ALWAYS volume-ordered.
+# `fig_topics`, `fig_frontier`, `frontier_coverage` and `_frontier_topn` are
+# RETIRED (the topic planes, `lib/charts_topics.py`, replace them) -- deleted
+# outright, not kept as dead code, per this module's own standing convention
+# ("a reversed decision is worth being explicit about"). Their tests above
+# are removed with them; `tests/test_charts_topics.py` covers the replacement
+# builders (`fig_plane_impact`, `fig_plane_frontier`, `balance_bars`).
 # ---------------------------------------------------------------------------
-def test_fig_topics_sort_toggle_retired_always_volume_ordered(topics_df):
-    by_default = C.fig_topics(topics_df)
-    by_volume = C.fig_topics(topics_df, sort="volume")
-    by_taxonomy = C.fig_topics(topics_df, sort="taxonomy")
-    assert list(by_default.data[0].y) == list(by_volume.data[0].y) == list(by_taxonomy.data[0].y), (
-        "the sort keyword must no longer change the row order -- volume order always wins"
-    )
-    with pytest.raises(ValueError):
-        C.fig_topics(topics_df, sort="alphabetical")
-
-
-# ---------------------------------------------------------------------------
-# : the frontier panel's top_n slider, bold quadrant axes, and the
-# companion `frontier_coverage` disclosure numbers.
-# ---------------------------------------------------------------------------
-def test_fig_frontier_bold_ink_quadrant_axes(topics_df):
-    fig = C.fig_frontier(topics_df)
-    shapes = list(fig.layout.shapes)
-    assert len(shapes) == 2
-    assert all(s.line.color == P.INK for s in shapes), "quadrant split is bold INK, not the GRID hairline"
-    assert all(s.line.width == C.FRONTIER_ORIGIN_PX for s in shapes)
-    assert all(w > C.HAIRLINE_PX for w in (s.line.width for s in shapes))
-
-
-def test_fig_frontier_top_n_caps_the_plotted_set_and_autoscales(topics_df):
-    placeable = topics_df[np.isfinite(topics_df["expansion_latest"])
-                          & np.isfinite(topics_df["acceleration_latest"])]
-    assert len(placeable) > 1, "fixture must have more than one placeable row to prove a cut happened"
-    top_n = max(1, len(placeable) // 2)
-    fig_full = C.fig_frontier(topics_df)
-    fig_capped = C.fig_frontier(topics_df, top_n=top_n)
-    pts_full = [t for t in fig_full.data if isinstance(t, go.Scatter)][0]
-    pts_capped = [t for t in fig_capped.data if isinstance(t, go.Scatter)][0]
-    assert len(pts_capped.x) == top_n
-    assert len(pts_capped.x) < len(pts_full.x)
-    # a re-render of the identical frame with the identical top_n never reshuffles
-    fig_capped_again = C.fig_frontier(topics_df, top_n=top_n)
-    assert list(fig_capped_again.data[0].x) == list(pts_capped.x)
-    # top_n at or past the placeable count is a no-op
-    fig_noop = C.fig_frontier(topics_df, top_n=len(placeable) + 1)
-    assert len(fig_noop.data[0].x) == len(pts_full.x)
-
-
-def test_fig_frontier_catchall_rows_muted_and_flagged_on_hover(topics_df):
-    """The real catch-all row in this fixture carries no frontier score (it is
-    dropped by the placeability filter before `is_excluded` ever matters), so
-    the muting/flagging behaviour is proven on a synthetic PLACEABLE catch-all
-    row grafted onto the real frame -- everything else stays real data."""
-    d = topics_df.copy()
-    placeable = d[np.isfinite(d["expansion_latest"]) & np.isfinite(d["acceleration_latest"])].reset_index(drop=True)
-    assert len(placeable) > 0
-    synthetic = placeable.iloc[[0]].copy()
-    synthetic["is_excluded"] = True
-    synthetic["topic_name"] = "Synthetic catch-all topic"
-    d = pd.concat([placeable.assign(is_excluded=False), synthetic], ignore_index=True)
-    fig = C.fig_frontier(d)
-    pts = [t for t in fig.data if isinstance(t, go.Scatter)][0]
-    excl = d["is_excluded"].fillna(False).to_numpy()
-    assert list(pts.marker.opacity) == [P.MUTED_OPACITY if e else 1.0 for e in excl]
-    assert any(C.HOVER_EXCLUDED in h for e, h in zip(excl, pts.customdata) if e)
-
-
-def test_frontier_coverage_matches_fig_frontier_selection_exactly(topics_df):
-    top_n = 5
-    stats = C.frontier_coverage(topics_df, size_col="vol_full", top_n=top_n)
-    fig = C.fig_frontier(topics_df, size_col="vol_full", top_n=top_n)
-    pts = [t for t in fig.data if isinstance(t, go.Scatter)][0]
-    assert stats["n_shown"] == len(pts.x) == top_n
-    placeable = topics_df[np.isfinite(topics_df["expansion_latest"])
-                          & np.isfinite(topics_df["acceleration_latest"])]
-    assert stats["n_placeable"] == len(placeable)
-    assert 0.0 <= stats["pct_mass_not_shown"] <= 1.0
-    assert stats["min_mass_shown"] is not None
-    assert stats["mass_shown"] <= stats["mass_placeable"]
-    assert isinstance(stats["n_catchall_shown"], int)
-    # n/a-safe: an empty frame never divides by zero and never raises
-    empty = topics_df.iloc[0:0]
-    empty_stats = C.frontier_coverage(empty, size_col="vol_full", top_n=top_n)
-    assert empty_stats == {
-        "n_placeable": 0, "n_shown": 0, "n_catchall_shown": 0,
-        "mass_shown": 0.0, "mass_placeable": 0.0,
-        "pct_mass_not_shown": 0.0, "min_mass_shown": None,
-    }
+def test_fig_topics_and_fig_frontier_are_actually_gone():
+    for name in ("fig_topics", "fig_frontier", "frontier_coverage", "_frontier_topn"):
+        assert not hasattr(C, name), f"{name} must be deleted, not kept as dead code"
 
 
 # ---------------------------------------------------------------------------
@@ -801,15 +629,6 @@ def _seed_subfields(iid: str, dim: pd.DataFrame) -> pd.DataFrame:
                 "share", "si"]].reset_index(drop=True)
 
 
-def _seed_topics(iid: str, dim: pd.DataFrame) -> pd.DataFrame:
-    t = pd.read_parquet(DATA / "topics_all.parquet",
-                        columns=["institution_id", "topic_id", "share_frac", "vol_frac", "vol_full"])
-    t = t[t["institution_id"] == iid]
-    out = t.merge(dim, on="topic_id", how="left")
-    out["share"] = out["share_frac"]
-    return out.sort_values("share", ascending=False).head(30).reset_index(drop=True)
-
-
 def test_2br_measured_acceptance_eight_seeds_full_text_two_line_cap_height_budget(dim, capsys):
     """Bar-layout contract, the reversed-again priority: every label survives
     IN FULL -- pixel-wrapped to AT MOST TWO LINES, never truncated and never
@@ -821,30 +640,22 @@ def test_2br_measured_acceptance_eight_seeds_full_text_two_line_cap_height_budge
     for label, iid in SEEDS_2BR.items():
         fields = _seed_fields(iid, dim)
         subfields = _seed_subfields(iid, dim)
-        topics = _seed_topics(iid, dim)
         for panel_name, frame, builder in (
             ("fields", fields, lambda d: C.fig_share_si(d, family="oa", label_col="field_name",
                                                         volume_col="vol_full")),
             ("subfields", subfields, lambda d: C.fig_share_si(d, family="oa", label_col="subfield_name",
                                                               volume_col="vol_frac")),
-            ("topics", topics, lambda d: C.fig_topics(d, volume_col="vol_frac")),
         ):
             if frame.empty:
                 continue
             fig = builder(frame)
             tickvals = list(fig.layout.yaxis.tickvals)
             ticktext = list(fig.layout.yaxis.ticktext)
-            label_col = "field_name" if panel_name == "fields" else (
-                "subfield_name" if panel_name == "subfields" else "topic_name")
             expected_margin = C.LABEL_COL_PX["find"] + C.GUTTER_COL_PX["find"] + C.COL_PAD_PX
             assert fig.layout.margin.l == expected_margin, f"{label}/{panel_name}: margin.l drifted"
             for row_id in fig.data[0].y:
                 shown = ticktext[tickvals.index(row_id)]
                 assert shown.count("<br>") <= 1, f"{label}/{panel_name}: {row_id!r} wrapped past two lines"
-                # the row's OWN identity may carry the catch-all glyph
-                # (fig_topics); the drawn text must still reduce, one-line
-                # rejoin, to that exact identity -- no character lost,
-                # nothing cut to an ellipsis.
                 assert shown.replace("<br>", " ") == row_id, (
                     f"{label}/{panel_name}: {row_id!r} lost text or gained an ellipsis (drew {shown!r})"
                 )
@@ -852,7 +663,7 @@ def test_2br_measured_acceptance_eight_seeds_full_text_two_line_cap_height_budge
             assert fig.layout.height <= MAX_PANEL_HEIGHT_PX, (
                 f"{label}/{panel_name}: height {fig.layout.height} exceeds the one-screen budget"
             )
-    assert len(rows) >= len(SEEDS_2BR) * 2, "most seeds must yield at least fields+topics"
+    assert len(rows) >= len(SEEDS_2BR) * 2, "most seeds must yield at least fields+subfields"
     with capsys.disabled():
         print("\nmeasured acceptance (seed / panel / n_rows / height_px):")
         for r in rows:

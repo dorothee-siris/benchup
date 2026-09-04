@@ -487,3 +487,93 @@ def test_every_formerly_crashing_profile_renders(iid):
     assert copy.UMBRELLA_BADGE_LABEL in _page_strings(at)
     assert not any(was in b for b in
                    badges.badges_for(card, views_find.SC.bundle()["flags"], {})), iid
+
+
+# ---------------------------------------------------------------------------
+# Tooltip-spec compliance: the four rebuilt profile panels
+# (fields, subfields, sdg, erc) each carry the FWCI_EU / PP10_WD hover lines
+# `lib/profile_data.py`'s taxa-impact join adds, only on the bestfit tree.
+# Direct builder calls (no Streamlit needed) -- the same idiom `tests/
+# test_charts.py` and `tests/test_charts_topics.py` already use; the yaml
+# order-checker is imported from the sibling test file rather than
+# duplicated (`tests/test_charts_topics.py` owns it).
+# ---------------------------------------------------------------------------
+from lib import charts, profile_data  # noqa: E402
+from lib.engine import load_context, load_substrates  # noqa: E402
+from tests.test_charts_topics import _spec_labels, assert_labels_in_order, spec  # noqa: E402,F401
+
+SPEC_SEED = "I68947357"  # Strasbourg
+
+
+@pytest.fixture(scope="module")
+def spec_ctx():
+    return load_context(APP_DIR / "data")
+
+
+@pytest.mark.parametrize("tree_kind,builder_name,table_name,find_chart_key", [
+    ("bestfit", "fig_share_si", "fields_table", "find_fields"),
+    ("bestfit", "fig_share_si", "subfields_table", "find_subfields"),
+    ("bestfit", "fig_sdg", "sdg_table", "find_sdg"),
+    ("bestfit", "fig_erc", "erc_table", "find_erc"),
+])
+def test_profile_panel_hover_matches_spec_order_on_bestfit(
+        spec, spec_ctx, tree_kind, builder_name, table_name, find_chart_key):
+    """On the bestfit tree, every one of the four profile panels' hover
+    carries the FWCI_EU / PP10_WD lines the taxa-impact join adds, in the
+    exact order `docs/tooltip_spec.yaml` declares (applied
+    uniformly to fields/subfields/sdg/erc)."""
+    subs = load_substrates(spec_ctx, "bestfit", "frac")
+    if table_name in ("fields_table", "subfields_table"):
+        df = getattr(profile_data, table_name)(spec_ctx, subs, SPEC_SEED)
+        label_col = "field_name" if table_name == "fields_table" else "subfield_name"
+        fig = charts.fig_share_si(df, family="oa", label_col=label_col,
+                                  volume_col=("vol_full" if table_name == "fields_table" else "vol_frac"))
+    else:
+        df = getattr(profile_data, table_name)(spec_ctx, SPEC_SEED, "bestfit")
+        fig = getattr(charts, builder_name)(df)
+    labels = _spec_labels(spec, find_chart_key, unconditional_only=True)
+    import plotly.graph_objects as go
+    bars = [t for t in fig.data if isinstance(t, go.Bar) and t.hoverinfo != "skip"]
+    assert len(bars) == 1
+    hovers_with_fwci = [h for h in bars[0].customdata if charts.HOVER_FWCI_EU_CORE in h]
+    assert len(hovers_with_fwci) > 0, (
+        f"{table_name}: no row on the bestfit tree carries a FWCI_EU line at all -- "
+        f"the taxa-impact join must have landed at least one n_covered>=3 cell for this seed")
+    for h in hovers_with_fwci:
+        assert_labels_in_order(h, labels)
+
+
+@pytest.mark.parametrize("table_name", ["fields_table", "subfields_table", "sdg_table", "erc_table"])
+def test_profile_panel_fwci_pp10_absent_off_bestfit_tree(spec_ctx, table_name):
+    """Off the bestfit tree, the FWCI_EU / PP10_WD columns are present but
+    entirely NaN (`profile_data._join_taxa_impact`'s own gate) -- so NEITHER
+    hover line is ever drawn (`fig_share_si`'s own finite-value guard)."""
+    if table_name in ("fields_table", "subfields_table"):
+        subs = load_substrates(spec_ctx, "original", "frac")
+        df = getattr(profile_data, table_name)(spec_ctx, subs, SPEC_SEED)
+        label_col = "field_name" if table_name == "fields_table" else "subfield_name"
+        fig = charts.fig_share_si(df, family="oa", label_col=label_col,
+                                  volume_col=("vol_full" if table_name == "fields_table" else "vol_frac"))
+    else:
+        df = getattr(profile_data, table_name)(spec_ctx, SPEC_SEED, "original")
+        builder = charts.fig_sdg if table_name == "sdg_table" else charts.fig_erc
+        fig = builder(df)
+    assert df["fwci_mean"].isna().all() and df["pp10_wd"].isna().all()
+    import plotly.graph_objects as go
+    bars = [t for t in fig.data if isinstance(t, go.Bar) and t.hoverinfo != "skip"]
+    for h in bars[0].customdata:
+        assert charts.HOVER_FWCI_EU_CORE not in h
+        assert charts.HOVER_PP10_WD_CORE not in h
+
+
+def test_profile_panels_taxa_impact_columns_added_without_moving_existing_numbers(spec_ctx):
+    """Existing numbers must not move (JOB section 4): the pre-existing
+    share/si/vol columns are byte-identical to a plain rebuild of the OLD
+    (pre-taxa-impact) column set -- the new columns are a pure ADDITION."""
+    subs = load_substrates(spec_ctx, "bestfit", "frac")
+    df = profile_data.fields_table(spec_ctx, subs, SPEC_SEED)
+    old_cols = ["field_id", "field_name", "domain_id", "domain_name", "vol_full", "vol_frac",
+               "share", "si", "si_status"]
+    assert list(df.columns)[:len(old_cols)] == old_cols
+    assert set(profile_data.TAXA_IMPACT_COLS) <= set(df.columns)
+    assert list(df.columns) == old_cols + profile_data.TAXA_IMPACT_COLS

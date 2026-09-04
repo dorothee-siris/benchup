@@ -264,9 +264,10 @@ top to bottom:
    **yearly breakdown**, with ONE segmented control and the shared chip legend
    sitting ABOVE both panels — this pair no longer shares its row with the
    wordcloud, so both panels get the full section width instead of half of it.
-3. **Six collapsed panels** (§2.15–§2.20), every one `st.expander(expanded=False)`:
-   Fields · Top subfields · Top topics · Frontier positioning · SDG profile ·
-   ERC profile.
+3. **Five collapsed panels** (§2.15–§2.20 — §2.17/§2.18 now describe ONE
+   panel, see the note there), every one `st.expander(expanded=False)`:
+   Fields · Top subfields · Topics: volume, impact and frontier · SDG
+   profile · ERC profile.
 
 The former "Coverage caption" step is GONE: its four items
 relocated to the panel/tile/tab each one actually qualifies, so there is no
@@ -797,88 +798,79 @@ throwing away a disclosable signal on 15 of those rows):
 > caution" instead of forcing a binary defined/undefined choice the data does
 > not actually make.
 
-### 2.17 Panel — Top topics
+### 2.17–2.18 Panel — Topics: volume, impact and frontier
 
-- **Form.** `st.expander(expanded=False)` → `charts.fig_topics`: horizontal share
-  bars for the top topics by share, volume in the left gutter. Topic names are
-  the longest labels in the app, so this panel is the wrap mechanism's
-  (§2.15, `charts.wrap_label`) hardest real test — a topic name over
-  budget now wraps to two lines instead of losing its tail.
-- **Encoding.** Colour = the topic's DOMAIN (inherited through the active tree).
-  A **catch-all / out-of-scope (811) topic is flagged three ways at once**: a
-  glyph prefixed to its axis label, its domain hue at `palette.MUTED_OPACITY`,
-  and a hover line naming it — shape and opacity, never a new hue (§1.1).
-- **Interaction.** Sort toggle volume | taxonomy (domain → field → subfield →
-  topic). Hover gives the topic, its share and its volume.
-- **Empty state.** The panel caption **counts the flagged topics from the data**
-  (`topics_dim.is_excluded.sum`), never from a typed number (L10) — a flagged
-  topic is shown and counted, never dropped, because its presence is exactly the
-  thing a reader needs to discount.
-- **Export.** CSV of the full topic frame with `is_excluded` as a column, so the
-  flag survives outside the app.
+**Superseded ("Top topics" and "Frontier positioning" folded into ONE
+expander).** The two panels these numbers used to name are RETIRED
+(`charts.fig_topics`/`fig_frontier`/`frontier_coverage`/`_frontier_topn`,
+deleted outright) and replaced by a single expander holding TWO planes that
+always share one topic set — a Streamlit widget key cannot render twice in
+one run, and the two planes are defined to share their selection by
+construction, so one expander is the only legal shape. Builders:
+`lib/charts_topics.py::fig_plane_impact`/`fig_plane_frontier`; selection:
+`lib/topic_data.py::institution_topics`/`select_topics`.
 
-> **Rejected alternative:** exclude the catch-all topics from the panel entirely
-> (the earlier 811 toggle's behaviour). Rejected because the toggle was REMOVED
-> precisely so the catch-all mass would be disclosed rather than
-> switched off: hiding those rows makes a seed's profile look cleaner than the
-> data is, and the share they carry is a caveat on every other number in the
-> section.
+- **Perimeter (fixed, independent of the sidebar's basis toggle).**
+  Articles and reviews, the core five-year window, full counting, the work's
+  PRIMARY topic — the same convention `topics_led`/`topic_leaders`/
+  `star_works` already use. Both planes' bubbles and the "top by volume"
+  selector read this perimeter; whole-run volumes on both counting bases
+  still ride along as a hover fact.
+- **Form.** `st.expander(expanded=False)` → a controls row (segmented
+  control **"Topics shown"**: Top by volume (default) · Top by FWCI_EU
+  (floor: ten citation-eligible articles) · Topics led · Topics with star
+  papers · Top decile of emergence; a slider 10–100 step 10, default 50; a
+  mean/median switch for the FWCI_EU statistic) → a one-line perimeter
+  caption → **Plane A, Volume and impact** (x = articles-and-reviews on a
+  log axis, y = FWCI_EU mean or median, a full-width dashed red reference
+  line at 1) + its own caption (placed / not-placed / catch-all counts,
+  the shown set's share of the institution's own articles and reviews) →
+  a two-line Expansion/Acceleration definition → **Plane B, Frontier**
+  (x = expansion, y = acceleration, the same bold-origin-rule semantics the
+  frontier map has always used) + its
+  own caption (unscored count, the top-quartile outline explained). "Top
+  decile of emergence" is computed ONCE over the whole taxonomy's scored
+  topics (`topic_data.emergence_threshold`, institution-independent) and
+  applies to BOTH planes identically, so that mode's set is the same
+  wherever it is read from.
+- **Encoding, plane A.** Colour = OpenAlex domain; bubble AREA ∝ star
+  papers (plotly-native `sizemode="area"`, one `sizeref` for the whole
+  plane, a `sizemin` floor so a zero-star topic still gets a visible dot);
+  a catch-all topic (`is_excluded`) sits at `palette.MUTED_OPACITY`; a
+  topic this institution LEADS (`is_led`, world rank ≤ 20) carries a thin
+  `palette.INK` ring.
+- **Encoding, plane B.** Colour = OpenAlex domain; bubble AREA ∝ the SAME
+  articles-and-reviews measure plane A puts on its own x axis; BOLD `INK`
+  rules at the origin on both axes (the quadrant split — the one line
+  allowed to out-weigh the grid); a top-quartile-emergence topic
+  (`top25pct_frontier`) carries an
+  INK outline, a shape signal on top of the family colour, never a fifth
+  hue (§1.1).
+- **Interaction.** ONE selector, slider and mean/median switch, ABOVE both
+  planes, persisted (`state.PERSIST`) — switching it rebuilds both figures
+  from the identical `select_topics(.)` call, so the two never disagree on
+  which topics are shown. No zoom, no animation (house rule: no motion).
+- **Empty state.** A catch-all or unscored topic is never silently dropped
+  from the COUNT even where it is dropped from the DRAWING (plane B drops
+  an unscored row from the scatter itself, but the caption's own count
+  still names it) — the standing "shown and counted, or excluded and
+  counted, never invisible" rule this section has always kept.
+- **Export.** The workbook's uncapped "Topics" sheet is the
+  institution's WHOLE topic frame (every `n_ar≥3` topic, every column),
+  never a function of the on-screen selector or slider.
 
-### 2.18 Panel — Frontier positioning
-
-**Rewrite ("frontier panel unreadable/slow: toggle
-top-200-by-volume ↔ all global-top-quartile topics").** The panel used to plot
-EVERY scored topic at once, which on a large seed is both visually dense and,
-per the feedback, slow. It now offers two MODES via a segmented control, each
-handing `charts.fig_frontier` a pre-filtered frame — the builder's own API is
-unchanged, it never knows which mode produced its input.
-
-- **Form.** `st.expander(expanded=False)` → a segmented control, **"Top {n}
-  topics by volume"** (n = `FRONTIER_TOP_N`, a module constant fixed at
-  two hundred, `charts` module docs) | **"All topics in the global top quartile
-  of emergence"** (`top25pct_frontier == True` — NOT a subset of the top-N mode;
-  a topic can be small-volume and still top-quartile emergence, or vice versa),
-  default = the volume mode. Below it, `charts.fig_frontier`: a scatter of the
-  filtered topic set, **x = Expansion, y = Acceleration**, with the two quadrant
-  lines at the origin on both axes (verified against `topics_dim.quadrant`,
-  which flips sign exactly there).
-- **Encoding.** Bubble area = the topic's mass on the current basis (`sqrt` scale
-  between a floor and a ceiling in px, so a big topic cannot swallow the panel);
-  colour = domain; **a top-quartile frontier topic carries an `INK` outline**
-  a shape signal on top of the family colour, never a fifth hue (in the
-  top-quartile MODE every plotted point therefore carries the outline; in the
-  volume mode it marks the subset that also clears the quartile bar).
-- **Interaction.** The segmented control swaps which frame `fig_frontier`
-  receives; hover names the topic and gives expansion, acceleration and mass in
-  either mode. No zoom, no animation (house rule: no motion).
-- **Empty state.** Topics with no frontier score are DROPPED from the scatter and
-  **counted in the caption**, together with the excluded ones, in WHICHEVER mode
-  is active — the caption states the count shown and the count excluded/unscored
-  for that mode specifically, never a number left over from the other one. A
-  seed with no scored topic renders the reason, not an empty axis, in either mode.
-- **Export.** CSV of every topic with its expansion, acceleration, quadrant,
-  top-quartile flag, `rank_volume` and mass — scored and unscored alike, ALL
-  topics regardless of which mode is on screen, so the export is never a
-  function of the toggle.
-- **Copy (binding, from DESIGN §4).** The panel says that this measures
-  **attention dynamics, not novelty or quality**, and that **low can mean
-  foundational**. The sentence is not optional decoration: without it a
-  bottom-left quadrant reads as a verdict.
-
-> **Rejected alternative:** a 2×2 quadrant grid of topic COUNTS (a heatmap of
-> four cells) instead of the scatter. It is far more compact and needs no
-> caveating about position — and it was rejected because it throws away the two
-> continuous measures that make the panel worth showing, turning a position into
-> a bucket, and because the quadrant boundaries sit at zero on both axes, so a
-> topic just either side of a line would be assigned to opposite cells with no
-> visible indication of how marginal that assignment is.
-> **Rejected alternative (for this toggle specifically):** a single combined
-> mode showing the UNION of top-200-by-volume and top-quartile-emergence.
-> Rejected because a union hides which criterion put a given topic on the
-> chart — the whole point of the user's own two-mode framing was to let the
-> reader ask "what does my BIGGEST work look like on this axis" and "what does
-> my MOST EMERGENT work look like" as two separate questions, and a union
-> answers neither cleanly.
+> **Rejected alternative (carried over from the pre-fold design, still the
+> reason a per-topic specialisation-index plane was not added as a third
+> lens):** unreadable for a focused institution whose mass concentrates in
+> a handful of topics — the same "SI at topic grain" idea §2.15–§2.16
+> already accept at field/subfield grain reads as noise once the grain is
+> this fine.
+> **Rejected alternative:** keep the two panels separate but cross-link
+> them (a click on plane A highlighting the same topic on plane B).
+> Rejected because Streamlit's own cross-figure selection state does not
+> survive a rerun cheaply enough to be worth it, and the ONE shared
+> selector already gives the reader the "same set on both" guarantee
+> without needing to track a single point across two figures by eye.
 
 ### 2.19 Panel — SDG profile
 
@@ -2756,7 +2748,7 @@ positioning is not trustworthy without an explicit numeric anchor" class of
 defect `charts._tick_display`'s own fix note already warns about for
 `xref="paper"` (§0 of `CHROME_CONTRACT.md`'s companion audit).
 
-### 11.4 `reciprocity_bars` — Strategic reciprocity by field
+### 11.4 `reciprocity_bars` — Strategic reciprocity by field (superseded, §11.7)
 
 ADAPTED from `views_collab._reciprocity_chart` + `collab_data.
 reciprocity_frame` (credited in the builder's own docstring): the original
@@ -2776,6 +2768,13 @@ chrome rather than adding a second chart grammar for one section.
 > surviving scatter would be the one section whose reference line, hover
 > skeleton, colour family and caution channel all diverge from the rest of
 > the page for no reason tied to what the data actually needs to show.
+>
+> **Reversal (§11.7).** The user asked for the scatter back, on its own
+> terms — reciprocity is a shape-of-two-portfolios read, not a ranked
+> comparison, and the bar form obscured exactly the "how far off the
+> diagonal" reading the scatter states directly. Kept here as the record of
+> why the bars existed for one round; superseded content, not current
+> behaviour.
 
 ### 11.5 Three fixes from a full PNG read (2026-09-03)
 
@@ -2861,6 +2860,43 @@ full contract detail in `CHROME_CONTRACT.md` SS13 row 8 and SS10 row 8.
 
 Re-rendered at all three widths. Full proof (render-script assertions,
 before/after screenshots) recorded.
+
+### 11.7 Reciprocity returns to a bubble scatter
+
+The user asked, in as many words, to put the reciprocity chart "back to a
+scatter plot" — the bar-family adaptation §11.4 introduced (and §§11.5–11.6
+polished) is retired. `charts_compare.reciprocity_scatter` replaces
+`reciprocity_bars` (removed with its own `_add_centred_gutter`/
+`_rewrite_reciprocity_hover` helpers): one bubble per field, `y` = that
+field's share of A's own output, `x` = the same field's share of B's own
+output, area = the pair's joint volume in the field (`sizemode="area"`, one
+shared `sizeref`), colour = the field's OpenAlex domain, one dotted
+45-degree "equal weight" diagonal, squared axes (`scaleanchor` locking the
+aspect ratio) — the exact reading an earlier SIRIS Streamlit tool's own
+"Zoom partenaire" view drew, credited in the builder's own docstring.
+
+The per-field hover is richer than either earlier version's own three
+lines: the field's name, each institution's own share, the joint
+publication count, the joint papers' own FWCI_EU (mean and median together,
+floored at three joint covered works, daggered under ten), their PP10_WD
+in the world top decile (`n_top10 / n_covered`, omitted rather than shown
+bare when there are no covered works at all), joint star papers in the
+field, and — when the pair's own partner ranks are known — a clause naming
+where each institution sits among the other's partners overall (a
+PAIR-level fact, the same on every field row, not recomputed per field).
+
+Two data-shape findings surfaced while wiring the new hover fields, both
+disclosed rather than silently absorbed:
+  * a joint star paper's field (read through the CURRENT `topics_dim.
+    field_id`) can occasionally have zero rows in `collab_pair_fields.
+    parquet` (built at a different time, off its own primary-topic
+    snapshot) — a small, measured cross-table vintage drift, the same
+    class of finding this build's own institution-topic table already
+    documented elsewhere; tolerated up to a handful of works, reported as
+    a hard failure past that.
+  * `collab_pair_fields.n_covered` (the PP10_WD population) is narrower
+    than `n_fwci` (the FWCI population) — both are surfaced in the hover
+    rather than picking one and hiding the difference.
 
 ## 12. Bar-layout contract (D28) — supersedes the margin/gutter/diamond/font
 ##     passages in §§2.15–2.20, 10.1, 10.4 and 11.1 above
@@ -2951,7 +2987,7 @@ named once, in the section's own caption, never repeated per chart.
 
 **Row pitch and bar thickness — TWO shapes, both fixed.**
 `ROW_PITCH_SINGLE = 27` / `BAR_PX_SINGLE = 20` for one-bar-per-row charts
-(Find's Fields, Top subfields, Top topics, SDG, ERC panels — up from an
+(Find's Fields, Top subfields, SDG, ERC panels — up from an
 18 px pitch, the O4 "raise each bar's height by ~50 %" ask; `BAR_GAP_SINGLE
 = 1 − BAR_PX_SINGLE⁄ROW_PITCH_SINGLE` is solved so the target thickness is
 exact, not tuned by eye). `ROW_PITCH_PAIR = 40` / `BAR_PX_PAIR = 16` for

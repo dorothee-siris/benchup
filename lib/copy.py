@@ -336,11 +336,10 @@ FIND = {
     "BREAKDOWN_GLOBAL_TITLE": "Overall breakdown",
     "BREAKDOWN_YEARLY_TITLE": "Yearly breakdown",
 
-    # The six collapsed chart panels.
+    # The five collapsed chart panels.
     "PANEL_FIELDS": "Fields",
     "PANEL_SUBFIELDS": "Top {n} subfields",
-    "PANEL_TOPICS": "Top topics",
-    "PANEL_FRONTIER": "Frontier positioning",
+    "PANEL_TOPIC_PLANES": "Topics: volume, impact and frontier",
     "PANEL_SDG": "SDG profile",
     "PANEL_ERC": "ERC profile",
 
@@ -349,11 +348,6 @@ FIND = {
     "SORT_VOLUME": "Volume / share",
     "SORT_TAXONOMY": "Taxonomy order",
 
-    # ---- the frontier panel's two modes --------------------------------
-    "FRONTIER_MODE_LABEL": "Topics shown",
-    "FRONTIER_MODE_TOP": "Top {n} topics by volume",
-    "FRONTIER_MODE_EMERGING": "All topics in the global top quartile of emergence",
-
     # L20 panel captions.
     "CAPTION_SI": ("SI = the institution's share of a cell divided by the mean share across the "
                    "institutions active in it, so the dashed line marks what an average institution "
@@ -361,12 +355,6 @@ FIND = {
     "CAPTION_SI_FLOOR": ("Solid marks: at least {floor_solid} fractional publications in the cell. "
                          "Hollow marks: between {floor_thin} and {floor_solid}. Below {floor_thin}, "
                          "no mark at all. The similarity lenses keep their own {floor_solid} rule."),
-    "CAPTION_TOPICS_CATCHALL": ("{n} of the topics shown are catch-all topics, outside the subject "
-                                "scope, flagged {glyph}; catch-all topics hold {catchall} of this "
-                                "institution's publications."),
-    "CAPTION_FRONTIER": ("{n_shown} topics are placed here, and {n_excluded} are excluded or carry no "
-                         "frontier score. Frontier scores measure attention dynamics rather than "
-                         "novelty or quality: a low score can mark a foundational area."),
     "CAPTION_SDG": ("Shares of SDG-tagged output; a publication can carry several SDGs, so the shares "
                     "need not sum to one. SDG {n_missing} is not covered. Matches reflect the "
                     "SIRIS classifier's reading of the SDGs, and different classifiers disagree "
@@ -404,8 +392,6 @@ FIND = {
     # (VIZ_SPEC S2.16: "the depth of the cut is stated in the panel caption").
     "CAPTION_TOP_N_VOLUME": ("Showing the top {n} subfields by publications on the current counting "
                              "basis; the CSV export carries every subfield."),
-    "CAPTION_TOP_N_SHARE": ("Showing the top {n} topics by share of output; the CSV export "
-                            "carries every topic."),
 
     # ======================================================================
     # Every key below is additive: the profile tiles above were later
@@ -482,13 +468,40 @@ FIND = {
                               "shared presence in the topics the world is currently expanding into."),
     "COL_F1": "Frontier alignment",
 
-    # The frontier panel's new top-N slider and the
-    # coverage caption templated from `charts.frontier_coverage`'s numbers.
-    "FRONTIER_TOPN_LABEL": "Maximum topics plotted",
-    "CAPTION_FRONTIER_COVERAGE": (
-        "Catch-all topics are counted in this cut like any other topic: {n_catchall} of the topics "
-        "shown are catch-all, flagged {glyph}. This cut leaves out {pct_not_shown} of the placeable "
-        "mass; the smallest topic shown holds {min_mass} publications on the current counting basis."),
+    # ======================================================================
+    # Topic planes: the "Topics: volume, impact and frontier" expander
+    # replacing the retired "Top topics" / "Frontier positioning" panels --
+    # controls row, perimeter caption, plane A + B and their own captions.
+    # ======================================================================
+    "TOPIC_MODE_LABEL": "Topics shown",
+    "TOPIC_MODE_VOLUME": "Top by volume",
+    "TOPIC_MODE_FWCI": "Top by FWCI_EU",
+    "TOPIC_MODE_LED": "Topics led",
+    "TOPIC_MODE_STARS": "Topics with star papers",
+    "TOPIC_MODE_EMERGENCE": "Top decile of emergence",
+    "TOPIC_N_LABEL": "Maximum topics shown",
+    "TOPIC_FWCI_STAT_LABEL": "FWCI_EU",
+    "TOPIC_FWCI_STAT_MEAN": "Mean",
+    "TOPIC_FWCI_STAT_MEDIAN": "Median",
+    "CAPTION_TOPIC_PERIMETER": (
+        "Articles and reviews {y0}-{y1}, full counting, primary topic -- independent of the "
+        "counting basis chosen in the sidebar. Whole-run volumes on both bases still ride along "
+        "in the hover."),
+    "TOPIC_PLANE_A_TITLE": "Volume and impact",
+    "TOPIC_PLANE_B_TITLE": "Frontier",
+    "CAPTION_TOPIC_PLANE_A": (
+        "{n_shown} topics are shown; {n_not_placed} of them cannot be placed here (fewer than "
+        "three covered articles and reviews); {n_catchall} are catch-all topics, outside the "
+        "subject scope. Together they hold {share} of this institution's articles and reviews, "
+        "{y0}-{y1}."),
+    "AXIS_DEF_TOPIC_PLANES": (
+        "Expansion reads how fast world attention to a topic is growing, a standardised reading "
+        "of publication-volume growth over the latest period. Acceleration reads whether that "
+        "growth is itself speeding up or slowing down, against the period before it."),
+    "CAPTION_TOPIC_PLANE_B": (
+        "{n_no_frontier} of the {n_shown} topics shown carry no frontier score and cannot be "
+        "placed here. A dark outline marks a topic in the global top quarter of emergence."),
+    "TOPIC_PLANES_EMPTY": "No topic clears this selector for this institution.",
 
     # DISPLAY lens codes, renumbered L0.L7 in TAB ORDER (the eight
     # defaults) plus L8 (C1) and L9 (L7, the experimental/noise lens) for the
@@ -622,11 +635,6 @@ LENS_DISPLAY_NAMES = FIND["LENS_DISPLAY_NAMES"]
 
 # In-place edits the deliverable requires (narrow, noted above):
 FIND["TAB_ASPIRATIONAL"] = "★ " + FIND["TAB_ASPIRATIONAL"]           # "★ Aspirational"
-FIND["FRONTIER_MODE_TOP"] = "Top topics by volume"                        # the slider now states n
-FIND["CAPTION_FRONTIER"] = (
-    "{n_shown} topics are placed here; {n_excluded} carry no frontier score and cannot be placed. "
-    "Frontier scores measure attention dynamics rather than novelty or quality: a low score can mark "
-    "a foundational area.")
 
 # ==========================================================================
 #  ,: the narrative wrapper (NAV), the Compare page
@@ -698,20 +706,25 @@ COMPARE = {
     "CARD_VOL_CHANGE_TIP": ("Mean annual publications over {w2}, against the same average over "
                             "{w1}. European median: {eu_median}."),
     "CARD_FWCI": "FWCI_EU",
-    "CARD_FWCI_TIP": ("Median field-weighted citation impact against the European baseline, {y0} "
-                      "to {y1}. Mean: {mean}. European median of the same statistic: "
+    "CARD_FWCI_TIP": ("Mean field-weighted citation impact against the European baseline, "
+                      "articles and reviews {y0} to {y1}, on {n} covered works. Median of the "
+                      "same works: {median}. The mean is the headline because it keeps the "
+                      "highly-cited tail the median discards. World top-decile share of the "
+                      "same output: {pp10}. That is the world-referenced reading of impact; "
+                      "this card is read against Europe. European median of the mean: "
                       "{eu_median}."),
     "CARD_PP10": "PP10_WD",
     "CARD_PP10_TIP": ("Share of {y0} to {y1} articles and reviews in the world top decile of "
                       "citations for their own subfield, year and document type. European "
                       "median: {eu_median}."),
     "CARD_STARS": "Star papers",
-    "CARD_STARS_TIP": ("Share of {y0} to {y1} articles and reviews that are among the world's "
-                       "most-cited works in their own topic and year. Count: {count}. European "
-                       "median: {eu_median}."),
+    "CARD_STARS_TIP": ("Share of {y0} to {y1} articles and reviews among the world's "
+                       "most-cited works in their own topic and year, top one per cent. Count: "
+                       "{count}. European median: {eu_median}."),
     "CARD_TOPICS_LED": "Topics led",
-    "CARD_TOPICS_LED_TIP": ("Topics where this institution ranks among the world top twenty "
-                            "publishers, all institutions. European median: {eu_median}."),
+    "CARD_TOPICS_LED_TIP": ("Topics where the institution ranks in the world top twenty by "
+                            "publication volume, {y0} to {y1}, across every institution type. "
+                            "European median: {eu_median}."),
     "CARD_FRONTIER": "Frontier share",
     "CARD_FRONTIER_TIP": ("Share of {y0} to {y1} output sitting in the global top-quarter "
                           "frontier topics. European median: {eu_median}."),
@@ -792,11 +805,52 @@ COMPARE = {
     # ---- 5. the relationship --------------------------------------------------
     "RELATIONSHIP_HEADER": "The relationship",
     "RELATIONSHIP_NEVER": "These two institutions have no recorded joint publications.",
-    "MOMENTUM_TIP": ("Compares mean annual joint articles and reviews over {w2} against {w1} "
-                     "({c2} against {c1} a year). {sig}"),
-    "MOMENTUM_SIGNIFICANT": "The change is significant at the {alpha} level (p {p}).",
-    "MOMENTUM_NOT_SIGNIFICANT": "The change is not significant at the {alpha} level (p {p}).",
-    "MOMENTUM_NO_TEST": "There is too little joint work over the window for a significance test.",
+
+    # -- three tiles, one row (D27) -- titles + "?" verbatim from
+    #    docs/tooltip_spec.yaml's own compare_tile_* entries, each's 4-ish
+    #    help_lines joined into one continuous sentence, the house's own
+    #    convention for every tile "?" on this page.
+    "TILE_JOINT_PUBLICATIONS": "Joint publications",
+    "TILE_JOINT_PUBLICATIONS_TIP": (
+        "Articles and reviews the two institutions signed together, {y0} to {y1}. Every other "
+        "joint figure in this section uses that same window. Counting every document type over "
+        "the whole run, {y0} to {whole_y1}: {copubs_total}. Under {floor} joint publications a "
+        "pair is too thin for the breakdowns below, which fall back to plain yearly totals."),
+    "TILE_JOINT_STARS": "Joint star papers",
+    "TILE_JOINT_STARS_TIP": (
+        "Joint articles and reviews {y0} to {y1} among the world's most-cited works in their "
+        "own topic and year, top one per cent. The link under the tile opens the pair's joint "
+        "articles and reviews on OpenAlex, most cited first."),
+    "JOINT_STARS_LINK_LABEL": "View on OpenAlex, most cited first",
+    "TILE_MOMENTUM": "Momentum",
+    "TILE_MOMENTUM_TIP": (
+        "Joint articles and reviews a year over {w2} against {w1}, corrected for both "
+        "institutions' own growth across the same windows. The corrected rate is recentred on "
+        "the median pair, so it reads against typical behaviour rather than against no change "
+        "at all. A rise or a fall is only called when a two-proportion test clears the {alpha} "
+        "level; otherwise the tile says so. Under {floor} joint publications in the first "
+        "window the base is too thin for a rate and none is shown."),
+
+    # -- the always-visible momentum evidence line (D27, compare_momentum_line) --
+    #    one sentence, filled from the pair's own figures; the {significance}
+    #    slot resolves to one of the four MOMENTUM_LINE_SIG_* clauses below.
+    #    A colon, never a dash, precedes {pct} -- a signed value (a true
+    #    minus sign on a negative one, `collab_data._delta_pct_text`) must
+    #    never land directly after a dash, which would read as a second,
+    #    unrelated sign.
+    "MOMENTUM_LINE_NUMERIC": (
+        "{c1} joint articles and reviews a year in {w1}, {c2} in {w2}: {pct} once both "
+        "institutions' own growth is taken out. {significance}"),
+    "MOMENTUM_LINE_SIG_SIGNIFICANT": "The change is significant at the {alpha} level ({p}).",
+    "MOMENTUM_LINE_SIG_NOT_SIGNIFICANT": "The change is not significant at the {alpha} level ({p}).",
+    "MOMENTUM_LINE_SIG_STABLE": "That is inside the \N{PLUS-MINUS SIGN}{band} % band the tool reads as "
+                                "stable, so no direction is called.",
+    "MOMENTUM_LINE_SIG_NO_TEST": "There is too little joint work over the window for a significance test.",
+    "MOMENTUM_LINE_NEW": "No joint articles or reviews in {w1}; {c2} a year since.",
+    "MOMENTUM_LINE_NS_THIN": "The base is too thin for a significance test.",
+    "MOMENTUM_LINE_DORMANT": "{c1} joint articles and reviews a year in {w1}; none since.",
+    "MOMENTUM_LINE_THIN": "Fewer than {floor} joint articles and reviews in {w1} - too thin a base for a rate.",
+
     "YEARLY_CAPTION": "Joint articles and reviews with a subject topic, {y0} to {y1}.",
     "YEARLY_TOPICLESS_NOTE": (" A small number of this pair's joint publications carry no "
                               "subject topic and are not shown in the breakdown above; the "
@@ -805,15 +859,12 @@ COMPARE = {
                                 "co-published work for a domain breakdown; every joint "
                                 "publication, {y0} to {y1}, is shown as one series instead."),
     "RECIPROCITY_HEADER": "Strategic reciprocity by field",
-    "RECIPROCITY_CAPTION": ("Each bar is a field's share of that institution's own publications; "
-                            "the number between the two bars is how many publications the pair "
-                            "signed together in that field. A field that weighs heavily for both "
-                            "and carries many joint publications is where the relationship "
-                            "matters to both sides."),
-    "JOINT_STARS_LINE": ("{n} of their joint publications are among the world's most-cited "
-                         "works in their own topic and year."),
-    "JOINT_STARS_CAPTION": "Sorted by citations, most cited first.",
-    "JOINT_STARS_LINK_LABEL": "View on OpenAlex",
+    "RECIPROCITY_CAPTION": ("Each bubble is a field: its height is that field's share of A's "
+                            "own output, its position along the bottom is the same field's "
+                            "share of B's own output, and its size is the pair's joint volume "
+                            "in the field. The dotted diagonal marks equal weight for both "
+                            "institutions; a bubble well above or below it is a field one side "
+                            "leans on far more than the other."),
 
     # ---- 6. the workbook -------------------------------------------------------
     "EXPORT_BUTTON": "Download this view (Excel)",

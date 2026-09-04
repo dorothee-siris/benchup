@@ -37,16 +37,25 @@ import pandas as pd
 
 from .engine.derive import _detect_year_cols
 
-FIELDS_COLS = ["field_id", "field_name", "domain_id", "domain_name", "vol_full", "vol_frac", "share",
-              "si", "si_status"]
+# The five columns every taxa-impact join below adds, in one fixed order --
+# `fwci_taxa.parquet` (fwci_mean, fwci_median, n_covered) and
+# `impact_taxa.parquet` (pp10_wd, n_covered_pp) at the matching (grain,
+# taxon_id), joined by `_join_taxa_impact` (the tooltip-spec ruling: all four Find
+# profile panels carry these for their FWCI_EU / PP10_WD hover lines).
+TAXA_IMPACT_COLS = ["fwci_mean", "fwci_median", "n_covered", "pp10_wd", "n_covered_pp"]
+
+FIELDS_COLS = (["field_id", "field_name", "domain_id", "domain_name", "vol_full", "vol_frac", "share",
+               "si", "si_status"] + TAXA_IMPACT_COLS)
 SUBFIELDS_COLS = ["subfield_id", "subfield_name"] + FIELDS_COLS
 TOPICS_COLS = ["topic_id", "topic_name", "subfield_id", "subfield_name", "field_id", "field_name",
               "domain_id", "domain_name", "vol_full", "vol_frac", "share", "is_excluded",
               "frontier_score_latest", "expansion_latest", "acceleration_latest", "quadrant",
               "top25pct_frontier", "rank_volume"]
 YEARLY_COLS = ["year", "domain_id", "domain_name", "vol_full", "vol_frac"]
-SDG_COLS = ["sdg_idx", "sdg_number", "sdg_label", "sdg_label_numbered", "share", "esi", "mass", "si_status"]
-ERC_COLS = ["panel_idx", "panel_code", "panel_label", "erc_domain", "share", "si", "mass", "si_status"]
+SDG_COLS = (["sdg_idx", "sdg_number", "sdg_label", "sdg_label_numbered", "share", "esi", "mass",
+            "si_status"] + TAXA_IMPACT_COLS)
+ERC_COLS = (["panel_idx", "panel_code", "panel_label", "erc_domain", "share", "si", "mass",
+            "si_status"] + TAXA_IMPACT_COLS)
 
 # Harmonised display floors on FRACTIONAL mass
 # (vol_frac for subfields, `mass` for ERC/SDG) -- solid = safe to plot as a
@@ -97,6 +106,64 @@ def _topics_dim_extra(ctx: dict) -> pd.DataFrame:
                      "acceleration_latest", "quadrant"],
         )
     return ctx["topics_dim_extra_df"]
+
+
+def _fwci_taxa_df(ctx: dict) -> pd.DataFrame:
+    """`fwci_taxa.parquet`, whole table, read once and cached on ctx (703,571
+    rows, ~7 MB -- the same "load once, plain-Python-filter per call" idiom
+    `_topics_dim_extra` already uses). institution x grain x taxon_id ->
+    fwci_mean, fwci_median, n_covered; `grain` in {field, subfield, sdg,
+    erc}; field/subfield `taxon_id` is ALWAYS the bestfit-tree id."""
+    if "fwci_taxa_df" not in ctx:
+        ctx["fwci_taxa_df"] = pd.read_parquet(
+            Path(ctx["data_dir"]) / "fwci_taxa.parquet",
+            columns=["institution_id", "grain", "taxon_id", "fwci_mean", "fwci_median", "n_covered"],
+        )
+    return ctx["fwci_taxa_df"]
+
+
+def _impact_taxa_df(ctx: dict) -> pd.DataFrame:
+    """`impact_taxa.parquet`, whole table, read once and cached on ctx
+    (1,100,275 rows, ~3.3 MB). institution x grain x taxon_id -> pp10_wd,
+    n_covered_pp; same grain/taxon_id convention as `_fwci_taxa_df`."""
+    if "impact_taxa_df" not in ctx:
+        ctx["impact_taxa_df"] = pd.read_parquet(
+            Path(ctx["data_dir"]) / "impact_taxa.parquet",
+            columns=["institution_id", "grain", "taxon_id", "pp10_wd", "n_covered_pp"],
+        )
+    return ctx["impact_taxa_df"]
+
+
+def _join_taxa_impact(out: pd.DataFrame, ctx: dict, iid: str, grain: str, taxon_col: str,
+                      tree: str) -> pd.DataFrame:
+    """Adds `TAXA_IMPACT_COLS` (fwci_mean, fwci_median, n_covered, pp10_wd,
+    n_covered_pp) to `out`, one row per `taxon_col` value, for institution
+    `iid` at the matching `grain`.
+
+    The tooltip-spec ruling: the two impact lines are drawn ONLY when the active tree
+    is "bestfit" (both taxa tables are computed on the bestfit tree at
+    field/subfield grain -- a conservative/original selection would be
+    joining the wrong cell there; the rule is applied uniformly to the
+    tree-independent sdg/erc grains too, so a reader never has to remember
+    which two of the four panels the rule applies to). Off bestfit, every
+    column is still ADDED (never a KeyError downstream) but every value is
+    NaN -- the `n_covered >= 3` / `n_covered_pp >= 1` hover gates already
+    suppress a NaN line, so gating on tree here is the ONLY switch needed."""
+    if tree != "bestfit" or out.empty:
+        for c in TAXA_IMPACT_COLS:
+            out[c] = np.nan
+        return out
+    fwci = _fwci_taxa_df(ctx)
+    fwci = fwci[(fwci["institution_id"] == iid) & (fwci["grain"] == grain)]
+    impact = _impact_taxa_df(ctx)
+    impact = impact[(impact["institution_id"] == iid) & (impact["grain"] == grain)]
+    out = out.merge(
+        fwci[["taxon_id", "fwci_mean", "fwci_median", "n_covered"]].rename(columns={"taxon_id": taxon_col}),
+        on=taxon_col, how="left")
+    out = out.merge(
+        impact[["taxon_id", "pp10_wd", "n_covered_pp"]].rename(columns={"taxon_id": taxon_col}),
+        on=taxon_col, how="left")
+    return out
 
 
 def _erc_panels(ctx: dict) -> pd.DataFrame:
@@ -183,6 +250,7 @@ def fields_table(ctx: dict, subs: dict, iid: str) -> pd.DataFrame:
         (row["vol_frac"].astype("float64") > 0) & row["si"].notna(), "solid", "none")
     out = row.merge(_field_domain_map(ctx), on="field_id", how="left")
     out = out.rename(columns={share_col: "share"})
+    out = _join_taxa_impact(out, ctx, iid, "field", "field_id", subs["tree"])
     return out.reindex(columns=FIELDS_COLS).reset_index(drop=True)
 
 
@@ -202,6 +270,7 @@ def subfields_table(ctx: dict, subs: dict, iid: str) -> pd.DataFrame:
     fd = _subfield_field_domain_map(ctx)[["subfield_id", "subfield_name"]]
     out = row.merge(fd, on="subfield_id", how="left").merge(_field_domain_map(ctx), on="field_id", how="left")
     out = out.rename(columns={share_col: "share"})
+    out = _join_taxa_impact(out, ctx, iid, "subfield", "subfield_id", subs["tree"])
     return out.reindex(columns=SUBFIELDS_COLS).reset_index(drop=True)
 
 
@@ -343,27 +412,35 @@ def _parse_packed_years(packed) -> dict[int, float]:
 
 # --------------------------------------------------------------- SDG / ERC
 
-def sdg_table(ctx: dict, iid: str) -> pd.DataFrame:
+def sdg_table(ctx: dict, iid: str, tree: str = "bestfit") -> pd.DataFrame:
     """DENSE 16-row SDG profile (`sdg.parquet` ships all 16 per institution,
     data_contract.yaml) joined to `resources/sdg_labels.csv` (carries both
     `sdg_label` and the numbered `sdg_label_numbered`, L36). `si_status`
     (L34) thresholds the fractional `mass` column -- `esi` itself has no
-    floor observed (data_contract.yaml) and is kept as shipped."""
+    floor observed (data_contract.yaml) and is kept as shipped.
+
+    `tree` gates the FWCI_EU/PP10_WD hover join (`_join_taxa_impact`) --
+    the SDG grain is itself tree-independent, but the join is gated
+    identically across all four Find profile panels (the tooltip-spec ruling)."""
     row = ctx["sdg_df"][ctx["sdg_df"]["institution_id"] == iid]
     out = row.merge(_sdg_labels(ctx), on="sdg_idx", how="right")  # right join: 16 rows even if iid is thin
     out["institution_id"] = iid
     out["si_status"] = si_status_from_mass(out["mass"])
+    out = _join_taxa_impact(out, ctx, iid, "sdg", "sdg_idx", tree)
     return out.reindex(columns=SDG_COLS).reset_index(drop=True)
 
 
-def erc_table(ctx: dict, iid: str) -> pd.DataFrame:
+def erc_table(ctx: dict, iid: str, tree: str = "bestfit") -> pd.DataFrame:
     """Sparse (nonzero-mass panels only, matching `erc.parquet`'s own
     convention) ERC profile joined to `resources/erc_panels.csv`. `si_status`
     (L34) thresholds the fractional `mass` column -- `si` itself has no floor
-    observed (data_contract.yaml) and is kept as shipped."""
+    observed (data_contract.yaml) and is kept as shipped.
+
+    `tree` gates the FWCI_EU/PP10_WD hover join, same rule as `sdg_table`."""
     row = ctx["erc_df"][ctx["erc_df"]["institution_id"] == iid].copy()
     row["si_status"] = si_status_from_mass(row["mass"])
     out = row.merge(_erc_panels(ctx), on="panel_idx", how="left")
+    out = _join_taxa_impact(out, ctx, iid, "erc", "panel_idx", tree)
     return out.reindex(columns=ERC_COLS).reset_index(drop=True)
 
 

@@ -354,7 +354,7 @@ def test_find_profile_has_no_coverage_line():
     assert fixed not in page_text, fixed
     # ...and the relocated items ARE on the page, where they were moved to.
     erc_fixed = _template_literal_segment(copy.FIND["CAPTION_ERC"])
-    catchall_fixed = _template_literal_segment(copy.FIND["CAPTION_TOPICS_CATCHALL"])
+    catchall_fixed = _template_literal_segment(copy.FIND["CAPTION_TOPIC_PLANE_A"])
     assert erc_fixed in page_text
     assert catchall_fixed in page_text
 
@@ -404,50 +404,56 @@ def test_find_lens_tabs_carry_the_lens_names_and_the_guide_is_present():
         assert copy.LENS_DISPLAY_NAMES[lens] in text, lens
 
 
-def test_frontier_mode_swap_changes_the_plotted_point_count():
-    """ (FB handoff) rewrite of the L33 claim: the segmented control
-    still swaps which frame `fig_frontier`/`frontier_coverage` receive, but
-    catch-all topics are no longer pre-excluded (`is_excluded` dropped from
-    the "top" mode's mask) and ONE top-N slider (default
-    `views_find.FRONTIER_TOP_N`) now governs BOTH modes via
-    `charts.frontier_coverage`'s own mass-based cut -- so the two counts
-    compared here are `frontier_coverage(.)["n_shown"]` on the "top" base
-    (every placeable topic) vs the "emerging" base (placeable AND
-    top25pct_frontier), at the SAME default top_n, recomputed from the
-    engine frame so the assertion is not circular against the page itself."""
-    from lib import charts, profile_data
-    from lib.engine import load_substrates, load_context
+def test_topic_mode_swap_changes_the_selected_topic_set_and_its_caption():
+    """Rewrite of the old L33/frontier-mode claim: the "Topics shown"
+    segmented control changes WHICH topics both planes draw -- recomputed
+    off `TopicData` directly (not circular against the page's own
+    rendering), then cross-checked against the live page's own
+    plane-A caption facts (`n_shown`/`n_catchall`), which must always match
+    `TopicData.topic_set_caption`'s numbers for whichever mode is active."""
+    from lib import topic_data as TD
+    from lib.engine import load_context
 
     ctx = load_context(APP_DIR / "data")
-    subs = load_substrates(ctx, "bestfit", "frac")
-    df = profile_data.topics_table(ctx, subs, STRASBOURG)
-    vol_col = views_find._vol_col("frac")
-    cov_top = charts.frontier_coverage(df, size_col=vol_col, top_n=views_find.FRONTIER_TOP_N)
-    cov_emerging = charts.frontier_coverage(df[df["top25pct_frontier"].fillna(False)],
-                                            size_col=vol_col, top_n=views_find.FRONTIER_TOP_N)
-    # Both modes are capped at the same default top_n, so `n_shown` alone can
-    # coincide (both saturate the cap) -- `n_placeable` (the universe BEFORE
-    # the cap: all of the seed's topics for "top", the top-quartile subset
-    # for "emerging") is what actually differs between the two modes here.
-    assert cov_top["n_placeable"] != cov_emerging["n_placeable"], (cov_top, cov_emerging)
-    assert cov_top["n_shown"] <= views_find.FRONTIER_TOP_N, cov_top
+    df = TD.institution_topics(ctx, STRASBOURG, "bestfit")
+    vol_set = set(TD.select_topics(df, "volume", 50)["topic_id"])
+    led_set = set(TD.select_topics(df, "led", 50)["topic_id"])
+    assert vol_set != led_set, "volume and led modes must select different topic sets on this seed"
 
-    mode_top = copy.FIND["FRONTIER_MODE_TOP"]
+    row = ctx["index_by_id"].loc[STRASBOURG]
+    total_ar = float(row["total_ar_full_w1"]) + float(row["total_ar_full_w2"])
+    facts_vol = TD.topic_set_caption(TD.select_topics(df, "volume", 50), total_ar)
+
     at = _find_app(seed_id=STRASBOURG).run()
     assert not at.exception, [str(e) for e in at.exception]
     controls = {c.key: c.value for c in at.segmented_control}
-    assert controls.get("frontier_mode") == mode_top, controls
-    slider_key = f"frontier_topn_{mode_top}"
-    sliders = {s.key: s.value for s in at.slider}
-    assert sliders.get(slider_key) == views_find.FRONTIER_TOP_N, sliders
-    n_top_not_placeable = len(df) - cov_top["n_placeable"]
-    assert f"{n_top_not_placeable:,}" in " ".join(c.value for c in at.caption)
+    assert controls.get("topic_mode") == copy.FIND["TOPIC_MODE_VOLUME"], controls
+    caption_text = " ".join(c.value for c in at.caption)
+    assert f"{facts_vol['n_shown']:,}" in caption_text, (facts_vol, caption_text)
+    assert f"{facts_vol['n_catchall']:,}" in caption_text
 
-    at.session_state["frontier_mode"] = copy.FIND["FRONTIER_MODE_EMERGING"]
+    at.session_state["topic_mode"] = copy.FIND["TOPIC_MODE_LED"]
     at.run()
     assert not at.exception, [str(e) for e in at.exception]
-    n_emerging_not_placeable = int(df["top25pct_frontier"].fillna(False).sum()) - cov_emerging["n_placeable"]
-    assert f"{n_emerging_not_placeable:,}" in " ".join(c.value for c in at.caption)
+    facts_led = TD.topic_set_caption(TD.select_topics(df, "led", 50), total_ar)
+    caption_text2 = " ".join(c.value for c in at.caption)
+    assert f"{facts_led['n_shown']:,}" in caption_text2, (facts_led, caption_text2)
+
+
+def test_topic_planes_captions_have_no_unfilled_placeholder():
+    """A `.format(...)` call that forgets a kwarg leaves a literal '{y0}' on
+    the page -- caught here by asserting the ACTUAL substituted window
+    ('2020-2024', real digits) appears, not just a fixed prose fragment that
+    would still be present either way. (Found live on a manager render-read:
+    the perimeter caption's own `.format()` call was missing entirely.)"""
+    at = _find_app(seed_id=STRASBOURG).run()
+    assert not at.exception, [str(e) for e in at.exception]
+    caption_text = " ".join(c.value for c in at.caption)
+    assert "{y0}" not in caption_text and "{y1}" not in caption_text, caption_text
+    window = f"{views_find.WINDOW_START}-{views_find.WINDOW_END}"
+    assert window in caption_text, (window, caption_text)
+    assert "{" not in copy.FIND["CAPTION_TOPIC_PERIMETER"].format(
+        y0=views_find.WINDOW_START, y1=views_find.WINDOW_END)
 
 
 def test_top_subfields_panel_has_no_sort_control_and_cuts_at_thirty():
@@ -499,16 +505,18 @@ def test_find_profile_has_wordcloud_image_and_breakdown_control():
     assert controls["breakdown_dim"] == copy.FIND["BREAKDOWN_DOMAIN"], controls
 
 
-def test_find_six_chart_panels_are_expanders_in_the_ruled_order():
-    """L17 block 5 / VIZ_SPEC S1.9: Fields, Top subfields, Top topics, Frontier
-    positioning, SDG profile, ERC profile -- in that order -- plus the
-    post-filters expander that heads the Benchmark section."""
+def test_find_five_chart_panels_are_expanders_in_the_ruled_order():
+    """L17 block 5 / VIZ_SPEC S1.9: Fields, Top subfields, Topics
+    (volume/impact/frontier -- the retired "Top topics" and "Frontier
+    positioning" panels fold into this ONE expander), SDG profile, ERC
+    profile -- in that order -- plus the post-filters expander that heads
+    the Benchmark section."""
     at = _find_app(seed_id=STRASBOURG).run()
     assert not at.exception, [str(e) for e in at.exception]
     labels = [e.label for e in at.expander]
     expected = [copy.FIND[k].format(**views_find.PANEL_LABEL_ARGS.get(name, {}))
                 for name, k in (("fields", "PANEL_FIELDS"), ("subfields", "PANEL_SUBFIELDS"),
-                                ("topics", "PANEL_TOPICS"), ("frontier", "PANEL_FRONTIER"),
+                                ("topic_planes", "PANEL_TOPIC_PLANES"),
                                 ("sdg", "PANEL_SDG"), ("erc", "PANEL_ERC"))]
     assert labels[:len(expected)] == expected, labels
     assert copy.FIND["POSTFILTERS_EXPANDER"] in labels, labels
@@ -592,13 +600,15 @@ def test_breakdown_pair_series_agree_on_every_year_total():
         assert abs(dom_frac - dt_frac) <= 1e-3 * max(dom_frac, 1.0), (year, dom_frac, dt_frac)
 
 
-def test_find_workbook_has_fourteen_sheets():
-    """Acceptance step 4/6: the Find workbook always has 14 sheets -- the
+def test_find_workbook_has_fifteen_sheets():
+    """Acceptance step 4/6: the Find workbook always has 15 sheets -- the
     original 13 (profile numbers, overview, ten lenses, aspirational) plus
-    sheet 14, "Topics led & star papers" -- whether or
-    not `lib.leaders_data` has landed: unavailable, it is still
-    written as a single explanatory row, never omitted. Built through the
-    page's own pure frame functions, no Streamlit runtime needed."""
+    sheet 14, "Topics led & star papers" (whether or not `lib.leaders_data`
+    has landed: unavailable, it is still written as a single explanatory
+    row, never omitted), plus sheet 15, "Topics" (every topic with
+    n_ar>=3, uncapped -- `TopicData.institution_topics` verbatim). Built
+    through the page's own pure frame functions, no Streamlit runtime
+    needed."""
     import io
 
     import openpyxl
@@ -619,7 +629,13 @@ def test_find_workbook_has_fourteen_sheets():
     xlsx_bytes = views_find._find_workbook(bundle, subs, ctl, filters, seed_row, card,
                                            rankings, bits, seed_id)
     wb = openpyxl.load_workbook(io.BytesIO(xlsx_bytes))
-    assert len(wb.sheetnames) == 14, wb.sheetnames
+    assert len(wb.sheetnames) == 15, wb.sheetnames
+    assert wb.sheetnames[-1] == views_find._TOPICS_SHEET_TITLE, wb.sheetnames
+    topics_ws = wb[views_find._TOPICS_SHEET_TITLE]
+    from lib import topic_data as TD
+    assert [c.value for c in topics_ws[1]] == TD.TOPIC_COLS
+    assert topics_ws.max_row - 1 == len(
+        TD.institution_topics(ctx, seed_id, "bestfit")), "the Topics sheet is uncapped"
     assert views_find._find_workbook_filename(seed_id, "bestfit", "frac") == \
         f"BenchUp_find_{seed_id}_bestfit_frac.xlsx"
 

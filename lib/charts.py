@@ -105,26 +105,27 @@ module's private helpers for:
     a lookup against an axis. The dashed neutral reference line itself is
     NOT a "unit gridline" and is kept; only `showgrid` on the SI axis goes to
     `False`.
-  * **The frontier quadrant lines are bold ink, not hairline grid.** Same
-    `FRONTIER_ORIGIN` split, drawn in `palette.INK` at `FRONTIER_ORIGIN_PX`
-    instead of `palette.GRID` at a hairline, so the quadrant read is
-    immediate rather than something the eye has to find.
-  * **`fig_frontier` takes an optional `top_n`.** The SAME keyword serves
-    BOTH of `views_find.py`'s modes (top-N-by-volume and the global
-    top-quartile set) -- the builder itself keeps only the `top_n`
-    highest-mass rows of whatever frame it receives (`_frontier_topn`,
-    ties broken by stable sort so a re-render of the same frame never
-    reorders), so the axes autorange to exactly what is drawn either way.
-    `None` (the default) reproduces the pre- behaviour: every row the
-    caller already filtered is plotted, uncapped. `frontier_coverage` runs
-    the IDENTICAL selection to hand the caller the disclosure numbers a
-    caption needs (rows dropped, their mass share, the minimum mass that
-    made the cut, how many catch-all rows are among the shown set) as plain
-    numbers -- never a string, per this module's digit-ban above -- so chart
-    and caption can never drift apart. `fig_topics`'s sort-order toggle is
-    also retired here: the `sort` keyword stays (nothing calling it errors)
-    but the panel is now ALWAYS volume-ordered, since "top N" is itself a
-    volume-defined cut and a taxonomy re-sort of it reads as arbitrary order.
+  * **`fig_topics` and `fig_frontier` (with their `_frontier_topn`/
+    `frontier_coverage` companions) are RETIRED.** The topic planes
+    replacing them -- `fig_plane_impact`, `fig_plane_frontier`, `balance_bars`
+    -- live in the sibling module `lib/charts_topics.py`, on the identical
+    bar-layout constants this module exports (`FRONTIER_ORIGIN`,
+    `FRONTIER_ORIGIN_PX`, `BUBBLE_MIN_PX`, `BUBBLE_MAX_PX`, `AX_EXPANSION`,
+    `AX_ACCELERATION`, `HOVER_EXPANSION`, `HOVER_ACCELERATION` -- kept here
+    for that reuse, and for `lib/charts_compare.py`'s own cross-module
+    imports, even though no builder in THIS file still calls them itself).
+  * **`fig_share_si`'s hover is REBUILT to the tooltip-spec contract**
+    (`docs/tooltip_spec.yaml`, `find_fields`/`find_subfields`/`find_sdg`/
+    `find_erc`): a per-family share/(E)SI label (`share_hover_label`/
+    `si_hover_label`, both new keyword arguments), a whole-run `vol_pair`
+    line for fields/subfields (both counting bases, unconditionally -- the
+    frame already carries both regardless of the active basis) or a
+    whole-run `dec_1` mass line for sdg/erc, and two new conditional lines
+    (FWCI_EU, PP10_WD) whenever the caller's frame carries the matching
+    `fwci_taxa.parquet`/`impact_taxa.parquet` columns (`lib/profile_data.py`
+    joins them in, bestfit tree only). A line whose value is not finite is
+    OMITTED entirely now, never shown as an empty "n/a" -- the SI/ESI line's
+    own behaviour change from the pre-this-pass code.
 """
 from __future__ import annotations
 
@@ -402,7 +403,6 @@ FRONTIER_ORIGIN_PX = 2      # : bold-ink width for the quadrant split lines
                             # quadrant read is immediate rather than found
 
 THIN_SPACE = "\N{NARROW NO-BREAK SPACE}"
-EXCLUDED_GLYPH = "\N{ASTERISK OPERATOR}"   # catch-all / out-of-scope topic marker
 
 # ---------------------------------------------------------------------------
 # Axis + hover vocabulary. Digit-free by construction. A caller that wants
@@ -416,15 +416,39 @@ AX_YEAR = "Year"
 AX_EXPANSION = "Expansion"
 AX_ACCELERATION = "Acceleration"
 
-HOVER_SHARE = "share"
+# `HOVER_SI`/`HOVER_VOL_FRAC` are also imported by `lib/charts_compare.py`
+# (`C.HOVER_SI`/`C.HOVER_VOL_FRAC`, its own `fig_metric_bars` hover skeleton)
+# -- kept verbatim for that cross-module reader even though this module's own
+# `fig_share_si` no longer defaults to them (see `HOVER_SPECIALISATION_*`
+# below, the tooltip-spec wording for the Find profile panels).
 HOVER_SI = "SI"
-HOVER_ESI = "ESI"
-HOVER_VOL_FULL = "works (full counting)"
 HOVER_VOL_FRAC = "works (fractional)"
-HOVER_MASS = "classified mass"
 HOVER_EXPANSION = "expansion"
 HOVER_ACCELERATION = "acceleration"
-HOVER_EXCLUDED = "catch-all / out-of-scope topic"
+
+# Tooltip-spec vocabulary (find_fields / find_subfields / find_sdg /
+# find_erc, `docs/tooltip_spec.yaml`) -- each panel family has its OWN
+# wording for the "share" and "(E)SI" lines; the FWCI_EU / PP10_WD lines are
+# the SAME text on all four panels. The two fixed windows the spec's OWN
+# wording names are INT CONSTANTS, composed into the label via an f-string
+# (this module's digit-ban: a literal year inside a plain string is
+# banned, an f-string's own Constant fragments never carry one).
+RUN_WINDOW_START = 2020        # the whole-run window (all document types)
+RUN_WINDOW_END = 2025
+CORE_WINDOW_START = 2020       # the articles+reviews core window
+CORE_WINDOW_END = 2024
+
+HOVER_FIELD = "field"                                            # find_subfields' own 2nd line
+HOVER_SPECIALISATION_INDEX = "specialisation index"              # fields, subfields
+HOVER_SPECIALISATION_EUROPE = "specialisation against Europe"    # sdg (esi), erc (si)
+HOVER_SHARE_CLASSIFIED = "share of classified output"                          # fields, subfields
+HOVER_SHARE_TAGGED_INST = "share of the institution's tagged output"           # sdg
+HOVER_SHARE_CLASSIFIED_INST = "share of the institution's classified output"   # erc
+HOVER_VOL_PAIR_RUN = f"publications, whole run {RUN_WINDOW_START}-{RUN_WINDOW_END}"            # fields, subfields
+HOVER_MASS_TAGGED_RUN = f"tagged mass, whole run {RUN_WINDOW_START}-{RUN_WINDOW_END}"           # sdg
+HOVER_MASS_CLASSIFIED_RUN = f"classified mass, whole run {RUN_WINDOW_START}-{RUN_WINDOW_END}"   # erc
+HOVER_FWCI_EU_CORE = f"FWCI_EU, articles and reviews {CORE_WINDOW_START}-{CORE_WINDOW_END}"                     # all four
+HOVER_PP10_WD_CORE = f"world top-decile share, articles and reviews {CORE_WINDOW_START}-{CORE_WINDOW_END}"      # all four
 
 FAMILIES = ("oa", "erc", "sdg", "doctype")
 SORTS = ("volume", "taxonomy")
@@ -487,6 +511,63 @@ def _fmt_vol(v) -> str:
     if abs(v - round(v)) < 1e-9:
         return format(int(round(v)), ",").replace(",", THIN_SPACE)
     return format(v, f",.{SHARE_DECIMALS}f").replace(",", THIN_SPACE)
+
+
+FWCI_TAXA_FLOOR = 3    # the FWCI_EU hover line draws only at/above this n_covered
+IMPACT_TAXA_FLOOR = 1  # the PP10_WD hover line draws only at/above this n_covered_pp
+FWCI_DECIMALS = 2      # `fwci_pair_2dp` -- mean/median FWCI_EU, two decimals
+PCT_DAGGER_FLOOR = 10  # `pct_1dp_dagger` / `fwci_pair_2dp` -- a work count
+                       # under this many gets a trailing dagger, never a
+                       # withheld line (the line's OWN `when` floor, lower
+                       # than this one, decides whether it is drawn at all)
+_FWCI_FMT = f".{FWCI_DECIMALS}f"
+DAGGER = "\N{DAGGER}"
+
+
+def _fmt_dec1(v) -> str:
+    """`dec_1`: ALWAYS one decimal (never the whole-number branch `_fmt_vol`
+    takes for a value that happens to round exactly) -- fractional masses
+    and fractional whole-run volumes, e.g. "512.4", even when the value is
+    an exact integer like "512.0"."""
+    if v is None or (isinstance(v, float) and np.isnan(v)):
+        return P.NA_MARK
+    return format(float(v), f",.{SHARE_DECIMALS}f").replace(",", THIN_SPACE)
+
+
+def _fmt_vol_pair(vol_full, vol_frac) -> str:
+    """`vol_pair`: the same measure on both counting bases, full first --
+    "1 234 full - 512.4 fractional"."""
+    return f"{_fmt_vol(vol_full)} full - {_fmt_vol(vol_frac)} fractional"
+
+
+def _fmt_fwci_pair(mean, median, n) -> str:
+    """`fwci_pair_2dp`: "mean 1.31 - median 0.98 on 54 works", both to two
+    decimals; a dagger follows the work count when it is under
+    `PCT_DAGGER_FLOOR`. Whether the line is drawn AT ALL under its own
+    (lower) floor is the caller's `when` gate, not this formatter's job --
+    this always renders SOME text once called."""
+    if (mean is None or (isinstance(mean, float) and np.isnan(mean))
+            or median is None or (isinstance(median, float) and np.isnan(median))
+            or n is None or (isinstance(n, float) and np.isnan(n))):
+        return P.NA_MARK
+    n_int = int(n)
+    dagger = DAGGER if n_int < PCT_DAGGER_FLOOR else ""
+    n_text = format(n_int, ",").replace(",", THIN_SPACE)
+    return (f"mean {format(float(mean), _FWCI_FMT)} - median {format(float(median), _FWCI_FMT)} "
+            f"on {n_text} works{dagger}")
+
+
+def _fmt_pct_dagger(value, denom) -> str:
+    """`pct_1dp_dagger`: `_fmt_pct`, followed by a dagger when `denom` (the
+    line's own stated denominator) is under `PCT_DAGGER_FLOOR`. No dagger on
+    an already-missing value -- "n/a<dagger>" would read as a value with a
+    caveat, not as "no value"."""
+    text = _fmt_pct(value)
+    if text == P.NA_MARK:
+        return text
+    if denom is None or (isinstance(denom, float) and np.isnan(denom)):
+        return text
+    return f"{text}{DAGGER}" if float(denom) < PCT_DAGGER_FLOOR else text
 
 
 def wrap_label(text, width: int = WRAP_WIDTH) -> str:
@@ -799,7 +880,9 @@ def fig_share_si(
     label_col: str | None = None,
     volume_col: str | None = None,
     si_axis_title: str = AX_SI,
-    si_hover_label: str = HOVER_SI,
+    si_hover_label: str = HOVER_SPECIALISATION_INDEX,
+    share_hover_label: str = HOVER_SHARE_CLASSIFIED,
+    mass_hover_label: str = HOVER_MASS_CLASSIFIED_RUN,
     stacked: bool = False,
     wrap: bool = False,
     label_accent: bool = False,
@@ -860,6 +943,14 @@ def fig_share_si(
     wrap_px = WRAP_PX["find"]
 
     names = [str(v) for v in d[label_col]]
+    # find_subfields' own second hover line ("field␣{field_name}") -- ONLY
+    # when `field_name` is a column OTHER than the entity's own label (the
+    # subfields frame carries the PARENT field name in this column; the
+    # fields frame's `label_col` IS "field_name", so this never fires for
+    # fields itself). Mirrors Compare's own `fig_metric_bars`/`_metric_hover`
+    # "Field: {group_label}" first line for the identical reason.
+    parent_field = (d["field_name"].astype(str).to_numpy() if label_col != "field_name"
+                    and "field_name" in d.columns else None)
     colors = _colors_for(d, family)
     share = d[share_col].to_numpy(dtype=float)
     si = (d[si_col].to_numpy(dtype=float) if si_col in d.columns
@@ -901,14 +992,50 @@ def fig_share_si(
                             column_widths=[0.62, 0.38], horizontal_spacing=0.03)
         si_row, si_col = 1, 2
 
+    # Tooltip-spec hover (find_fields / find_subfields / find_sdg /
+    # find_erc, `docs/tooltip_spec.yaml`): entity name first, then share,
+    # then EITHER the whole-run vol_pair (fields/subfields, which carry BOTH
+    # `vol_full` and `vol_frac` regardless of the active counting basis) OR
+    # the whole-run fractional mass (sdg/erc, `dec_1`) -- never both, a frame
+    # carries one or the other by construction. The (E)SI line is OMITTED
+    # (never "n/a") when the value is not finite. The FWCI_EU / PP10_WD
+    # lines are OMITTED below their own floor (n_covered>=3 /
+    # n_covered_pp>=1) -- `_join_taxa_impact` (profile_data.py) leaves both
+    # columns NaN off the bestfit tree, which already fails these floors.
+    have_vol_pair = "vol_full" in d.columns and "vol_frac" in d.columns
+    have_mass = (not have_vol_pair) and "mass" in d.columns
+    vol_full_arr = d["vol_full"].to_numpy() if "vol_full" in d.columns else None
+    vol_frac_arr = d["vol_frac"].to_numpy() if "vol_frac" in d.columns else None
+    mass_arr = d["mass"].to_numpy() if "mass" in d.columns else None
+    has_fwci = {"fwci_mean", "fwci_median", "n_covered"} <= set(d.columns)
+    has_pp10 = {"pp10_wd", "n_covered_pp"} <= set(d.columns)
+    fwci_mean_arr = d["fwci_mean"].to_numpy() if has_fwci else None
+    fwci_median_arr = d["fwci_median"].to_numpy() if has_fwci else None
+    n_covered_arr = (pd.to_numeric(d["n_covered"], errors="coerce").to_numpy()
+                     if has_fwci else None)
+    pp10_arr = d["pp10_wd"].to_numpy() if has_pp10 else None
+    n_covered_pp_arr = (pd.to_numeric(d["n_covered_pp"], errors="coerce").to_numpy()
+                        if has_pp10 else None)
+
     bar_hover = []
     for i in range(n):
-        parts = [names[i], f"{HOVER_SHARE}{THIN_SPACE}{_fmt_pct(share[i])}"]
-        if vol is not None:
-            lab = HOVER_VOL_FULL if volume_col == "vol_full" else (
-                HOVER_VOL_FRAC if volume_col == "vol_frac" else HOVER_MASS)
-            parts.append(f"{lab}{THIN_SPACE}{_fmt_vol(vol[i])}")
-        parts.append(f"{si_hover_label}{THIN_SPACE}{_fmt_si(si[i])}")
+        parts = [names[i]]
+        if parent_field is not None:
+            parts.append(f"{HOVER_FIELD}{THIN_SPACE}{parent_field[i]}")
+        parts.append(f"{share_hover_label}{THIN_SPACE}{_fmt_pct(share[i])}")
+        if have_vol_pair:
+            parts.append(f"{HOVER_VOL_PAIR_RUN}{THIN_SPACE}"
+                         f"{_fmt_vol_pair(vol_full_arr[i], vol_frac_arr[i])}")
+        elif have_mass:
+            parts.append(f"{mass_hover_label}{THIN_SPACE}{_fmt_dec1(mass_arr[i])}")
+        if np.isfinite(si[i]):
+            parts.append(f"{si_hover_label}{THIN_SPACE}{_fmt_si(si[i])}")
+        if has_fwci and np.isfinite(n_covered_arr[i]) and n_covered_arr[i] >= FWCI_TAXA_FLOOR:
+            parts.append(f"{HOVER_FWCI_EU_CORE}{THIN_SPACE}"
+                         f"{_fmt_fwci_pair(fwci_mean_arr[i], fwci_median_arr[i], n_covered_arr[i])}")
+        if has_pp10 and np.isfinite(n_covered_pp_arr[i]) and n_covered_pp_arr[i] >= IMPACT_TAXA_FLOOR:
+            parts.append(f"{HOVER_PP10_WD_CORE}{THIN_SPACE}"
+                         f"{_fmt_pct_dagger(pp10_arr[i], n_covered_pp_arr[i])}")
         bar_hover.append("<br>".join(parts))
 
     fig.add_trace(go.Bar(
@@ -1020,257 +1147,13 @@ def fig_share_si(
 
 
 # ---------------------------------------------------------------------------
-# 2. Top topics -- share bars, catch-all topics flagged (glyph + muted fill)
+# `fig_topics` (2. Top topics), `_frontier_topn`, `frontier_coverage` and
+# `fig_frontier` (3. Frontier positioning) are RETIRED: the topic
+# planes replacing them (`fig_plane_impact`, `fig_plane_frontier`,
+# `lib/charts_topics.py`) supersede both panels on Find, and (later)
+# Compare's topic overlay. Deleted outright, not kept as dead code -- see
+# `tests/test_charts_topics.py` for the replacement builders' own tests.
 # ---------------------------------------------------------------------------
-def fig_topics(
-    df: pd.DataFrame,
-    *,
-    sort: str = "volume",
-    gutter: bool = True,
-    share_col: str = "share",
-    label_col: str = "topic_name",
-    volume_col: str | None = None,
-    wrap: bool = False,
-) -> go.Figure:
-    """Horizontal share bars for topics, coloured by the topic's DOMAIN (topics
-    inherit; `palette.domain_color`). A row flagged `is_excluded` (the catch-all
-    / out-of-scope topics) keeps its domain hue at `palette.MUTED_OPACITY`, is
-    prefixed with `EXCLUDED_GLYPH` on the axis, and says why on hover -- it is
-    shown and counted, never silently dropped.
-
-    `sort` is retired: the keyword stays so no existing caller
-    breaks, but the panel is now ALWAYS volume-ordered whatever value is
-    passed, since "top N" is itself a volume-defined cut -- a taxonomy
-    re-sort of it would read as an arbitrary row order, not a second view.
-    `wrap` (default `False`, see `fig_share_si`): topic names are the longest
-    labels in the app, so this panel never wraps them -- the gutter widens
-    to fit the full name on one row instead."""
-    if sort not in SORTS:
-        raise ValueError(f"sort must be one of {SORTS}, got {sort!r}")
-    d = _ordered(df, "oa", "volume", share_col)  # : fixed, `sort` ignored
-    n = len(d)
-    volume_col = volume_col or _first_col(d, _VOLUME_COLS)
-    excluded = (d["is_excluded"].fillna(False).to_numpy(dtype=bool)
-                if "is_excluded" in d.columns else np.zeros(n, dtype=bool))
-    colors = _colors_for(d, "oa")
-    names = [f"{EXCLUDED_GLYPH}{THIN_SPACE}{v}" if excluded[i] else str(v)
-             for i, v in enumerate(d[label_col])]
-    # `names` is the identity (y positions / hover), full and untouched;
-    # `_tick_label` pixel-wraps it for the tick actually drawn -- the volume
-    # itself now lives in its own gutter column, see the fix note above.
-    # Topic names are the longest labels in the app, so this panel is the
-    # wrap mechanism's harder test (`WRAP_PX["find"]`, the same view-level
-    # budget every other Find panel wraps at).
-    share = d[share_col].to_numpy(dtype=float)
-    vol = d[volume_col].to_numpy() if volume_col else None
-
-    hover = []
-    for i in range(n):
-        parts = [str(d[label_col].iloc[i]), f"{HOVER_SHARE}{THIN_SPACE}{_fmt_pct(share[i])}"]
-        if vol is not None:
-            parts.append(f"{HOVER_VOL_FULL if volume_col == 'vol_full' else HOVER_VOL_FRAC}"
-                         f"{THIN_SPACE}{_fmt_vol(vol[i])}")
-        if excluded[i]:
-            parts.append(HOVER_EXCLUDED)
-        hover.append("<br>".join(parts))
-
-    fig = go.Figure(go.Bar(
-        x=share, y=names, orientation="h",
-        marker=dict(color=colors, opacity=[P.MUTED_OPACITY if e else 1.0 for e in excluded],
-                    line=dict(color=P.SURFACE, width=HAIRLINE_PX)),
-        customdata=hover, hovertemplate="%{customdata}<extra></extra>", showlegend=False,
-    ))
-    # Wrap the RAW name (never the glyph-prefixed `names[i]`): the catch-all
-    # marker's own THIN_SPACE is Unicode whitespace, which a plain word-split
-    # would otherwise treat as a break point, losing the exact character on
-    # re-join (`_tick_label`'s own `prefix` note).
-    pairs = [_tick_label(str(v), wrap_px=WRAP_PX["find"],
-                         prefix=(f"{EXCLUDED_GLYPH}{THIN_SPACE}" if excluded[i] else ""))
-             for i, v in enumerate(d[label_col])]
-    styled_display = [s for _, s in pairs]
-    fig.update_yaxes(tickmode="array", tickvals=names, ticktext=styled_display)
-
-    xmax = float(np.nanmax(share)) if n and np.isfinite(share).any() else 1.0
-    xmax = xmax if xmax > 0 else 1.0
-    if gutter and vol is not None:
-        _add_gutter_column(fig, names=names, values=[_fmt_vol(v) for v in vol], xmax=xmax)
-        # Two go.Bar traces now share this axis (see `fig_share_si`'s own
-        # identical note) -- force overlay so plotly's un-set "group"
-        # default cannot halve either trace's own lane (and, via
-        # `constraintext`, its text).
-        fig.update_layout(barmode="overlay")
-        fig.add_shape(type="line", x0=0, x1=0, y0=-0.5, y1=n - 0.5,
-                      line=dict(color=P.BORDER, width=HAIRLINE_PX))
-    else:
-        fig.update_xaxes(range=[0, xmax * 1.02])
-    fig.update_xaxes(tickvals=_nice_ticks(xmax))
-    fig.update_yaxes(autorange="reversed", showgrid=False, automargin=True,
-                     tickfont=dict(size=TICK_FONT_PX))
-    fig.update_xaxes(title_text=AX_SHARE, tickformat=_AXIS_PCT_FMT,
-                     gridcolor=P.GRID, zerolinecolor=P.GRID, linecolor=P.BORDER)
-    # bar-layout contract: a CONSTANT margin (the whole 4,516-topic universe,
-    # never this frame's own longest name) -- see `fig_share_si`'s own note.
-    margin_l = LABEL_COL_PX["find"] + GUTTER_COL_PX["find"] + COL_PAD_PX
-    return _base_layout(fig, row_height_single(n),
-                        margin=dict(t=BASE_PX // 2, l=margin_l, r=16, b=BASE_PX),
-                        bargap=BAR_GAP_SINGLE)
-
-
-# ---------------------------------------------------------------------------
-# 3. Frontier positioning -- topics scatter, Expansion x Acceleration
-# ---------------------------------------------------------------------------
-def _frontier_topn(d: pd.DataFrame, top_n: int | None, size_col: str | None) -> pd.DataFrame:
-    """The ONE selection rule 's top-N slider drives, shared by
-    `fig_frontier` and `frontier_coverage` so the chart drawn and the
-    caption describing it can never disagree. Keeps the `top_n` highest-mass
-    rows of `d` (already the placeable subset); `None`, non-positive, or a
-    `top_n` at least as large as `len(d)` is a no-op -- every row stays, the
-    pre- behaviour. Ties broken by a STABLE sort on the frame's own
-    row order, so a re-render of the identical frame never reshuffles which
-    rows land on the cut line."""
-    if top_n is None or top_n <= 0 or len(d) <= top_n:
-        return d
-    if size_col and size_col in d.columns:
-        key = pd.to_numeric(d[size_col], errors="coerce").fillna(0.0)
-    else:
-        key = pd.Series(np.arange(len(d), 0, -1), index=d.index, dtype=float)
-    order = key.sort_values(ascending=False, kind="mergesort").index[:top_n]
-    return d.loc[order].reset_index(drop=True)
-
-
-def frontier_coverage(
-    df: pd.DataFrame,
-    *,
-    x_col: str = "expansion_latest",
-    y_col: str = "acceleration_latest",
-    size_col: str | None = None,
-    top_n: int | None = None,
-    excluded_col: str = "is_excluded",
-) -> dict:
-    """The disclosure NUMBERS `fig_frontier`'s caller needs, computed
-    from the SAME placeable-then-`top_n` selection `fig_frontier` itself draws
-    never a string (this module's digit-ban, see the module docstring): the
-    caller composes its own `{placeholder}` sentence in `copy.py` from these.
-
-      n_placeable -- rows with BOTH axes scored, before any `top_n` cut
-      n_shown -- rows actually plotted after the cut (mirrors
-                            `fig_frontier`'s own row count exactly)
-      n_catchall_shown -- how many of the SHOWN rows are catch-all /
-                            out-of-scope (`excluded_col`) -- states that
-                            catch-all topics are INCLUDED in the `top_n`
-                            count, not hidden inside it
-      mass_shown / mass_placeable -- summed `size_col` mass, shown vs. every
-                            placeable row (equal when `top_n` is a no-op)
-      pct_mass_not_shown -- `1 - mass_shown / mass_placeable`, floored at
-                            zero and returned as `0.0` (never a division by
-                            zero) when nothing is placeable
-      min_mass_shown -- the smallest `size_col` value among the shown
-                            rows -- the minimum mass that made the cut;
-                            `None` (n/a-safe) when nothing is shown
-    """
-    size_col = size_col or _first_col(df, _VOLUME_COLS)
-    placeable = df[np.isfinite(pd.to_numeric(df[x_col], errors="coerce"))
-                   & np.isfinite(pd.to_numeric(df[y_col], errors="coerce"))].reset_index(drop=True)
-    shown = _frontier_topn(placeable, top_n, size_col)
-    if size_col and size_col in placeable.columns:
-        mass_all = pd.to_numeric(placeable[size_col], errors="coerce").fillna(0.0)
-        mass_shown_s = pd.to_numeric(shown[size_col], errors="coerce").fillna(0.0)
-    else:
-        mass_all = pd.Series(1.0, index=placeable.index)
-        mass_shown_s = pd.Series(1.0, index=shown.index)
-    mass_total = float(mass_all.sum())
-    mass_shown = float(mass_shown_s.sum())
-    excluded_shown = (int(shown[excluded_col].fillna(False).sum())
-                      if excluded_col in shown.columns else 0)
-    return {
-        "n_placeable": int(len(placeable)),
-        "n_shown": int(len(shown)),
-        "n_catchall_shown": excluded_shown,
-        "mass_shown": mass_shown,
-        "mass_placeable": mass_total,
-        "pct_mass_not_shown": (0.0 if mass_total <= 0 else max(0.0, 1.0 - mass_shown / mass_total)),
-        "min_mass_shown": (float(mass_shown_s.min()) if len(shown) else None),
-    }
-
-
-def fig_frontier(
-    df: pd.DataFrame,
-    *,
-    x_col: str = "expansion_latest",
-    y_col: str = "acceleration_latest",
-    size_col: str | None = None,
-    label_col: str = "topic_name",
-    top_n: int | None = None,
-) -> go.Figure:
-    """One bubble per SCORED topic: x = expansion, y = acceleration, area = the
-    topic's mass on the current basis, colour = its domain. The two quadrant
-    lines sit at the origin on both axes (verified against `topics_dim.quadrant`,
-    which flips sign exactly there), drawn BOLD in `palette.INK` so the quadrant read is immediate. A top-quartile
-    frontier topic (`top25pct_frontier`) carries an INK outline -- a shape
-    signal on top of its family colour, never a new hue. A row flagged
-    `is_excluded` (catch-all / out-of-scope, present or not depending on
-    whether the caller kept those rows in) gets the same muted-opacity + hover
-    disclosure `fig_topics` uses, so it is shown and counted rather than being
-    invisible inside the `top_n` cut.
-
-    Rows with no score (`x_col`/`y_col` NaN) are DROPPED here and must be
-    counted in the caller's caption: the panel states what it could not place
-    rather than letting it vanish.
-
-    `top_n`: keeps only the `top_n` highest-mass placeable rows
-    (`_frontier_topn`) -- the SAME keyword serves BOTH of the app's modes
-    (top-N-by-volume and the global top-quartile set), so one slider value
-    drives either. The axes always autorange to whatever ends up plotted, so
-    a smaller `top_n` is a tighter plot, never a fixed one. `None` (default)
-    reproduces the pre- behaviour: everything the caller already
-    filtered is plotted, uncapped. `frontier_coverage` (above) computes the
-    caption figures from the IDENTICAL cut."""
-    size_col = size_col or _first_col(df, _VOLUME_COLS)
-    d = df.copy()
-    d = d[np.isfinite(pd.to_numeric(d[x_col], errors="coerce"))
-          & np.isfinite(pd.to_numeric(d[y_col], errors="coerce"))].reset_index(drop=True)
-    d = _frontier_topn(d, top_n, size_col)
-    n = len(d)
-    x = d[x_col].to_numpy(dtype=float)
-    y = d[y_col].to_numpy(dtype=float)
-    colors = _colors_for(d, "oa")
-    mass = (pd.to_numeric(d[size_col], errors="coerce").fillna(0.0).to_numpy(dtype=float)
-            if size_col else np.ones(n))
-    mmax = float(mass.max()) if n and mass.max() > 0 else 1.0
-    sizes = BUBBLE_MIN_PX + (BUBBLE_MAX_PX - BUBBLE_MIN_PX) * np.sqrt(mass / mmax)
-    top = (d["top25pct_frontier"].fillna(False).to_numpy(dtype=bool)
-           if "top25pct_frontier" in d.columns else np.zeros(n, dtype=bool))
-    excluded = (d["is_excluded"].fillna(False).to_numpy(dtype=bool)
-                if "is_excluded" in d.columns else np.zeros(n, dtype=bool))
-
-    hover = []
-    for i in range(n):
-        parts = [str(d[label_col].iloc[i]),
-                 f"{HOVER_EXPANSION}{THIN_SPACE}{_fmt_frontier(x[i])}",
-                 f"{HOVER_ACCELERATION}{THIN_SPACE}{_fmt_frontier(y[i])}"]
-        if size_col:
-            parts.append(f"{HOVER_MASS}{THIN_SPACE}{_fmt_vol(mass[i])}")
-        if excluded[i]:
-            parts.append(HOVER_EXCLUDED)
-        hover.append("<br>".join(parts))
-
-    fig = go.Figure(go.Scatter(
-        x=x, y=y, mode="markers",
-        marker=dict(color=colors, size=sizes, sizemode="diameter",
-                    opacity=[P.MUTED_OPACITY if e else 1.0 for e in excluded],
-                    line=dict(color=[P.INK if t else P.SURFACE for t in top],
-                              width=[P.OUTLINE_WIDTH if t else HAIRLINE_PX for t in top])),
-        customdata=hover, hovertemplate="%{customdata}<extra></extra>", showlegend=False,
-    ))
-    fig.add_vline(x=FRONTIER_ORIGIN, line=dict(color=P.INK, width=FRONTIER_ORIGIN_PX))
-    fig.add_hline(y=FRONTIER_ORIGIN, line=dict(color=P.INK, width=FRONTIER_ORIGIN_PX))
-    fig.update_xaxes(title_text=AX_EXPANSION, gridcolor=P.GRID,
-                     zerolinecolor=P.GRID, linecolor=P.BORDER)
-    fig.update_yaxes(title_text=AX_ACCELERATION, gridcolor=P.GRID,
-                     zerolinecolor=P.GRID, linecolor=P.BORDER)
-    return _base_layout(fig, SCATTER_HEIGHT, margin=dict(t=BASE_PX // 2, l=8, r=16, b=BASE_PX))
-
-
 # ---------------------------------------------------------------------------
 # 4. SDG profile -- share bars in goal order + ESI dots (UN colours)
 # ---------------------------------------------------------------------------
@@ -1292,7 +1175,9 @@ def fig_sdg(df: pd.DataFrame, *, sort: str = "taxonomy", gutter: bool = True) ->
     if "sdg_number" not in d.columns and "sdg_idx" in d.columns:
         d["sdg_number"] = pd.to_numeric(d["sdg_idx"], errors="coerce") + 1
     return fig_share_si(d, family="sdg", sort=sort, gutter=gutter,
-                        si_axis_title=AX_ESI, si_hover_label=HOVER_ESI,
+                        si_axis_title=AX_ESI, si_hover_label=HOVER_SPECIALISATION_EUROPE,
+                        share_hover_label=HOVER_SHARE_TAGGED_INST,
+                        mass_hover_label=HOVER_MASS_TAGGED_RUN,
                         label_accent=True)
 
 
@@ -1305,7 +1190,10 @@ def fig_erc(df: pd.DataFrame, *, sort: str = "taxonomy", gutter: bool = True) ->
     on the right, `sort="taxonomy"` grouping the panels by domain in the fixed
     PE -> LS -> SH order. The weak-panel caveat (some panels are thinly
     populated) is the caller's caption, not a mark on the chart."""
-    return fig_share_si(df, family="erc", sort=sort, gutter=gutter)
+    return fig_share_si(df, family="erc", sort=sort, gutter=gutter,
+                        si_hover_label=HOVER_SPECIALISATION_EUROPE,
+                        share_hover_label=HOVER_SHARE_CLASSIFIED_INST,
+                        mass_hover_label=HOVER_MASS_CLASSIFIED_RUN)
 
 
 # ---------------------------------------------------------------------------

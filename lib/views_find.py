@@ -15,7 +15,8 @@ original plus the two star-papers/topics-led KPIs
 adds | the identity block with the subfield wordcloud under it), row 2 full
 width (a titled section, one segmented control and one chip legend above a
 height-matched global + yearly breakdown pair whose bonus year is starred on
-the axis), then six collapsed chart panels -> BENCHMARK section, headed by the
+the axis), then five collapsed chart panels (Fields, Top subfields, Topics:
+volume/impact/frontier, SDG profile, ERC profile) -> BENCHMARK section, headed by the
 controls row (C1, L7, a post-filters expander -- the depth radio is retired:
 the cut is the fixed `BENCHMARK_DEPTH` everywhere the page cuts) and the "How
 to read the lenses" guide -> the lens tabs, labelled by the bare
@@ -57,8 +58,9 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from lib import baselines, charts, copy, countries, links, profile_data, state, tiles
+from lib import baselines, charts, charts_topics, copy, countries, links, profile_data, state, tiles
 from lib import palette as P
+from lib import topic_data as TopicData
 from lib.app_config import CFG
 from lib.badges import badges_for, corrected_from
 from lib.charts_compare import chart_note
@@ -87,23 +89,18 @@ from lib.wordcloud_png import render_wordcloud_png
 # rendered string ever types it.
 CORE_TOP_N = 20
 
-# The displayed cut of the "top N" profile panels and of the frontier panel's
-# default top-N. Module constants, never a digit inside a caption: the
-# captions take them as `{n}` placeholders. SUBFIELDS_TOP_N is 30
-# (the panel also lost its sort toggle: "top 30" is itself a
-# volume-ordered concept, and a taxonomy re-sort of a volume-defined cut reads
-# as an arbitrary 30 rows in ID order). TOPICS_TOP_N is 30
-# (was 20; the topics panel lost its sort toggle for the same reason
-# as subfields -- `charts.fig_topics`'s `sort` kwarg is accepted but ignored).
-# FRONTIER_TOP_N is the frontier panel's own top-N slider default
-# (was a fixed two-hundred-topic volume-mode cut; now ONE slider drives BOTH
-# modes, `_panel_frontier` below).
+# The displayed cut of the "top N" subfields panel. A module constant,
+# never a digit inside a caption: the caption takes it as an `{n}`
+# placeholder. SUBFIELDS_TOP_N is 30 (the panel also lost its sort toggle:
+# "top 30" is itself a volume-ordered concept, and a taxonomy re-sort of a
+# volume-defined cut reads as an arbitrary 30 rows in ID order).
 SUBFIELDS_TOP_N = 30
-TOPICS_TOP_N = 30
-FRONTIER_TOP_N = 200
-FRONTIER_TOPN_MIN = 20
-FRONTIER_TOPN_MAX = 200
-FRONTIER_TOPN_STEP = 20
+
+# The topic planes' shared "Topics shown" slider -- 10..100 step 10
+# (`TopicData.N_MIN`/`N_MAX` own the clamp band this slider's own min/max
+# mirror), default 50.
+TOPIC_N_DEFAULT = 50
+TOPIC_N_STEP = 10
 
 SEP = "·"   # middle dot -- the separator copy.STRIP_JOIN already uses
 DASH = "–"  # en dash -- interval rendering
@@ -195,11 +192,6 @@ def _subfields_frame(iid: str, tree: str, basis: str) -> pd.DataFrame:
     return profile_data.subfields_table(SC.bundle()["ctx"], SC.get(tree, basis), iid)
 
 
-@st.cache_data(show_spinner=False, max_entries=12)
-def _topics_frame(iid: str, tree: str, basis: str) -> pd.DataFrame:
-    return profile_data.topics_table(SC.bundle()["ctx"], SC.get(tree, basis), iid)
-
-
 @st.cache_data(show_spinner=False, max_entries=24)
 def _yearly_domain_frame(iid: str, tree: str) -> pd.DataFrame:
     """Basis-independent in its KEY: the frame carries both `vol_full` and
@@ -221,13 +213,17 @@ def _yearly_doctype_frame(iid: str) -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner=False, max_entries=24)
-def _sdg_frame(iid: str) -> pd.DataFrame:
-    return profile_data.sdg_table(SC.bundle()["ctx"], iid)
+def _sdg_frame(iid: str, tree: str) -> pd.DataFrame:
+    """`tree` gates the FWCI_EU/PP10_WD hover join (a tooltip-spec ruling: applied
+    uniformly across all four profile panels) -- SDG's own share/mass/si
+    columns are tree-independent and unaffected."""
+    return profile_data.sdg_table(SC.bundle()["ctx"], iid, tree)
 
 
 @st.cache_data(show_spinner=False, max_entries=24)
-def _erc_frame(iid: str) -> pd.DataFrame:
-    return profile_data.erc_table(SC.bundle()["ctx"], iid)
+def _erc_frame(iid: str, tree: str) -> pd.DataFrame:
+    """Same `tree` gate as `_sdg_frame`."""
+    return profile_data.erc_table(SC.bundle()["ctx"], iid, tree)
 
 
 @st.cache_data(show_spinner=False, max_entries=24)
@@ -877,103 +873,104 @@ def _panel_subfields(iid: str, ctl: dict, card: dict) -> None:
                help=f"{copy.FIND['CAPTION_SI']} {floors}")
 
 
-def _panel_topics(iid: str, ctl: dict, card: dict) -> None:
-    """VIZ_SPEC S2.17: the top topics by share. A catch-all (out-of-scope, 811)
-    topic is FLAGGED and COUNTED, never dropped -- its presence is exactly what
-    a reader needs in order to discount every other number in the section.
+_TOPIC_MODE_BY_LABEL: dict[str, str] = {}   # filled just below, once copy.FIND exists
 
-    No sort control -- `charts.fig_topics` is always
-    volume-ordered now (the toggle would be dead UI, same reasoning as the
-    subfields panel losing its own toggle)."""
-    df = _topics_frame(iid, ctl["tree"], ctl["basis"])
+
+def _topic_mode_options() -> list[str]:
+    """The five "Topics shown" mode labels, in the fixed order the
+    segmented control shows them -- built from `copy.py` so the label text
+    lives in exactly one place, and reverse-mapped once into
+    `_TOPIC_MODE_BY_LABEL` (display label -> `topic_data` mode id)."""
+    order = [
+        (copy.FIND["TOPIC_MODE_VOLUME"], TopicData.MODE_VOLUME),
+        (copy.FIND["TOPIC_MODE_FWCI"], TopicData.MODE_FWCI),
+        (copy.FIND["TOPIC_MODE_LED"], TopicData.MODE_LED),
+        (copy.FIND["TOPIC_MODE_STARS"], TopicData.MODE_STARS),
+        (copy.FIND["TOPIC_MODE_EMERGENCE"], TopicData.MODE_EMERGENCE),
+    ]
+    _TOPIC_MODE_BY_LABEL.clear()
+    _TOPIC_MODE_BY_LABEL.update(dict(order))
+    return [label for label, _ in order]
+
+
+@st.cache_data(show_spinner=False, max_entries=12)
+def _topic_planes_frame(iid: str, tree: str) -> pd.DataFrame:
+    """The topic-plane perimeter (articles+reviews 2020-2024, full
+    counting, primary topic) is basis-INDEPENDENT -- this cache key
+    deliberately carries no `basis`, unlike every other profile frame in
+    this file."""
+    return TopicData.institution_topics(SC.bundle()["ctx"], iid, tree)
+
+
+def _panel_topic_planes(iid: str, ctl: dict, card: dict) -> None:
+    """The two topic planes (Volume and impact | Frontier) live in ONE
+    expander, sharing a single controls row and therefore always the
+    IDENTICAL topic set (`TopicData.select_topics` is called once; both
+    figures are built from its one return value) -- a Streamlit widget key
+    cannot be rendered twice in one run, and the planes are defined to share
+    their set by construction (a Streamlit widget key cannot render twice
+    in one run, and the two planes are defined to share their selection)."""
+    df = _topic_planes_frame(iid, ctl["tree"])
     if df.empty:
         st.caption(copy.FIND["PANEL_EMPTY"])
         return
-    top = df.nlargest(TOPICS_TOP_N, "share")
-    st.plotly_chart(charts.fig_topics(top, volume_col=_vol_col(ctl["basis"])),
-                    width="stretch", key="fig_topics")
-    # The seed's catch-all SHARE moved off the retired coverage line
-    # into this caption, which already counted the flagged rows from the data
-    # a caveat is read where the rows it qualifies are on screen. -8 keeps
-    # THAT as the panel's one visible line (it qualifies every number in the
-    # figure) and moves the depth-of-cut line into its `?`.
-    st.caption(copy.FIND["CAPTION_TOPICS_CATCHALL"].format(
-        n=f"{int(top['is_excluded'].fillna(False).sum()):,}", glyph=charts.EXCLUDED_GLYPH,
-        catchall=_pct(card["catchall_811_share"])),
-        help=copy.FIND["CAPTION_TOP_N_SHARE"].format(n=f"{len(top):,}"))
 
+    mode_label = st.segmented_control(copy.FIND["TOPIC_MODE_LABEL"], _topic_mode_options(),
+                                      default=copy.FIND["TOPIC_MODE_VOLUME"], required=True,
+                                      key="topic_mode", **state.PERSIST)
+    mode = _TOPIC_MODE_BY_LABEL.get(mode_label or copy.FIND["TOPIC_MODE_VOLUME"], TopicData.MODE_VOLUME)
+    c_n, c_stat = st.columns([3, 2])
+    with c_n:
+        n = st.slider(copy.FIND["TOPIC_N_LABEL"], TopicData.N_MIN, TopicData.N_MAX,
+                      TOPIC_N_DEFAULT, step=TOPIC_N_STEP, key="topic_n", **state.PERSIST)
+    with c_stat:
+        stat_label = st.radio(copy.FIND["TOPIC_FWCI_STAT_LABEL"],
+                              [copy.FIND["TOPIC_FWCI_STAT_MEAN"], copy.FIND["TOPIC_FWCI_STAT_MEDIAN"]],
+                              index=0, horizontal=True, key="topic_fwci_stat", **state.PERSIST)
+    fwci_stat = (TopicData.FWCI_STAT_MEAN if stat_label != copy.FIND["TOPIC_FWCI_STAT_MEDIAN"]
+                else TopicData.FWCI_STAT_MEDIAN)
 
-def _frontier_modes() -> tuple[str, str]:
-    """The two L33 mode labels, built once so the control, the default and the
-    comparison below all read the same strings.
+    st.caption(copy.FIND["CAPTION_TOPIC_PERIMETER"].format(y0=WINDOW_START, y1=WINDOW_END))
 
-     (FB handoff): the volume mode's label no longer bakes in a fixed
-    N -- the panel's own top-N slider (below) states it instead, and the same
-    slider now governs BOTH modes."""
-    return (copy.FIND["FRONTIER_MODE_TOP"], copy.FIND["FRONTIER_MODE_EMERGING"])
-
-
-def _panel_frontier(iid: str, ctl: dict, card: dict) -> None:
-    """Expansion x Acceleration, bubble area = volume on
-    the current basis, colour = domain, an INK outline on a top-quartile
-    topic. TWO modes behind one segmented control -- the seed's topics by
-    volume, or every topic in the global top quartile of emergence (NOT a
-    subset of the first: a topic can be small and highly emergent, or large
-    and static) -- ONE top-N slider shared by both, handed to
-    `charts.fig_frontier` as `top_n` so the chart does the mass-based cut
-    itself (`charts._frontier_topn`) instead of a hand-rolled rank mask.
-
-    Catch-all topics are no longer pre-excluded before this cut (FB handoff:
-    "catch-all must enter the top_n count") -- `fig_frontier` already mutes
-    and hover-flags them exactly like `fig_topics` does, so they are shown and
-    counted like any other topic, never invisibly dropped ahead of the
-    selection the caption describes. Placeability (both axes scored) is left
-    for `fig_frontier`/`charts.frontier_coverage` to determine THEMSELVES,
-    internally, off whichever base this function hands them -- `df` itself for
-    the volume mode (so `n_excluded` states how many of the SEED's topics
-    carry no frontier score at all), the top-quartile subset for the emerging
-    mode (so `n_excluded` states how many of THOSE carry none) -- rather than
-    this function pre-filtering to placeable rows itself, which would make
-    every base 100% placeable by construction and the caption vacuous.
-    `charts.frontier_coverage` runs the IDENTICAL selection on the SAME frame
-    handed to `fig_frontier`, so the chart and the caption's numbers can never
-    drift apart."""
-    df = _topics_frame(iid, ctl["tree"], ctl["basis"])
-    if df.empty:
-        st.caption(copy.FIND["PANEL_EMPTY"])
+    shown = TopicData.select_topics(df, mode, n, fwci_stat=fwci_stat)
+    if shown.empty:
+        st.caption(copy.FIND["TOPIC_PLANES_EMPTY"])
         return
-    mode_top, mode_emerging = _frontier_modes()
-    st.segmented_control(copy.FIND["FRONTIER_MODE_LABEL"], [mode_top, mode_emerging],
-                         default=mode_top, required=True, key="frontier_mode", **state.PERSIST)
-    pick = st.session_state.get("frontier_mode") or mode_top
-    base = df[df["top25pct_frontier"].fillna(False)] if pick == mode_emerging else df
 
-    top_n = st.slider(copy.FIND["FRONTIER_TOPN_LABEL"], FRONTIER_TOPN_MIN, FRONTIER_TOPN_MAX,
-                      FRONTIER_TOP_N, step=FRONTIER_TOPN_STEP, key=f"frontier_topn_{pick}",
-                      **state.PERSIST)
-    vol_col = _vol_col(ctl["basis"])
-    cov = charts.frontier_coverage(base, size_col=vol_col, top_n=top_n)
-    if cov["n_shown"] == 0:
+    seed_row = SC.bundle()["ctx"]["index_by_id"].loc[iid]
+    w1 = seed_row.get("total_ar_full_w1")
+    w2 = seed_row.get("total_ar_full_w2")
+    total_ar = None if (pd.isna(w1) or pd.isna(w2)) else float(w1) + float(w2)
+    facts = TopicData.topic_set_caption(shown, total_ar)
+    share_text = NA_MARK if facts["share_of_ar"] is None else _pct(facts["share_of_ar"])
+
+    st.markdown(f"**{copy.FIND['TOPIC_PLANE_A_TITLE']}**")
+    st.plotly_chart(charts_topics.fig_plane_impact(shown, fwci_stat=fwci_stat),
+                    width="stretch", key="fig_plane_impact")
+    st.caption(copy.FIND["CAPTION_TOPIC_PLANE_A"].format(
+        n_shown=f"{facts['n_shown']:,}", n_not_placed=f"{facts['n_not_placed_a']:,}",
+        n_catchall=f"{facts['n_catchall']:,}", share=share_text,
+        y0=WINDOW_START, y1=WINDOW_END))
+
+    st.caption(copy.FIND["AXIS_DEF_TOPIC_PLANES"])
+
+    st.markdown(f"**{copy.FIND['TOPIC_PLANE_B_TITLE']}**")
+    scored = shown[np.isfinite(pd.to_numeric(shown["expansion_latest"], errors="coerce"))
+                   & np.isfinite(pd.to_numeric(shown["acceleration_latest"], errors="coerce"))]
+    if scored.empty:
         st.caption(copy.FIND["FRONTIER_EMPTY"])
     else:
-        st.plotly_chart(charts.fig_frontier(base, size_col=vol_col, top_n=top_n),
-                        width="stretch", key="fig_frontier")
-    n_not_placeable = int(len(base) - cov["n_placeable"])
-    min_mass = NA_MARK if cov["min_mass_shown"] is None else f"{cov['min_mass_shown']:,.0f}"
-    # -8: what is plotted stays visible; how much mass the cut leaves out
-    # and how catch-all topics are treated move into the same line's `?`.
-    st.caption(copy.FIND["CAPTION_FRONTIER"].format(
-        n_shown=f"{cov['n_shown']:,}", n_excluded=f"{n_not_placeable:,}"),
-        help=copy.FIND["CAPTION_FRONTIER_COVERAGE"].format(
-            n_catchall=f"{cov['n_catchall_shown']:,}", glyph=charts.EXCLUDED_GLYPH,
-            pct_not_shown=_pct(cov["pct_mass_not_shown"]), min_mass=min_mass))
+        st.plotly_chart(charts_topics.fig_plane_frontier(shown, color_by="domain"),
+                        width="stretch", key="fig_plane_frontier")
+    st.caption(copy.FIND["CAPTION_TOPIC_PLANE_B"].format(
+        n_no_frontier=f"{facts['n_no_frontier']:,}", n_shown=f"{facts['n_shown']:,}"))
 
 
 def _panel_sdg(iid: str, ctl: dict, card: dict) -> None:
     """VIZ_SPEC S2.19: sixteen bars in FIXED goal order (the one panel with no
     sort toggle -- the SDG numbers are a canonical sequence a reader navigates
     by position), official UN colours, ESI in the SI slot."""
-    df = _sdg_frame(iid)
+    df = _sdg_frame(iid, ctl["tree"])
     if df.empty:
         st.caption(copy.FIND["PANEL_EMPTY"])
         return
@@ -1000,7 +997,7 @@ def _panel_erc(iid: str, ctl: dict, card: dict) -> None:
     DOMAIN (three hues that share nothing with the OpenAlex four -- a different
     taxonomy of the same output), grouped PE -> LS -> SH under the taxonomy
     sort, which is this panel's default."""
-    df = _erc_frame(iid)
+    df = _erc_frame(iid, ctl["tree"])
     if df.empty:
         st.caption(copy.FIND["PANEL_EMPTY"])
         return
@@ -1028,29 +1025,33 @@ def _panel_erc(iid: str, ctl: dict, card: dict) -> None:
 # only such title today.
 PANEL_LABEL_ARGS = {"subfields": {"n": SUBFIELDS_TOP_N}}
 
+# "Top topics" and "Frontier positioning" are ONE expander now
+# ("Topics: volume, impact and frontier") -- the profile therefore has FIVE
+# collapsed panels, not six.
 PANELS = (
     ("fields", "PANEL_FIELDS", _panel_fields),
     ("subfields", "PANEL_SUBFIELDS", _panel_subfields),
-    ("topics", "PANEL_TOPICS", _panel_topics),
-    ("frontier", "PANEL_FRONTIER", _panel_frontier),
+    ("topic_planes", "PANEL_TOPIC_PLANES", _panel_topic_planes),
     ("sdg", "PANEL_SDG", _panel_sdg),
     ("erc", "PANEL_ERC", _panel_erc),
 )
 
 
 def _profile_panels(iid: str, ctl: dict, card: dict) -> None:
-    """The six panels are COLLAPSED by default (VIZ_SPEC S1.9) but their bodies
-    run every rerun -- `st.expander` folds the display, never the execution.
+    """The five panels are COLLAPSED by default (VIZ_SPEC S1.9) but their
+    bodies run every rerun -- `st.expander` folds the display, never the
+    execution.
 
     A lazy gate was built and REJECTED on a measurement (a
     verify-before-building check): Streamlit 1.61.1's `st.expander` does take
     a `key=` and does publish its open/closed state into `st.session_state`,
     but that state RESETS to the coded `expanded=` on the very next rerun, so
     a body gated on it would blank itself the moment the reader touched any
-    other control. Rendering all six unconditionally costs a measured 0.88 s
-    warm on the largest seed tested, inside the 1.5 s budget, so the panels are
-    always built and the `key=` is kept only as a stable DOM hook
-    (`.st-key-panel_<name>`) for the probe."""
+    other control. Rendering all panels unconditionally costs a measured
+    0.88 s warm on the largest seed tested (six panels; five now cost no
+    more), inside the 1.5 s budget, so the panels are always built and the
+    `key=` is kept only as a stable DOM hook (`.st-key-panel_<name>`) for
+    the probe."""
     for name, copy_key, body in PANELS:
         label = copy.FIND[copy_key].format(**PANEL_LABEL_ARGS.get(name, {}))
         with st.expander(label, expanded=False, key=f"panel_{name}"):
@@ -1061,8 +1062,9 @@ def _render_profile(bundle: dict, subs: dict, seed_id: str, ctl: dict) -> dict:
     """VIZ_SPEC S1.9 / -6 -- the profile as a 2 + 2 split. Row 1 in two
     halves (the SIX KPI cards as a 2 x 3 grid | identity with the wordcloud
     UNDER it), row 2 full width (a titled section holding one control, one chip
-    legend and the height-matched breakdown pair), then the six collapsed
-    panels. Returns the seed card, which the L2f tab intro and the export path
+    legend and the height-matched breakdown pair), then the five collapsed
+    panels (Find folds "Top topics" and "Frontier positioning" into one).
+    Returns the seed card, which the L2f tab intro and the export path
     both read after the profile has rendered."""
     ctx = bundle["ctx"]
     card = seed_card(ctx, seed_id, subs, bundle["catchall"])
@@ -1740,11 +1742,23 @@ def _leaders_sheet_frame(seed_id: str) -> pd.DataFrame:
         return _LEADERS_SHEET_NOT_AVAILABLE
 
 
+_TOPICS_SHEET_TITLE = "Topics"
+
+
+def _topics_sheet_frame(seed_id: str, tree: str) -> pd.DataFrame:
+    """Sheet 15, "Topics": `TopicData.institution_topics` verbatim -- every
+    topic with n_ar>=3, every `TopicData.TOPIC_COLS` column, NO cap --
+    every workbook gets the uncapped topic data, the same frame the
+    profile's topic-plane expander selects its shown set from, before that
+    selection ever cuts it down."""
+    return TopicData.institution_topics(SC.bundle()["ctx"], seed_id, tree)
+
+
 def _find_workbook(bundle: dict, subs: dict, ctl: dict, filters: dict, seed_row, card: dict,
                    rankings: dict, bits: dict, seed_id: str) -> bytes:
     """Every lens (`ALL_LENSES`) + the concordance overview + the aspirational
-    list + the profile's own KPI numbers + the topics-led/star-papers sheet,
-    one sheet each, fourteen total, in that order.
+    list + the profile's own KPI numbers + the topics-led/star-papers sheet +
+    the uncapped topics sheet, one sheet each, fifteen total, in that order.
     `exports_xlsx.workbook_bytes` legalises and de-duplicates every sheet
     name on the way in, so a lens whose display name runs past Excel's
     31-character cap (e.g. L9's) is truncated there, not here."""
@@ -1758,6 +1772,7 @@ def _find_workbook(bundle: dict, subs: dict, ctl: dict, filters: dict, seed_row,
     sheets.append((copy.FIND["XLSX_SHEET_ASPIRATIONAL"],
                    _aspirational_sheet_frame(bundle, rankings, filters, seed_row)))
     sheets.append((_LEADERS_SHEET_TITLE, _leaders_sheet_frame(seed_id)))
+    sheets.append((_TOPICS_SHEET_TITLE, _topics_sheet_frame(seed_id, ctl["tree"])))
     return workbook_bytes(sheets)
 
 
