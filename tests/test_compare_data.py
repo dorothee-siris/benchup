@@ -454,6 +454,29 @@ def test_cards_eu_median_columns_present_and_population_wide(ctx, golden):
     assert 0 < float(out["vol_full_eu_median"].iloc[0]) < float(out["vol_full"].max())
 
 
+@pytest.mark.parametrize("pair_name", PAIR_NAMES)
+def test_cards_fwci_eu_mean_equals_index_column(ctx, golden, pair_name):
+    """D23: the FWCI card's own DISPLAYED value moved from the median to
+    the mean -- `cards`'s `fwci_eu_mean` column is `index.parquet`'s own
+    `fwci_eu_mean`, read directly, on all three reference pairs."""
+    a, b = _pair_ids(golden, pair_name)
+    out = CD.cards(ctx, [a, b]).set_index("institution_id")
+    idx = ctx["index_by_id"]
+    for iid in (a, b):
+        want = idx.loc[iid].get("fwci_eu_mean")
+        assert _close(out.loc[iid, "fwci_eu_mean"], float(want) if pd.notna(want) else float("nan"))
+
+
+def test_cards_fwci_eu_mean_absent_is_nan_not_a_crash(ctx, golden):
+    a, b = _pair_ids(golden, "ifremer_nioz")
+    out = CD.cards(ctx, [a, b])
+    assert "fwci_eu_mean" in out.columns
+    assert "fwci_eu_n" in out.columns
+    if "fwci_eu_mean" not in ctx["index_df"].columns:
+        assert out["fwci_eu_mean"].isna().all()
+        assert np.isnan(out["fwci_eu_mean_eu_median"].iloc[0])
+
+
 def test_cards_fwci_eu_median_absent_is_nan_not_a_crash(ctx, golden):
     """ (parallel wave) has not necessarily landed `fwci_eu_median`
     on `index.parquet` yet -- `cards` must degrade to NaN, never KeyError."""

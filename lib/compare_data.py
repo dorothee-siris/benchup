@@ -363,7 +363,17 @@ _CARD_INDEX_COLS = {
     "vol_full": "total_full_2020_2024", "vol_frac": "total_frac_2020_2024",
     "sdg_share": "sdg_tagged_share", "frontier_top25_share": "frontier_top25_share",
     "pp": "pp_top10_frac", "intl_share": "intl_share", "company_share": "company_share",
-    "fwci_eu_median": "fwci_eu_median",  # added separately -- absent until it lands (NaN meanwhile)
+    # D23: the FWCI card's DISPLAYED value is the MEAN now (its "?" still
+    # names the median); both are plain index.parquet columns, each carrying
+    # its own `<col>_eu_median` population figure via the generic loop below
+    # -- "fwci_eu_mean_eu_median" is literally "the European median of the
+    # mean", the card's own closing "?" line. `fwci_eu_n` (covered-works
+    # count) rides the same mechanism for the "?"'s "{n} covered works"
+    # line, its own population median simply unused. All three degrade to
+    # NaN, never KeyError, on an index that has not landed them yet.
+    "fwci_eu_mean": "fwci_eu_mean",
+    "fwci_eu_median": "fwci_eu_median",
+    "fwci_eu_n": "fwci_eu_n",
     "star_share": "star_share", "n_stars": "n_stars",
     # v1.7: the two-pool "fair pool" figure is retired -- index carries ONE
     # topics-led column now (n_topics_led_all, rank<=20, every institution
@@ -898,7 +908,9 @@ def shared_frontier(ctx: dict, subs: dict, ids: list[str]) -> pd.DataFrame:
 # yearly_domain_stack`/`reciprocity_bars` need.
 # ---------------------------------------------------------------------------
 
-RECIPROCITY_WIDE_COLS = ["field_id", "field_name", "domain_id", "vol_joint", "share_a", "share_b"]
+RECIPROCITY_WIDE_COLS = ["field_id", "field_name", "domain_id", "vol_joint", "share_a", "share_b",
+                         "fwci_mean", "fwci_median", "n_fwci", "n_top10", "n_covered",
+                         "n_stars_field", "rank_in_a", "rank_in_b"]
 YEARLY_DOMAIN_COLS = ["year", "domain_id", "domain_name", "vol"]
 
 
@@ -933,19 +945,19 @@ def relationship(ctx: dict, ids: list[str], subs: dict | None = None) -> dict:
                            primary topic and are therefore absent from the
                            domain breakdown (this chart's own
                            caption states this in words, never silently).
-      reciprocity -- WIDE (`charts_compare.reciprocity_bars`'s own
+      reciprocity -- WIDE (`charts_compare.reciprocity_scatter`'s own
                            contract): field_id, field_name, domain_id,
                            vol_joint, share_a, share_b (`collab_data.
-                           reciprocity_frame`'s `y`/`x` respectively
-                           EQUAL golden `reciprocity_frame` once relabelled).
-                           No `rank_in_a`/`rank_in_b` column: the reference
-                           version's own `reciprocity_frame` never carried
-                           a per-field partner rank (only a per-PAIR one,
-                           on `momentum`),
-                           so this optional pair of columns is omitted
-                           rather than fabricated (`reciprocity_bars`'
-                           own docstring: an absent column simply drops
-                           that hover clause).
+                           reciprocity_frame`'s `y`/`x` respectively --
+                           EQUAL golden `reciprocity_frame` once relabelled,
+                           the one invariant D27's scatter-return kept
+                           byte-identical), plus fwci_mean/fwci_median/
+                           n_fwci/n_top10/n_covered/n_stars_field (per-field)
+                           and rank_in_a/rank_in_b (a per-PAIR fact, the
+                           same value on every row -- `collab_data.
+                           reciprocity_frame`'s own re-orientation of
+                           `collab_pairs.rank_in_a`/`rank_in_b`, NaN when
+                           the pair has no such row at all).
       joint_stars -- `leaders_data.pair_stars(ctx, a, b)`, int, 0
                            when absent.
       joint_stars_url -- `links.joint_stars_url(a, b)` (joint filter
@@ -981,6 +993,10 @@ def relationship(ctx: dict, ids: list[str], subs: dict | None = None) -> dict:
         reciprocity = pd.DataFrame({
             "field_id": recip["field_id"], "field_name": recip["field_name"], "domain_id": recip["domain_id"],
             "vol_joint": recip["joint_vol"], "share_a": recip["y"], "share_b": recip["x"],
+            "fwci_mean": recip["fwci_mean"], "fwci_median": recip["fwci_median"], "n_fwci": recip["n_fwci"],
+            "n_top10": recip["n_top10"], "n_covered": recip["n_covered"],
+            "n_stars_field": recip["n_stars_field"],
+            "rank_in_a": recip["rank_in_a"], "rank_in_b": recip["rank_in_b"],
         }).reset_index(drop=True)
     else:
         reciprocity = pd.DataFrame(columns=RECIPROCITY_WIDE_COLS)

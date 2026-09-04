@@ -29,7 +29,7 @@ formats:
   score_2dp: "two decimals, e.g. 1.31 - specialisation indexes, expansion, acceleration, frontier score"
   fwci_pair_2dp: "'mean 1.31 - median 0.98 on 54 works', both to two decimals; a dagger follows the work count when it is under 10; the line is not drawn at all under 3"
   rank_and_leader: "'world #4 of 200 - most works: {institution}' when the institution ranks in the world top 20 for the topic, otherwise 'most works worldwide: {institution}'"
-  partner_rank: "'{other institution} is {this institution} partner #7 here'"
+  partner_rank: "'{other institution} is {this institution}'s partner #7 here'"
   owner_clause: "'in both top sets' when the topic is held by both, otherwise '{institution} only'"
   joint_or_floor: "the joint publication count, or the fixed phrase 'joint count not available under 5 joint publications'"
   keywords_2x5: "the topic's 10 keywords, comma-separated, as TWO lines of five - counts as 2 lines against the 8-line cap"
@@ -202,8 +202,10 @@ charts:
       - {field: share, label: "share of the institution's tagged output", format: pct_1dp,
          note: "denominated on the whole run 2020-2025"}
       - {field: ref_value, label: "European mean share", format: pct_1dp}
-      - {field: vol_pair, label: "tagged publications, whole run 2020-2025", format: vol_pair,
-         note: "sdg mass on both bases, whole run - the same perimeter as the share"}
+      - {field: vol_pair, label: "tagged publications, 2020-2024", format: vol_pair,
+         note: "sdg mass on both bases, the CORE window - a narrower perimeter than the
+         share's own whole-run denominator; the label states its own window per the house
+         rule (a label names the perimeter whenever it differs from the chart's headline one)"}
       - {field: low_volume, label: "", format: flag, when: "row is low volume",
          note: "dagger phrase: rests on few publications a year, read with care"}
 
@@ -452,10 +454,12 @@ tiles:
     title: "Momentum evidence line"
     help_lines:
       - "Always visible under the momentum tile, one sentence, filled from the pair's own figures."
-      - "Numeric states (rise, fall, stable): '{c1} joint articles and reviews a year in 2020-2022, {c2} in 2023-2024 - {pct} once both institutions' own growth is taken out. {significance}'"
+      - "Numeric states (rise, fall, stable): '{c1} joint articles and reviews a year in 2020-2022, {c2} in 2023-2024: {pct} once both institutions' own growth is taken out. {significance}' - a colon, never a dash, before {pct}: a signed value must never land directly after a dash."
       - "significance when a rise or a fall is called: 'The change is significant at the 0.05 level ({p}).'"
       - "significance when it is not: 'The change is not significant at the 0.05 level ({p}).'"
+      - "significance when the rate sits inside the tool's own recentring band: 'That is inside the ±25% band the tool reads as stable, so no direction is called.'"
       - "State new: 'No joint articles or reviews in 2020-2022; {c2} a year since.'"
       - "State dormant: '{c1} joint articles and reviews a year in 2020-2022; none since.'"
-      - "State thin base: 'Fewer than 5 joint articles and reviews in 2020-2022 - too thin a base for a rate.'"
+      - "State thin base (a real but small base-window count): 'Fewer than 5 joint articles and reviews in 2020-2022 - too thin a base for a rate.'"
+      - "State thin base with no base-window activity at all (neither a rate nor a p-value): 'The base is too thin for a significance test.'"
       - "State never co-published: 'These two institutions have no recorded joint publications.'"

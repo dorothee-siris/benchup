@@ -28,6 +28,7 @@ Run from cwd `app/`: python -m pytest tests/test_pages_compare.py -q
 from __future__ import annotations
 
 import io
+import re
 from pathlib import Path
 
 import openpyxl
@@ -124,12 +125,78 @@ def test_page_title_and_pin_caption_render():
 
 # ------------------------------------------------------------------ cards ---
 
-def test_key_figure_cards_render_nine_tiles_per_institution():
+def test_key_figure_cards_render_nine_tiles_per_institution_plus_three_relationship_tiles():
     at = _app(PAIR).run()
     assert not at.exception
     html = _markdown_text(at)
     n_tiles = html.count('class="benchup-kpi"')
-    assert n_tiles == 18, n_tiles  # 8 single-value cards + 1 co-pub tile, x 2 institutions
+    # 8 single-value cards + 1 co-pub tile, x 2 institutions (18), plus D27's
+    # three relationship tiles (Joint publications, Joint star papers,
+    # Momentum) in their own row, one apiece.
+    assert n_tiles == 21, n_tiles
+
+
+def _tooltip_spec() -> dict:
+    import yaml
+
+    with open(APP_DIR / "docs" / "tooltip_spec.yaml", encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+
+@pytest.mark.parametrize("card_col,tip_key,tile_key", [
+    ("vol_full", "CARD_PUBLICATIONS_TIP", "compare_card_publications"),
+    ("vol_change", "CARD_VOL_CHANGE_TIP", "compare_card_vol_change"),
+    ("fwci_eu_mean", "CARD_FWCI_TIP", "compare_card_fwci_eu"),
+    ("pp", "CARD_PP10_TIP", "compare_card_pp10"),
+    ("star_share", "CARD_STARS_TIP", "compare_card_stars"),
+    ("n_topics_led_fair", "CARD_TOPICS_LED_TIP", "compare_card_topics_led"),
+    ("frontier_top25_share", "CARD_FRONTIER_TIP", "compare_card_frontier_share"),
+    ("sdg_share", "CARD_SDG_TIP", "compare_card_sdg_share"),
+])
+def test_card_tip_placeholders_match_the_tooltip_spec(card_col, tip_key, tile_key):
+    """Every `compare_card_*` tile's help_lines name a set of `{placeholder}`
+    tokens (`{eu_median}`, `{n}`, `{median}`, .); every one of those must
+    appear, verbatim, in this card's OWN `copy.COMPARE` tip template -- the
+    window itself is spelled `{y0}`/`{y1}`/`{whole_y1}` here rather than the
+    spec's own literal digits, the one substitution every tip already made."""
+    spec = _tooltip_spec()
+    help_lines = " ".join(spec["tiles"][tile_key]["help_lines"])
+    spec_placeholders = set(re.findall(r"\{(\w+)\}", help_lines))
+    tip = copy.COMPARE[tip_key]
+    tip_placeholders = set(re.findall(r"\{(\w+)\}", tip))
+    assert spec_placeholders <= (tip_placeholders | {"y0", "y1", "whole_y1"}), (
+        card_col, spec_placeholders - tip_placeholders)
+
+
+def test_card_fwci_tip_carries_the_spec_distinctive_phrases():
+    """`compare_card_fwci_eu`'s own reasoning sentences, copied verbatim
+    (D23's four-line "?": n covered, median, PP10_WD, European median of
+    the mean)."""
+    tip = copy.COMPARE["CARD_FWCI_TIP"]
+    assert "covered works" in tip
+    assert "keeps the highly-cited tail the median discards" in tip
+    assert "world-referenced reading of impact" in tip
+    assert "European median of the mean" in tip
+
+
+def test_card_topics_led_tip_states_the_world_top_twenty_all_institution_types():
+    tip = copy.COMPARE["CARD_TOPICS_LED_TIP"]
+    assert "world top twenty" in tip
+    assert "publication volume" in tip
+    assert "every institution type" in tip
+
+
+def test_card_fwci_value_equals_index_fwci_eu_mean():
+    """D23: the FWCI card's own displayed value moved to the mean."""
+    at = _app(PAIR).run()
+    assert not at.exception
+    ctx = SC.bundle()["ctx"]
+    row = ctx["index_by_id"].loc[IFREMER]
+    from lib.charts_compare import _fmt_si
+
+    want = _fmt_si(row["fwci_eu_mean"])
+    html = _markdown_text(at)
+    assert want in html, (want, "fwci_eu_mean not found on the rendered page")
 
 
 def test_at_least_one_card_carries_the_leader_dot():
@@ -215,6 +282,93 @@ def test_relationship_section_shows_momentum_and_joint_stars_link():
     assert copy.COMPARE["JOINT_STARS_LINK_LABEL"] in html
     rel = CD.relationship(SC.bundle()["ctx"], PAIR, SC.get("bestfit", "full"))
     assert rel["joint_stars_url"] in html
+
+
+def test_relationship_three_tiles_render_with_their_own_values():
+    """D27: Joint publications == core_total, Joint star papers == pair_stars
+    (0 when absent), Momentum == momentum_display's own text -- all three in
+    one row, none of them carrying a leader dot (there is no "higher wins"
+    reading across three unrelated measures)."""
+    at = _app(PAIR).run()
+    assert not at.exception
+    html = _markdown_text(at)
+    Cw = copy.COMPARE
+    for label in (Cw["TILE_JOINT_PUBLICATIONS"], Cw["TILE_JOINT_STARS"], Cw["TILE_MOMENTUM"]):
+        assert label in html
+
+    from lib.charts_compare import _fmt_vol as _cnt
+
+    rel = CD.relationship(SC.bundle()["ctx"], PAIR, SC.get("bestfit", "full"))
+    assert _cnt(rel["core_total"]) in html
+    assert _cnt(rel.get("joint_stars") or 0) in html
+    assert rel["momentum"]["text"] in html
+    assert rel["momentum"]["glyph"] in html
+
+
+def test_momentum_evidence_line_renders_for_the_anchor_pair():
+    """D27's always-visible evidence sentence -- filled from the SAME pair
+    the momentum tile itself reads, present on the page regardless of
+    which state the anchor pair happens to land in."""
+    at = _app(PAIR).run()
+    assert not at.exception
+    from lib import collab_data as COL
+    from lib.views_compare import _momentum_evidence_line
+
+    ctx = SC.bundle()["ctx"]
+    rel = CD.relationship(ctx, PAIR, SC.get("bestfit", "full"))
+    facts = COL._load_collab_facts(ctx)
+    line = _momentum_evidence_line(rel["momentum"], facts)
+    assert line in _markdown_text(at)
+    assert "joint article" in line  # this anchor pair is "stable" -- its own sentence names the figures
+
+
+FACTS = {"band": 0.25, "alpha": 0.05, "new_min_c2": 5, "dormant_min_c1": 5, "weak_base_max": 4}
+
+
+@pytest.mark.parametrize("mom,expected_state,expected_sig", [
+    ({"c1": 0.0, "c2": 7.0}, "new", None),
+    ({"c1": 0.0, "c2": 3.0}, "thin_ns", None),
+    ({"c1": 6.0, "c2": 0.0}, "dormant", None),
+    ({"c1": 2.0, "c2": 5.0}, "thin", None),
+    ({"c1": 30.0, "c2": 30.0, "mom_rr": 0.9706419110298157, "mom_p": None}, "numeric", "stable_band"),
+    ({"c1": 30.0, "c2": 30.0, "mom_rr": 1.5, "mom_p": 0.01}, "numeric", "significant"),
+    ({"c1": 30.0, "c2": 30.0, "mom_rr": 0.5, "mom_p": 0.40}, "numeric", "not_significant"),
+])
+def test_momentum_evidence_line_covers_every_state(mom, expected_state, expected_sig):
+    """One example per state `collab_data.momentum_evidence` can return
+    (the never-co-published case is handled entirely separately, by
+    `_render_relationship`'s own early return on `rel["momentum"] is None`,
+    and is covered by `test_relationship_no_collaboration_pair_returns_
+    none_momentum_and_pulse` in tests/test_compare_data.py)."""
+    from lib import collab_data as COL
+    from lib.views_compare import _momentum_evidence_line
+
+    ev = COL.momentum_evidence(mom, FACTS)
+    assert ev["state"] == expected_state
+    if expected_sig:
+        assert ev["sig"] == expected_sig
+    line = _momentum_evidence_line(mom, FACTS)
+    assert line and isinstance(line, str)
+    if expected_state == "new":
+        assert "No joint articles or reviews" in line
+    elif expected_state == "thin_ns":
+        assert line == "The base is too thin for a significance test."
+    elif expected_state == "dormant":
+        assert "none since" in line
+    elif expected_state == "thin":
+        assert "too thin a base for a rate" in line
+    elif expected_sig == "stable_band":
+        assert "\N{PLUS-MINUS SIGN}25 % band" in line and "no direction is called" in line
+        assert ": \N{MINUS SIGN}3 % once" in line
+    else:
+        assert "once both institutions' own growth is taken out" in line
+        assert ": " in line and " - " not in line  # the colon separator, never the old dash
+
+
+def test_yearly_stack_height_is_500px():
+    from lib.charts_compare import YEARLY_STACK_HEIGHT_PX
+
+    assert YEARLY_STACK_HEIGHT_PX == 500
 
 
 def test_relationship_yearly_caption_states_the_subject_topic_window():

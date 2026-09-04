@@ -109,11 +109,6 @@ FIND_BUILDERS = {
         "panel_label": [f"Panel {i}" for i in range(6)], "erc_domain": ["PE"] * 6,
         "share": [0.1] * 6, "si": [1.0] * 6, "mass": [10.0] * 6,
     })),
-    "fig_topics": lambda: C.fig_topics(pd.DataFrame({
-        "topic_id": range(6), "topic_name": [f"Topic {i}" for i in range(6)],
-        "domain_id": [1] * 6, "share": [0.1] * 6, "vol_full": [50] * 6,
-        "is_excluded": [False] * 6,
-    })),
 }
 
 COMPARE_BUILDERS = {
@@ -156,8 +151,6 @@ def test_mirror_frontier_margin_is_the_compare_label_column():
 # ---------------------------------------------------------------------------
 def test_find_single_bar_builders_use_row_pitch_single_and_bar_px_single():
     for name, build in FIND_BUILDERS.items():
-        if name == "fig_topics":
-            continue  # plain go.Figure, no SI panel -- height check below covers it too
         fig = build()
         n = len(fig.data[0].y)
         assert fig.layout.height == C.row_height_single(n), name
@@ -168,16 +161,6 @@ def test_find_single_bar_builders_use_row_pitch_single_and_bar_px_single():
         assert bargap == pytest.approx(C.BAR_GAP_SINGLE, abs=1e-9), name
         bar_px = (1.0 - bargap) * C.ROW_PITCH_SINGLE
         assert bar_px == pytest.approx(C.BAR_PX_SINGLE, abs=0.5), (name, bar_px)
-
-
-def test_fig_topics_row_pitch_single_and_bar_px_single():
-    fig = FIND_BUILDERS["fig_topics"]()
-    n = len(fig.data[0].y)
-    assert fig.layout.height == C.row_height_single(n)
-    bargap = fig.layout.bargap
-    assert bargap == pytest.approx(C.BAR_GAP_SINGLE, abs=1e-9)
-    bar_px = (1.0 - bargap) * C.ROW_PITCH_SINGLE
-    assert bar_px == pytest.approx(C.BAR_PX_SINGLE, abs=0.5)
 
 
 def test_compare_two_series_builders_use_row_pitch_pair_and_bar_px_pair():
@@ -207,14 +190,11 @@ def test_no_builder_draws_the_retired_gutter_header_text(name):
         assert FORBIDDEN_TEXT not in text, name
 
 
-def test_reciprocity_bars_no_header_either():
-    df = pd.DataFrame({
-        "field_id": range(4), "field_name": [f"Field {i}" for i in range(4)],
-        "domain_id": [1, 2, 3, 4], "vol_joint": [40.0, 30.0, 20.0, 10.0],
-        "share_a": [0.1, 0.2, 0.15, 0.05], "share_b": [0.08, 0.22, 0.1, 0.04],
-    })
-    fig = X.reciprocity_bars(df, ["A", "B"], [0, 1])
-    assert not fig.layout.annotations
+# `test_reciprocity_bars_no_header_either` retired here: strategic
+# reciprocity by field is a bubble SCATTER again (`charts_compare.
+# reciprocity_scatter`), not a bar-family builder -- the gutter-header
+# contract this file's own docstring scopes to no longer applies to it at
+# all. `tests/test_charts_compare.py` covers the scatter's own contract.
 
 
 # ---------------------------------------------------------------------------

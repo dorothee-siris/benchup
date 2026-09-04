@@ -98,7 +98,7 @@ def _search(query: str) -> list[dict]:
 #    `_card_facts`/`_leaders` (tiles.kpi_tile itself has no room for a dot).
 # ---------------------------------------------------------------------------
 
-CARD_COLUMNS = ("vol_full", "vol_change", "fwci_eu_median", "pp", "star_share",
+CARD_COLUMNS = ("vol_full", "vol_change", "fwci_eu_mean", "pp", "star_share",
                 "n_topics_led_fair", "frontier_top25_share", "sdg_share")
 
 
@@ -106,12 +106,15 @@ def _card_facts(ctx: dict, iid: str, row: pd.Series) -> list[tuple[str, str, str
     """`[(column, label, value, tooltip)]`, this card's own nine-figure order. The
     ninth figure (international + company co-publication) is a two-value
     tile, rendered separately (`_copub_tile`) -- it carries no single
-    "higher" reading, so it stays out of the leader-dot family."""
+    "higher" reading, so it stays out of the leader-dot family.
+
+    D23: the FWCI card's own DISPLAYED value moved from the median to the
+    mean (`row["fwci_eu_mean"]`, `compare_data.cards`'s own column now --
+    no side lookup on `ctx["index_by_id"]` needed any more); its "?" states
+    the median, the world-referenced PP10_WD share and the population's own
+    median-of-the-mean, per `docs/tooltip_spec.yaml`'s `compare_card_fwci_eu`
+    tile verbatim."""
     Cw = copy.COMPARE
-    fwci_mean = ctx["index_by_id"].loc[iid].get("fwci_eu_mean")  # index column
-    # `compare_data.cards` does not carry it (not asked for in the original
-    # spec); read directly off the same index row every other card figure
-    # already comes from: "FWCI_EU (median; mean in hover)".
     return [
         ("vol_full", Cw["CARD_PUBLICATIONS"], _count(row["vol_full"]),
          Cw["CARD_PUBLICATIONS_TIP"].format(y0=CORE_Y0, y1=CORE_Y1, frac=_count(row["vol_frac"]),
@@ -119,22 +122,23 @@ def _card_facts(ctx: dict, iid: str, row: pd.Series) -> list[tuple[str, str, str
         ("vol_change", Cw["CARD_VOL_CHANGE"], _pct(row["vol_change"]),
          Cw["CARD_VOL_CHANGE_TIP"].format(w1=_window(CD.DYNAMICS_W1), w2=_window(CD.DYNAMICS_W2),
                                           eu_median=_pct(row["vol_change_eu_median"]))),
-        ("fwci_eu_median", Cw["CARD_FWCI"], _fmt_si(row["fwci_eu_median"]),
-         Cw["CARD_FWCI_TIP"].format(y0=CORE_Y0, y1=CORE_Y1, mean=_fmt_si(fwci_mean),
-                                    eu_median=_fmt_si(row["fwci_eu_median_eu_median"]))),
+        ("fwci_eu_mean", Cw["CARD_FWCI"], _fmt_si(row["fwci_eu_mean"]),
+         Cw["CARD_FWCI_TIP"].format(y0=CORE_Y0, y1=CORE_Y1, n=_count(row["fwci_eu_n"]),
+                                    median=_fmt_si(row["fwci_eu_median"]), pp10=_pct(row["pp"]),
+                                    eu_median=_fmt_si(row["fwci_eu_mean_eu_median"]))),
         ("pp", Cw["CARD_PP10"], _pct(row["pp"]),
          Cw["CARD_PP10_TIP"].format(y0=CORE_Y0, y1=CORE_Y1, eu_median=_pct(row["pp_eu_median"]))),
         ("star_share", Cw["CARD_STARS"], _pct(row["star_share"]),
          Cw["CARD_STARS_TIP"].format(y0=CORE_Y0, y1=CORE_Y1, count=_count(row["n_stars"]),
                                      eu_median=_pct(row["star_share_eu_median"]))),
         ("n_topics_led_fair", Cw["CARD_TOPICS_LED"], _count(row["n_topics_led_fair"]),
-         Cw["CARD_TOPICS_LED_TIP"].format(pool=row["led_pool"],
+         Cw["CARD_TOPICS_LED_TIP"].format(y0=CORE_Y0, y1=CORE_Y1,
                                           eu_median=_count(row["n_topics_led_fair_eu_median"]))),
         ("frontier_top25_share", Cw["CARD_FRONTIER"], _pct(row["frontier_top25_share"]),
          Cw["CARD_FRONTIER_TIP"].format(y0=CORE_Y0, y1=CORE_Y1,
                                         eu_median=_pct(row["frontier_top25_share_eu_median"]))),
         ("sdg_share", Cw["CARD_SDG"], _pct(row["sdg_share"]),
-         Cw["CARD_SDG_TIP"].format(y0=CORE_Y0, y1=CORE_Y1, eu_median=_pct(row["sdg_share_eu_median"]))),
+         Cw["CARD_SDG_TIP"].format(y0=CORE_Y0, y1=WHOLE_Y1, eu_median=_pct(row["sdg_share_eu_median"]))),
     ]
 
 
@@ -155,17 +159,22 @@ def _leaders(df: pd.DataFrame) -> dict:
     return out
 
 
-def _card_html(label: str, value: str, dot: str) -> str:
+def _card_html(label: str, value: str, dot: str, *, raw_value: bool = False) -> str:
     """ONE card: measure name, then value with the leader dot beside it
     `tiles.py`'s own type scale (LABEL_PX/VALUE_PX/.), ported from 's
-    `_card_html` (`tiles.kpi_tile` itself has no slot for a dot)."""
+    `_card_html` (`tiles.kpi_tile` itself has no slot for a dot).
+    `raw_value=True` (the Relationship section's three tiles, below) skips
+    the escape on `value` -- the ONLY caller that needs it is the Momentum
+    tile, whose "value" is already-safe HTML built from `mom["color"]`/
+    `mom["glyph"]`/`mom["text"]`, none of it reader-supplied text."""
+    value_html = value if raw_value else _esc(value)
     return (f'<div class="{tiles.TILE_CLASS}">'
             f'<div style="font-size:{tiles.LABEL_PX}px;font-weight:{tiles.LABEL_WEIGHT};'
             f'line-height:{tiles.LABEL_LINE_HEIGHT};color:{P.INK};">{_esc(label)}</div>'
             f'<div style="display:flex;align-items:center;gap:{X.DOT_GAP_PX}px;'
             f'font-size:{tiles.VALUE_PX}px;font-weight:{tiles.VALUE_WEIGHT};'
             f'line-height:{tiles.VALUE_LINE_HEIGHT};color:{P.INK};">'
-            f'<span>{_esc(value)}</span>{dot}</div></div>')
+            f'<span>{value_html}</span>{dot}</div></div>')
 
 
 def _copub_tile(row: pd.Series) -> str:
@@ -215,6 +224,14 @@ def _shape_long(df: pd.DataFrame, tab: str, *, grouped: bool, id_col: str, label
         "row_id": df[id_col], "row_label": df[label_col], "institution_id": df["institution_id"],
         "value": df[value_col], "ref_value": df[ref_col], "vol_full": df["vol_full"],
         "n_covered": df["n_covered_pp"], "si": df["si"], "fwci_median": df["fwci_median"],
+        # fwci_mean/n_covered_fwci ride along unconditionally (one frame
+        # serves both tabs) so the Impact tab's hover can join the FWCI_EU
+        # line (mean AND median together, floored on the FWCI population's
+        # OWN n -- a different, slightly wider count than n_covered_pp, the
+        # PP10_WD population); the Profile tab's hover simply never asks
+        # for them. Both columns already ship on `df` (compare_data's
+        # subfield/SDG frames already carry fwci_mean via fwci_taxa).
+        "fwci_mean": df["fwci_mean"], "n_covered_fwci": df["n_covered_fwci"],
         "vol_frac": df["vol_frac"],
     })
     if grouped:
@@ -248,14 +265,18 @@ def _render_two_tab_section(header: str, basis_caption: str, note_profile: str, 
         return frame
 
     if not tabs:
-        fig = X.two_tab_bars(_frame("profile"), "profile", names, slots, grouped_by_field=grouped)
+        # the SDG section (its own frame's vol_full/vol_frac are the CORE
+        # window, not whole-run -- see _metric_hover's own docstring)
+        fig = X.two_tab_bars(_frame("profile"), "profile", names, slots, grouped_by_field=grouped,
+                             y0=CORE_Y0, y1=CORE_Y1)
         st.plotly_chart(fig, width="stretch", key=f"fig_{key_prefix}_profile")
         st.markdown(X.chart_note(note_profile), unsafe_allow_html=True)
         return
 
     tab_profile, tab_impact = st.tabs([copy.COMPARE["TAB_PROFILE"], copy.COMPARE["TAB_IMPACT"]])
     with tab_profile:
-        fig = X.two_tab_bars(_frame("profile"), "profile", names, slots, grouped_by_field=grouped)
+        fig = X.two_tab_bars(_frame("profile"), "profile", names, slots, grouped_by_field=grouped,
+                             y0=CORE_Y0, whole_y1=WHOLE_Y1)
         st.plotly_chart(fig, width="stretch", key=f"fig_{key_prefix}_profile")
         st.markdown(X.chart_note(note_profile), unsafe_allow_html=True)
     with tab_impact:
@@ -438,26 +459,82 @@ def _render_shared_frontier(ctx: dict, subs: dict, ids: list[str], names: dict, 
 # 5. The relationship -- momentum, yearly-by-domain, reciprocity, stars.
 # ---------------------------------------------------------------------------
 
-def _render_momentum(ctx: dict, mom: dict) -> None:
+def _momentum_evidence_line(mom: dict, facts: dict) -> str:
+    """D27's always-visible evidence sentence, filled from the pair's own
+    figures -- `collab_data.momentum_evidence`'s value-driven state (never
+    `mom_class`) picked straight into ONE of `copy.COMPARE`'s
+    `MOMENTUM_LINE_*` templates, per `docs/tooltip_spec.yaml`'s
+    `compare_momentum_line` verbatim. `facts` is `collab_facts.json`
+    verbatim, threaded straight through to `momentum_evidence` (every
+    threshold it uses -- band, alpha, the three classification floors --
+    comes from there, never a typed digit)."""
     from lib import collab_data as COL  # local import, same reasoning as compare_data's own
 
     Cw = copy.COMPARE
+    alpha = facts.get("alpha")
+    ev = COL.momentum_evidence(mom, facts)
+    w1, w2 = _window(CD.DYNAMICS_W1), _window(CD.DYNAMICS_W2)
+    if ev["state"] == "new":
+        return Cw["MOMENTUM_LINE_NEW"].format(w1=w1, c2=_count(ev["c2_mean"]))
+    if ev["state"] == "thin_ns":
+        return Cw["MOMENTUM_LINE_NS_THIN"]
+    if ev["state"] == "dormant":
+        return Cw["MOMENTUM_LINE_DORMANT"].format(w1=w1, c1=_count(ev["c1_mean"]))
+    if ev["state"] == "thin":
+        return Cw["MOMENTUM_LINE_THIN"].format(w1=w1, floor=int(CD.PAIR_QUALIFYING_FLOOR))
+    if ev["sig"] == "stable_band":
+        significance = Cw["MOMENTUM_LINE_SIG_STABLE"].format(band=ev["band_pct"])
+    elif ev["sig"] == "no_test":
+        significance = Cw["MOMENTUM_LINE_SIG_NO_TEST"]
+    else:
+        sig_key = ("MOMENTUM_LINE_SIG_SIGNIFICANT" if ev["sig"] == "significant"
+                  else "MOMENTUM_LINE_SIG_NOT_SIGNIFICANT")
+        significance = Cw[sig_key].format(alpha=_pct(alpha), p=_pval(ev["p"]))
+    return Cw["MOMENTUM_LINE_NUMERIC"].format(c1=_count(ev["c1_mean"]), c2=_count(ev["c2_mean"]),
+                                              w1=w1, w2=w2, pct=ev["pct"], significance=significance)
+
+
+def _render_relationship_tiles(ctx: dict, rel: dict) -> None:
+    """The relationship block's three tiles, one row (D27) -- the SAME
+    bordered-card visual the Key-figure cards above already use (`_card_html`,
+    `lib.tiles`'s own type scale), just with no leader dot (there is no
+    "higher is better" reading across three unrelated measures). "Joint star
+    papers" carries the OpenAlex link directly under its own tile, in the
+    same column -- the sentence that used to carry it, at the very bottom of
+    this section, is retired."""
+    from lib import collab_data as COL  # local import, same reasoning as compare_data's own
+
+    Cw = copy.COMPARE
+    mom = rel["momentum"]
+    pulse = rel["pulse"]
     facts = COL._load_collab_facts(ctx)
     alpha = facts.get("alpha")
-    p = mom["mom_p"]
-    if pd.notna(p) and alpha is not None:
-        key = "MOMENTUM_SIGNIFICANT" if p <= alpha else "MOMENTUM_NOT_SIGNIFICANT"
-        sig = Cw[key].format(alpha=_pct(alpha), p=_pval(p))
-    else:
-        sig = Cw["MOMENTUM_NO_TEST"]
-    n1 = CD.DYNAMICS_W1[1] - CD.DYNAMICS_W1[0] + 1
-    n2 = CD.DYNAMICS_W2[1] - CD.DYNAMICS_W2[0] + 1
-    tooltip = Cw["MOMENTUM_TIP"].format(
-        w1=_window(CD.DYNAMICS_W1), w2=_window(CD.DYNAMICS_W2),
-        c1=_count(mom["c1"] / n1), c2=_count(mom["c2"] / n2), sig=sig)
-    line = (f'<span style="font-size:{tiles.VALUE_PX}px;font-weight:{tiles.VALUE_WEIGHT};'
-           f'color:{mom["color"]};">{_esc(mom["glyph"])} {_esc(mom["text"])}</span>')
-    st.markdown(line, unsafe_allow_html=True, help=tooltip)
+
+    col_pub, col_stars, col_mom = st.columns(3)
+    with col_pub:
+        with st.container(border=True):
+            tip = Cw["TILE_JOINT_PUBLICATIONS_TIP"].format(
+                y0=CORE_Y0, y1=CORE_Y1, whole_y1=WHOLE_Y1,
+                copubs_total=_count(pulse["copubs_total"]), floor=int(CD.PAIR_QUALIFYING_FLOOR))
+            st.markdown(_card_html(Cw["TILE_JOINT_PUBLICATIONS"], _count(rel["core_total"]), ""),
+                       unsafe_allow_html=True, help=tip)
+    with col_stars:
+        with st.container(border=True):
+            tip = Cw["TILE_JOINT_STARS_TIP"].format(y0=CORE_Y0, y1=CORE_Y1)
+            st.markdown(_card_html(Cw["TILE_JOINT_STARS"], _count(rel.get("joint_stars") or 0), ""),
+                       unsafe_allow_html=True, help=tip)
+        st.markdown(f'[{Cw["JOINT_STARS_LINK_LABEL"]}]({rel["joint_stars_url"]})')
+    with col_mom:
+        with st.container(border=True):
+            tip = Cw["TILE_MOMENTUM_TIP"].format(
+                w1=_window(CD.DYNAMICS_W1), w2=_window(CD.DYNAMICS_W2),
+                alpha=_pct(alpha) if alpha is not None else NA_MARK,
+                floor=int(CD.PAIR_QUALIFYING_FLOOR))
+            value_html = f'<span style="color:{mom["color"]};">{_esc(mom["glyph"])} {_esc(mom["text"])}</span>'
+            st.markdown(_card_html(Cw["TILE_MOMENTUM"], value_html, "", raw_value=True),
+                       unsafe_allow_html=True, help=tip)
+
+    st.markdown(_momentum_evidence_line(mom, facts))
 
 
 def _fallback_yearly_bar(pulse_yearly: pd.DataFrame) -> go.Figure:
@@ -487,7 +564,7 @@ def _render_relationship(ctx: dict, subs: dict, ids: list[str], names: dict, slo
         st.caption(Cw["RELATIONSHIP_NEVER"])
         return rel
 
-    _render_momentum(ctx, rel["momentum"])
+    _render_relationship_tiles(ctx, rel)
 
     if rel["yearly_qualifies"] and len(rel["yearly"]):
         fig = X.yearly_domain_stack(rel["yearly"])
@@ -505,14 +582,10 @@ def _render_relationship(ctx: dict, subs: dict, ids: list[str], names: dict, slo
     recip = rel["reciprocity"]
     if len(recip):
         st.markdown(f"##### {Cw['RECIPROCITY_HEADER']}")
-        fig = X.reciprocity_bars(recip, [names[ids[0]], names[ids[1]]], [slots[ids[0]], slots[ids[1]]])
+        fig = X.reciprocity_scatter(recip, [names[ids[0]], names[ids[1]]], [slots[ids[0]], slots[ids[1]]])
         st.plotly_chart(fig, width="stretch", key="fig_reciprocity")
         st.caption(Cw["RECIPROCITY_CAPTION"])
 
-    n_stars = rel.get("joint_stars") or 0
-    st.markdown(f'{Cw["JOINT_STARS_LINE"].format(n=_count(n_stars))} '
-               f'[{Cw["JOINT_STARS_LINK_LABEL"]}]({rel["joint_stars_url"]})')
-    st.caption(Cw["JOINT_STARS_CAPTION"])
     return rel
 
 
@@ -532,11 +605,19 @@ def _workbook_sheets(ctx: dict, subs: dict, ids: list[str]) -> list[tuple[str, p
     shared_df = CD.shared_frontier(ctx, subs, ids)
     rel = CD.relationship(ctx, ids, subs)
     if rel["yearly_qualifies"] and len(rel["yearly"]):
-        yearly_df = rel["yearly"]
+        yearly_df = rel["yearly"].copy()
     elif rel["pulse"] is not None:
-        yearly_df = rel["pulse"]["yearly"]
+        yearly_df = rel["pulse"]["yearly"].copy()
     else:
         yearly_df = pd.DataFrame(columns=["year", "copubs"])
+    # D27: the three relationship tiles' own values ride along on this sheet
+    # too (repeated on every row -- a pair-level fact, the same flat-table
+    # convention `reciprocity_frame`'s own rank_in_a/rank_in_b already use),
+    # since the workbook has no separate "tiles" sheet of its own.
+    if rel["momentum"] is not None and len(yearly_df):
+        yearly_df["joint_publications_core_total"] = rel["core_total"]
+        yearly_df["joint_star_papers"] = rel.get("joint_stars") or 0
+        yearly_df["momentum"] = rel["momentum"]["text"]
     recip_df = rel["reciprocity"]
     return [
         (Cw["XLSX_SHEET_CARDS"], cards_df),

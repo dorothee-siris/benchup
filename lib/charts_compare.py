@@ -21,9 +21,10 @@ coloured bars, red-dagger caution, diamond reference) already measured and
 ratified as the one direction to converge the whole app on. `fig_metric_bars` -- that ratified primitive -- is KEPT, trimmed to the
 two metrics the Thematic-shape and SDG-profile charts actually need (`share`,
 `pp`; the old Dynamics/SDG-tagged/Specialisation/Volume/FWCI metric-selector
-tabs are retired along with the selector UI they served). `two_tab_bars` and
-`reciprocity_bars` below are thin adapters onto it -- no new bar-drawing
-code, reusing the existing primitive instead.
+tabs are retired along with the selector UI they served). `two_tab_bars`
+below is a thin adapter onto it -- no new bar-drawing code, reusing the
+existing primitive instead. Strategic reciprocity by field is drawn by its
+own `reciprocity_scatter`, a bubble scatter (below), not this primitive.
 
 `legend_strip` / `map_legend_strip` / `chart_note` / `basis_caption` /
 `best_value_dot` are also kept: page-level presentation primitives, not
@@ -66,19 +67,19 @@ THE FOUR NEW BUILDERS IN THIS MODULE
                          primitive.
   3. `yearly_domain_stack` -- the relationship section's yearly stack: joint
                          publications 2020-2024 by OpenAlex domain.
-  4. `reciprocity_bars` -- "strategic reciprocity by field", ADAPTED
-                         from the app's earlier `views_collab._reciprocity_chart` +
-                         `collab_data.reciprocity_frame` (credited in its own
-                         docstring): the original was a bubble SCATTER (x =
-                         field's share of B's own corpus, y = the same for A,
-                         area = joint volume, colour = OA domain). This build redraws
-                         the same two numbers per field as INSTITUTION-
-                         coloured `fig_metric_bars` bars (consistent with the
-                         rest of this file's convergence onto the bar
-                         family), keeping the domain as a label ACCENT glyph rather than the mark
-                         colour, and the joint volume as the gutter column.
+  4. `reciprocity_scatter` -- "strategic reciprocity by field", a bubble
+                         SCATTER: `y` = a field's share of A's own corpus,
+                         `x` = the same for B, area = joint volume, colour =
+                         the field's OpenAlex domain, one dotted equal-
+                         weight diagonal, squared axes -- a port of an
+                         earlier SIRIS Streamlit tool's own "Zoom partenaire"
+                         view (credited in its own docstring), which this
+                         page drew as institution-coloured bars in between
+                         (`reciprocity_bars`, retired with its own
+                         `_add_centred_gutter`/`_rewrite_reciprocity_hover`
+                         helpers) before returning to the original reading.
 
-`colors`, everywhere in this module (`two_tab_bars`, `reciprocity_bars`,
+`colors`, everywhere in this module (`two_tab_bars`,
 `mirror_frontier`), is the institution SLOT mapping/sequence -- i.e. exactly
 what the app's institution-slot map returns (`{institution_id: slot}` for
 the two Mapping-shaped builders; `[slot_a, slot_b]` for `mirror_frontier`,
@@ -263,21 +264,40 @@ SORT_MODES = ("taxonomy", "value")
 
 AX_TOP_DECILE_SHARE = "Share of publications in the world top decile"
 _METRIC_AXIS = {"share": C.AX_SHARE, "pp": AX_TOP_DECILE_SHARE}
+# docs/tooltip_spec.yaml's own per-chart metric-value labels (`two_tab_bars`
+# picks the right one by level/metric and passes it as `metric_label`,
+# below the axis titles doubling as hover labels remains -- see
+# `_metric_hover`'s own docstring): subfield/share, sdg/share, subfield/pp.
+AX_SHARE_SUBFIELD = "share of publications"
+AX_SHARE_SDG = "share of the institution's tagged output"
+AX_PP_SUBFIELD = "world top-decile share, articles and reviews"
 _METRIC_KIND = {"share": "pct", "pp": "pct"}
 _KEY_COLS = {"sdg": ("sdg_idx", "sdg_number")}
 _ACCENT_COLS = {"sdg": ("sdg_number", "sdg_idx"), "field": ("domain_id",),
                 "subfield": ("domain_id",)}
 _LEVEL_ACCENT_FAMILY = {"sdg": "sdg", "field": "oa", "subfield": "oa"}
 
-HOVER_REFERENCE = "index reference"
-HOVER_DENOMINATOR = "denominator"
-HOVER_FWCI_MEDIAN = "FWCI (median)"
-HOVER_FIELD_PREFIX = "Field: "
-# This exact string is a deliberate exception to this module's usual
-# lowercase-label + THIN_SPACE hover convention (every other line here
-# reads "label + a thin space + value"), because this one names what the row's
-# OWN label does not already say (which FIELD a subfield belongs to) -- this
-# wording is the more legible one for that one line.
+HOVER_REF_SHARE = "European mean share"     # compare_thematic_profile / compare_sdg's own ref_value label
+HOVER_REF_PP = "world reference"            # compare_thematic_impact's own ref_value label
+HOVER_DENOMINATOR = "articles and reviews behind the share"
+HOVER_FWCI_LABEL = "FWCI_EU, same window"
+# docs/tooltip_spec.yaml's own label text for the SI line ("specialisation
+# index") -- a LOCAL constant, not `charts.HOVER_SI` ("SI"): that shared
+# constant lives in lib/charts.py, out of this stream's fence, so Compare's
+# own spec-mandated wording is kept here instead of edited there.
+HOVER_SI_LABEL = "specialisation index"
+HOVER_FIELD_LABEL = "field"
+HOVER_SHARE_OF_YEAR = "share of that year's joint output"
+HOVER_LOW_VOLUME_SHARE = "rests on few publications a year, read with care"
+HOVER_LOW_VOLUME_IMPACT = "fewer than {floor} articles and reviews behind the share, read with care"
+# `subfields.parquet`'s own vol_full/vol_frac ARE the whole run already
+# (find_subfields' own tooltip note); `sdg_frame`'s are the CORE window
+# (its own documented, pre-existing choice, unchanged here) -- the two
+# labels below name only WHAT differs (whole run vs a narrower one),
+# never a digit year (this module's own digit-ban): the page's pin
+# caption above every chart already states both windows in full.
+HOVER_VOL_PAIR_SUBFIELD = "publications, whole run"
+HOVER_VOL_PAIR_SDG = "tagged publications"
 
 
 def _fmt_metric(v, metric: str) -> str:
@@ -404,49 +424,102 @@ def _is_low_volume(r: pd.Series, metric: str, low_vol_col: str, denom_value_col:
     return bool(np.isfinite(v) and v < LOW_VOLUME_FLOOR)
 
 
+def _fmt_vol_pair(full, frac) -> str:
+    """'vol_pair': the same measure on both counting bases, full first --
+    '1 234 full - 512.4 fractional'. `charts._fmt_vol` already tells a
+    whole count from a fractional one by its own value (no decimal unless
+    the number itself has one), so the one formatter serves both slots."""
+    return f"{_fmt_vol(full)} full - {_fmt_vol(frac)} fractional"
+
+
+def _fmt_fwci_pair(mean, median, n) -> str | None:
+    """'fwci_pair_2dp': 'mean 1.31 - median 0.98 on 54 works', both to two
+    decimals (`charts._fmt_si`'s own two-decimal formatter -- never a raw
+    f-string spec, which would plant a literal digit token this module's
+    own digit-ban scans for); a dagger follows the work count under ten;
+    the line is not drawn at all under three -- `None` tells the caller so."""
+    n_val = _num(n)
+    if not np.isfinite(n_val) or n_val < 3:
+        return None
+    dagger = LOW_VOLUME_GLYPH if n_val < 10 else ""
+    return f"mean {_fmt_si(mean)} - median {_fmt_si(median)} on {_fmt_vol(n_val)}{dagger} works"
+
+
 def _metric_hover(r, iid, names, label_col, value_col, metric, ref_col,
                   denom_value_col, metric_label, gutter_col: str | None = None,
-                  low: bool = False) -> str:
-    """The fixed hover skeleton (CHROME_CONTRACT.md SS5), plus FOUR OPTIONAL
-    reader-prose lines that a caller's frame may carry -- each drawn only
-    when the row's OWN cell is present and not null, so a caller whose frame
-    lacks them (e.g. `reciprocity_bars`, which overwrites this hover outright
-    afterwards) gets the unchanged skeleton:
-      * `si`, `fwci_median`, `vol_frac` (hover extras);
-      * `group_label` (`two_tab_bars`'s own `grouped_by_
-        field=True` frame) -- "Field: {name}" as the literal FIRST hover
-        line (ahead of even the institution name, exactly as asked), naming
-        the FIELD a subfield row belongs to, alongside the same domain-
-        coloured accent glyph already puts on the row's own LABEL
-        (`_accent_ticktext`, auto-wired whenever the frame carries a
-        `domain_id` column at `level="subfield"` -- no code change needed
-        here, only the frame contract gaining the column).
+                  low: bool = False, level: str | None = None,
+                  y0: int | None = None, y1: int | None = None,
+                  whole_y1: int | None = None) -> str:
+    """`docs/tooltip_spec.yaml`'s `compare_thematic_profile` / `compare_
+    thematic_impact` / `compare_sdg` entries, verbatim, in their own line
+    order -- the ENTITY (the taxon's own row label) first, the field it
+    belongs to second (when the frame carries one), the INSTITUTION third,
+    then the metric's own reader lines.
 
-    The `denominator` line prints `denom_value_col` -- a NUMBER, `_fmt_vol`'d
-    and never a note-string: the bug that mixing the two once produced
-    ("denominator: n/a" on a frame that had real data) stays fixed by
-    construction, `denom_value` is a number by contract."""
+    `level` ("subfield" or "sdg", `fig_metric_bars`'s own `level` local --
+    threaded straight through, not re-derived) picks the few lines that
+    genuinely differ between the two charts sharing this one builder:
+      * the whole-run publications line's own LABEL (subfield: "publications,
+        whole run {y0}-{whole_y1}" -- `subfields.parquet`'s own vol_full/
+        vol_frac ARE whole-run already, so the exact window is stated; sdg:
+        "tagged publications", no window stated -- `sdg_frame`'s own
+        vol_full/vol_frac are a pre-existing CORE-window figure, unchanged
+        here, so the label names only what the number IS rather than claim
+        a whole-run window it is not);
+      * the specialisation-index line (`compare_thematic_profile` alone --
+        `compare_sdg`'s own spec carries no `si` line, even though the SDG
+        frame still computes one for the untouched frontier/positioning
+        code elsewhere -- this hover simply never asks for it on SDG rows).
+
+    Metric alone decides the rest: `metric == "share"` (the Profile tab of
+    either chart) draws the whole-run line and, on subfield rows only, the
+    SI line, and its own reference is labelled "European mean share";
+    `metric == "pp"` (the Impact tab, subfield only -- SDG has none) draws
+    the covered-works denominator and the FWCI_EU line instead, and its own
+    reference is labelled "world reference". The low-volume dagger's own
+    explanatory sentence differs the same way (few publications a year, on
+    Profile; fewer than the covered-works floor, on Impact)."""
     index = list(getattr(r, "index", []))
-    parts = []
+    parts = [str(r[label_col])]                                     # 1. the entity
     if "group_label" in index and pd.notna(r["group_label"]):
-        parts.append(f"{HOVER_FIELD_PREFIX}{r['group_label']}")
+        parts.append(f"{HOVER_FIELD_LABEL}{C.THIN_SPACE}{r['group_label']}")   # 2. its field
+    parts.append(_name_of(names, iid))                               # 3. the institution
     title = (metric_label or _METRIC_AXIS[metric]).lower()
-    parts += [_name_of(names, iid), str(r[label_col]),
-             f"{title}{C.THIN_SPACE}{_fmt_metric(r[value_col], metric)}"]
-    if "si" in index and pd.notna(r["si"]):
-        parts.append(f"{C.HOVER_SI}{C.THIN_SPACE}{_fmt_si(r['si'])}")
-    if "fwci_median" in index and pd.notna(r["fwci_median"]):
-        parts.append(f"{HOVER_FWCI_MEDIAN}{C.THIN_SPACE}{_fmt_si(r['fwci_median'])}")
-    if gutter_col and gutter_col in index:
-        parts.append(f"{C.AX_WORKS.lower()}{C.THIN_SPACE}{_gutter_value(r[gutter_col])}")
-    if "vol_frac" in index and pd.notna(r["vol_frac"]):
-        parts.append(f"{C.HOVER_VOL_FRAC}{C.THIN_SPACE}{_fmt_vol(r['vol_frac'])}")
-    if ref_col in index and metric in REF_METRICS:
-        parts.append(f"{HOVER_REFERENCE}{C.THIN_SPACE}{_fmt_metric(r[ref_col], metric)}")
-    if denom_value_col in index:
-        parts.append(f"{HOVER_DENOMINATOR}{C.THIN_SPACE}{_fmt_vol(_num(r[denom_value_col]))}")
+    parts.append(f"{title}{C.THIN_SPACE}{_fmt_metric(r[value_col], metric)}")  # 4. the metric's own value
+
+    if ref_col in index and metric in REF_METRICS and pd.notna(r.get(ref_col)):
+        ref_label = HOVER_REF_PP if metric == "pp" else HOVER_REF_SHARE
+        parts.append(f"{ref_label}{C.THIN_SPACE}{_fmt_metric(r[ref_col], metric)}")
+
+    if metric == "share":
+        if gutter_col and gutter_col in index and pd.notna(r.get(gutter_col)) and "vol_frac" in index:
+            if level == "subfield" and y0 is not None and whole_y1 is not None:
+                # whole-run: subfields.parquet's own vol_full/vol_frac ARE
+                # the whole run already, so the whole-run window is stated.
+                vol_label = f"{HOVER_VOL_PAIR_SUBFIELD} {y0}-{whole_y1}"   # a literal space WITHIN the label phrase
+            elif level == "sdg" and y0 is not None and y1 is not None:
+                # sdg_frame's own vol_full/vol_frac are the CORE window, not
+                # whole-run (a pre-existing, documented choice, unchanged
+                # here) -- the house rule ("a label states the perimeter
+                # whenever it differs from the chart's own headline
+                # perimeter") means this line must name THAT window, not
+                # the whole-run one the share itself is denominated on.
+                vol_label = f"{HOVER_VOL_PAIR_SDG}, {y0}-{y1}"
+            else:
+                vol_label = HOVER_VOL_PAIR_SUBFIELD if level == "subfield" else HOVER_VOL_PAIR_SDG
+            parts.append(f"{vol_label}{C.THIN_SPACE}{_fmt_vol_pair(r[gutter_col], r['vol_frac'])}")
+        if level == "subfield" and "si" in index and pd.notna(r["si"]):
+            parts.append(f"{HOVER_SI_LABEL}{C.THIN_SPACE}{_fmt_si(r['si'])}")
+    else:
+        if denom_value_col in index and pd.notna(r.get(denom_value_col)):
+            parts.append(f"{HOVER_DENOMINATOR}{C.THIN_SPACE}{_fmt_vol(_num(r[denom_value_col]))}")
+        fwci_line = _fmt_fwci_pair(r.get("fwci_mean"), r.get("fwci_median"), r.get("n_covered_fwci"))
+        if fwci_line:
+            parts.append(f"{HOVER_FWCI_LABEL}{C.THIN_SPACE}{fwci_line}")
+
     if low:
-        reason = HOVER_LOW_VOLUME.format(floor=_fmt_vol(P.RATIO_HATCH_FLOOR))
+        reason = (HOVER_LOW_VOLUME_IMPACT.format(floor=_fmt_vol(P.RATIO_HATCH_FLOOR)) if metric != "share"
+                 else HOVER_LOW_VOLUME_SHARE)
         parts.append(f"{LOW_VOLUME_GLYPH}{C.THIN_SPACE}{reason}")
     return "<br>".join(parts)
 
@@ -493,8 +566,8 @@ def _add_reference(fig: go.Figure, rows: pd.DataFrame, ref_col: str,
 # ---------------------------------------------------------------------------
 # 1. The bar-family primitive (CHROME_CONTRACT.md SS10) -- kept unchanged,
 #    trimmed to the two metrics the Thematic-shape and SDG-profile charts
-#    need. `two_tab_bars` and
-#    `reciprocity_bars` below are its only callers in this module.
+#    need. `two_tab_bars` below is its only caller in this module now
+#    (strategic reciprocity by field draws its own scatter, further down).
 # ---------------------------------------------------------------------------
 def fig_metric_bars(
     frame: pd.DataFrame,
@@ -518,6 +591,9 @@ def fig_metric_bars(
     low_vol_col: str = "vol_full_annual_mean",
     domain_col: str = "domain_id",
     domain_order_col: str = "domain_order",
+    y0: int | None = None,
+    y1: int | None = None,
+    whole_y1: int | None = None,
 ) -> go.Figure:
     """ONE metric, one taxonomy level, up to `COMPARE_MAX_SERIES` institutions:
     horizontal grouped bars, one row per taxon, the value written on the mark.
@@ -639,7 +715,8 @@ def fig_metric_bars(
             inks.append(caution)
             hovers.append(_metric_hover(r, iid, names, label_col, value_col,
                                         metric, ref_col, denom_value_col,
-                                        metric_label, gutter_col, low))
+                                        metric_label, gutter_col, low, level,
+                                        y0=y0, y1=y1, whole_y1=whole_y1))
             if gutter_active and gutter_col in r.index:
                 gy.append(ri)
                 gtexts.append(_gutter_value(r[gutter_col]))
@@ -702,6 +779,9 @@ def two_tab_bars(
     *,
     grouped_by_field: bool,
     gutter: bool = True,
+    y0: int | None = None,
+    y1: int | None = None,
+    whole_y1: int | None = None,
 ) -> go.Figure:
     """The pair's Thematic-shape chart (`grouped_by_field=True`, top-20
     subfields by combined volume) and SDG-profile chart
@@ -755,13 +835,29 @@ def two_tab_bars(
     metric = "share" if tab == "profile" else "pp"
     level = "subfield" if grouped_by_field else "sdg"
     domain_col = "group_label" if grouped_by_field else "__ungrouped__"
+    # docs/tooltip_spec.yaml: the metric's OWN value line carries a
+    # chart-specific label, not the generic axis title `_METRIC_AXIS`
+    # falls back to when none is given -- subfield/share ("share of
+    # publications"), sdg/share ("share of the institution's tagged
+    # output"), subfield/pp ("world top-decile share, articles and
+    # reviews {y0}-{y1}", the ONE line that also states its own window
+    # since it differs from the Profile tab's whole-run one).
+    if level == "sdg":
+        metric_label = AX_SHARE_SDG
+    elif metric == "share":
+        metric_label = AX_SHARE_SUBFIELD
+    elif y0 is not None and y1 is not None:
+        metric_label = f"{AX_PP_SUBFIELD} {y0}-{y1}"   # a literal space WITHIN the label phrase itself
+    else:
+        metric_label = AX_PP_SUBFIELD
     return fig_metric_bars(
         frame, metric,
         slots=colors, names=names, level=level, sort="taxonomy",
         value_col="value", label_col="row_label", key_col="row_id",
         ref_col="ref_value", denom_value_col="n_covered",
-        gutter=gutter, gutter_col="vol_full",
+        gutter=gutter, gutter_col="vol_full", metric_label=metric_label,
         domain_col=domain_col, domain_order_col="__ungrouped_order__",
+        y0=y0, y1=y1, whole_y1=whole_y1,
     )
 
 
@@ -963,7 +1059,7 @@ def mirror_frontier(
 # ---------------------------------------------------------------------------
 # 4. yearly_domain_stack -- the relationship section's yearly stack
 # ---------------------------------------------------------------------------
-YEARLY_STACK_HEIGHT_PX = 320
+YEARLY_STACK_HEIGHT_PX = 500  # C7/D27: doubled (and a little) from the pre-trim 320 px
 YEARLY_STACK_TOP_MARGIN_PX = C.BASE_PX * 2
 # Room for the native horizontal legend ABOVE the plot area, on
 # top of the year-total annotations that already sit just above each bar
@@ -1013,9 +1109,13 @@ def yearly_domain_stack(frame: pd.DataFrame) -> go.Figure:
         by_year = mine.set_index("_year")["vol"]
         dname = str(mine["domain_name"].iloc[0])
         vals = [float(by_year.get(y, 0.0)) for y in years]
+        year_totals = d.groupby("_year")["vol"].sum()
+        shares = [(v / t) if (t := float(year_totals.get(y, 0.0))) > 0 else float("nan")
+                 for y, v in zip(years, vals)]
         hovers = [f"{dname}<br>{C.AX_YEAR.lower()}{C.THIN_SPACE}{y}"
                  f"<br>{C.AX_WORKS.lower()}{C.THIN_SPACE}{_fmt_vol(v)}"
-                 for y, v in zip(years, vals)]
+                 f"<br>{HOVER_SHARE_OF_YEAR}{C.THIN_SPACE}{_fmt_pct(s)}"
+                 for y, v, s in zip(years, vals, shares)]
         fig.add_trace(go.Bar(
             x=years, y=vals, name=dname,
             marker=dict(color=P.domain_color(did), line=dict(color=P.SURFACE, width=C.HAIRLINE_PX)),
@@ -1053,155 +1153,133 @@ def yearly_domain_stack(frame: pd.DataFrame) -> go.Figure:
 
 
 # ---------------------------------------------------------------------------
-# 5. reciprocity_bars -- "strategic reciprocity by field", adapted from an
-#    earlier iteration's views_collab._reciprocity_chart + collab_data.reciprocity_frame
+# 5. reciprocity_scatter -- "strategic reciprocity by field", a port of an
+#    earlier SIRIS Streamlit tool's own "Zoom partenaire" bubble scatter
+#    (credited in this module's own header docstring).
 # ---------------------------------------------------------------------------
-AX_RECIPROCITY = "Share of each institution's own output in the field"
-RECIPROCITY_HOVER_BASE = ("{field}: {share_a} of {name_a}'s output, {share_b} of {name_b}'s; "
-                          "{joint} joint publications")
-RECIPROCITY_HOVER_RANK = "{other_name} is {this_name}'s partner #{rank} here"
+RECIP_AXIS_PAD_MULT = 1.1    # squared axes [0, max * 1.1] on both sides
+RECIP_DIAGONAL_DASH = "dot"
+RECIP_BUBBLE_OUTLINE_PX = 0.5
+AX_RECIPROCITY_SHARE = "Share of {name}'s own publications"
+HOVER_RECIP_SHARE = "share of {name}'s own publications"
+HOVER_RECIP_JOINT = "joint publications"
+HOVER_RECIP_PP10 = "joint papers in the world top decile"
+HOVER_RECIP_STARS = "joint star papers in this field"
 
 
-def reciprocity_bars(frame: pd.DataFrame, names: Sequence, colors: Sequence) -> go.Figure:
-    """"Strategic reciprocity by field". Adapted from an earlier iteration's
-    `views_collab._reciprocity_chart` + `collab_data.reciprocity_frame`
-    (itself ported from an earlier SIRIS Streamlit tool's "Zoom partenaire"
-    view): the ORIGINAL drew
-    one bubble per field on a `x` = field's share of B's own corpus, `y` =
-    the same for A, area = joint volume, colour = OA domain SCATTER, with a
-    dotted equal-weight diagonal.
+def reciprocity_scatter(frame: pd.DataFrame, names: Sequence, colors: Sequence) -> go.Figure:
+    """"Strategic reciprocity by field", BACK to the bubble SCATTER an
+    earlier SIRIS Streamlit tool's own "Zoom partenaire" view drew (this
+    module's own header docstring): one bubble per field, `y` = that
+    field's share of A's OWN output, `x` = the same field's share of B's
+    OWN output, area = the pair's joint volume in the field (area-true:
+    `sizemode="area"`, one `sizeref` shared by every bubble), colour = the
+    field's OpenAlex domain, one dotted 45-degree "equal weight" diagonal,
+    squared axes (`scaleanchor` locking the aspect ratio so the square is
+    real, not just numerically equal ranges). Replaces the institution-
+    coloured bar adaptation this page drew in between (`reciprocity_bars`,
+    retired with its own `_add_centred_gutter`/`_rewrite_reciprocity_hover`
+    helpers) -- there is no institution-coloured mark on this chart at all
+    any more, matching the ORIGINAL reading exactly.
 
-    V4 keeps the same two numbers per field -- "how much of my OWN portfolio
-    sits in this field" for A and for B -- but draws them as institution-
-    coloured `fig_metric_bars` bars instead of a scatter, matching the rest
-    of this file's convergence onto the bar-family chrome
-    (CHROME_CONTRACT.md SS10) rather than adding a second chart grammar for
-    one section. The field's OpenAlex domain, formerly the bubble's colour,
-    survives as the row-label ACCENT GLYPH instead of a mark colour. Fields are drawn in
-    DESCENDING joint-volume order (matching the original's own ranking),
-    computed here rather than assumed of the caller.
-
-    INPUT FRAME CONTRACT (wide: ONE ROW PER FIELD, not per institution):
-      field_id -- the field's id
-      field_name -- the field's display name
-      domain_id -- the field's OpenAlex domain (label accent only, never
-                      a mark colour)
-      vol_joint -- the pair's joint CORE-AR volume in that field -- drawn
-                      ONCE per row in the LEFT gutter column (header "Joint
-                      publications"), centred between the two institution
-                      bars rather than repeated on each of them
-      share_a -- that field's share of institution A's OWN corpus, 0-1
-      share_b -- that field's share of institution B's OWN corpus, 0-1
-      rank_in_a -- OPTIONAL: B's dense rank among ALL of A's OWN partners
-                      by joint volume (1 = A's single largest partner)
-                      feeds the "…is partner #N" clause on A's bar only;
-                      omit the column (or leave a row's cell null) to drop
-                      that clause for that row
-      rank_in_b -- OPTIONAL: A's dense rank among ALL of B's OWN partners
-                      feeds the "…is partner #N" clause on B's bar only
+    INPUT FRAME CONTRACT (one row per field):
+      field_id, field_name, domain_id -- identity + the bubble's own colour
+      share_a, share_b -- that field's share of A's / B's own output, 0-1
+                      -- the vertical / horizontal axis respectively
+      vol_joint -- the pair's joint CORE-AR volume in the field -- the
+                      bubble's own area
+      fwci_mean, fwci_median, n_fwci -- the joint papers' own FWCI_EU
+                      (drawn from n_fwci >= 3, daggered under ten)
+      n_top10, n_covered -- the joint papers' own world-top-decile count
+                      and its covered-works denominator; PP10_WD is
+                      `n_top10 / n_covered`, computed here, never stored
+                      as a ratio (daggered under ten covered works, and
+                      simply omitted when there are none at all)
+      n_stars_field -- joint star papers in the field
+      rank_in_a, rank_in_b -- OPTIONAL: the pair's own partner rank (a
+                      PAIR-level fact, `collab_pairs.rank_in_a`/`rank_in_b`,
+                      the same on every row) -- omit the columns, or leave
+                      a row's cells null, to drop the clause entirely
 
     `names`/`colors` are TWO-ITEM SEQUENCES `[a, b]`, the SAME convention
     `mirror_frontier` uses -- this frame carries no `institution_id` column
-    to key a Mapping by. `colors` holds SLOT ints, resolved via
-    `palette.institution_color`. No reference diamond is drawn (there is no
-    natural European-mean benchmark for a pair-specific reciprocity read)."""
-    required = ("field_id", "field_name", "domain_id", "vol_joint", "share_a", "share_b")
+    to key a Mapping by. `colors` is accepted for that same signature
+    parity but unused for the MARK colour here (the field's domain is the
+    only colour channel this chart draws)."""
+    required = ("field_id", "field_name", "domain_id", "share_a", "share_b", "vol_joint")
     for col in required:
         if col not in frame.columns:
             raise ValueError(f"missing column {col!r}")
     if len(names) < 2 or len(colors) < 2:
-        raise ValueError("reciprocity_bars needs names=[a, b] and colors=[slot_a, slot_b]")
+        raise ValueError("reciprocity_scatter needs names=[a, b] and colors=[slot_a, slot_b]")
 
     d = frame.copy()
-    d = d.sort_values("vol_joint", ascending=False, kind="mergesort").reset_index(drop=True)
-    has_rank = "rank_in_a" in d.columns and "rank_in_b" in d.columns
-
-    id_a, id_b = "__reciprocity_a__", "__reciprocity_b__"
-    slots = {id_a: int(colors[0]), id_b: int(colors[1])}
     name_a, name_b = _name_of(names, None, index=0), _name_of(names, None, index=1)
-    disp_names = {id_a: name_a, id_b: name_b}
+    x = pd.to_numeric(d["share_b"], errors="coerce").to_numpy(dtype=float)
+    y = pd.to_numeric(d["share_a"], errors="coerce").to_numpy(dtype=float)
+    vol = pd.to_numeric(d["vol_joint"], errors="coerce").fillna(0.0).to_numpy(dtype=float)
+    n = len(d)
+    marker_colors = [P.domain_color(v) for v in d["domain_id"]]
+    vmax = float(vol.max()) if n and vol.max() > 0 else 1.0
+    has_rank = "rank_in_a" in d.columns or "rank_in_b" in d.columns
 
-    long_rows = []
-    for _, r in d.iterrows():
-        for iid, share_col in ((id_a, "share_a"), (id_b, "share_b")):
-            long_rows.append(dict(row_id=r["field_id"], row_label=r["field_name"],
-                                  domain_id=r["domain_id"], institution_id=iid,
-                                  value=r[share_col]))
-    long_df = pd.DataFrame(long_rows)
+    hovers = []
+    for i in range(n):
+        r = d.iloc[i]
+        parts = [str(r["field_name"]),
+                f"{HOVER_RECIP_SHARE.format(name=name_a)}{C.THIN_SPACE}{_fmt_pct(r['share_a'])}",
+                f"{HOVER_RECIP_SHARE.format(name=name_b)}{C.THIN_SPACE}{_fmt_pct(r['share_b'])}",
+                f"{HOVER_RECIP_JOINT}{C.THIN_SPACE}{_fmt_vol(r['vol_joint'])}"]
+        fwci_line = _fmt_fwci_pair(r.get("fwci_mean"), r.get("fwci_median"), r.get("n_fwci"))
+        if fwci_line:
+            parts.append(f"{HOVER_FWCI_LABEL}{C.THIN_SPACE}{fwci_line}")
+        n_cov, n_top = _num(r.get("n_covered")), _num(r.get("n_top10"))
+        if np.isfinite(n_cov) and n_cov >= 1:
+            pp10 = (n_top / n_cov) if n_cov > 0 else float("nan")
+            dagger = LOW_VOLUME_GLYPH if n_cov < 10 else ""
+            parts.append(f"{HOVER_RECIP_PP10}{C.THIN_SPACE}{_fmt_pct(pp10)}{dagger}")
+        n_stars = _num(r.get("n_stars_field"))
+        if np.isfinite(n_stars):
+            parts.append(f"{HOVER_RECIP_STARS}{C.THIN_SPACE}{_fmt_vol(n_stars)}")
+        if has_rank:
+            rank_lines = []
+            if pd.notna(r.get("rank_in_a")):
+                rank_lines.append(f"{name_b} is {name_a}'s partner #{int(r['rank_in_a'])} here")
+            if pd.notna(r.get("rank_in_b")):
+                rank_lines.append(f"{name_a} is {name_b}'s partner #{int(r['rank_in_b'])} here")
+            if rank_lines:
+                parts.append(". ".join(rank_lines) + ".")
+        hovers.append("<br>".join(parts))
 
-    fig = fig_metric_bars(
-        long_df, "share",
-        slots=slots, names=disp_names, level="field", sort="taxonomy",
-        value_col="value", label_col="row_label", key_col="row_id",
-        gutter=False, metric_label=AX_RECIPROCITY,
-    )
-    _add_centred_gutter(fig, d)
-    _rewrite_reciprocity_hover(fig, d, name_a, name_b, colors, has_rank)
-    return fig
+    fig = go.Figure(go.Scatter(
+        x=x, y=y, mode="markers",
+        marker=dict(color=marker_colors, size=vol, sizemode="area",
+                   sizeref=(2.0 * vmax / (C.BUBBLE_MAX_PX ** 2)),
+                   sizemin=C.BUBBLE_MIN_PX,
+                   line=dict(color=P.SURFACE, width=RECIP_BUBBLE_OUTLINE_PX)),
+        customdata=hovers, hovertemplate="%{customdata}<extra></extra>", showlegend=False))
 
-
-def _add_centred_gutter(fig: go.Figure, rows: pd.DataFrame) -> None:
-    """ONE phantom gutter column, centred on each row (not one per
-    institution lane): `reciprocity_bars`'s own `vol_joint` is a FIELD fact,
-    the SAME number on both of a row's bars, so this draws it
-    once rather than `fig_metric_bars`'s per-series repeat -- built
-    here, on `fig_metric_bars(gutter=False,.)`'s own output, rather than
-    inside that shared primitive (`two_tab_bars` still needs the per-series
-    form unchanged). No header above the column (bar-layout contract) -- the
-    joint-publications meaning is in the row's own hover sentence."""
-    vmax = float(pd.concat([rows["share_a"], rows["share_b"]]).max())
-    vmax = vmax if np.isfinite(vmax) and vmax > 0 else 1.0
-    neg_extent = vmax * C.GUTTER_NEG_AXIS_FRAC
-    gutter_x = -neg_extent * C.GUTTER_TIP_FRAC
-    pad = vmax * AXIS_PAD_FRAC
-    n = len(rows)
-    fig.add_trace(go.Bar(
-        x=[gutter_x] * n, y=list(range(n)), orientation="h",
-        marker=dict(color=[C.GUTTER_PHANTOM_FILL] * n, line=dict(width=0)),
-        text=[_gutter_value(v) for v in rows["vol_joint"]],
-        textposition="outside", cliponaxis=False,
-        textfont=dict(size=C.GUTTER_FONT_PX, color=P.INK_SECONDARY), constraintext="none",
-        customdata=[""] * n, hoverinfo="skip", showlegend=False))
-    fig.update_xaxes(range=[-neg_extent, vmax + pad], tickmode="array",
-                     tickvals=C._nice_ticks(vmax))
-
-
-def _rewrite_reciprocity_hover(fig: go.Figure, rows: pd.DataFrame, name_a: str, name_b: str,
-                               colors: Sequence, has_rank: bool) -> None:
-    """Replaces `fig_metric_bars`'s generic hover skeleton on the two REAL
-    bar traces with one plain-English sentence naming the field's share of
-    EACH institution's own output plus the pair's joint count in that field
-    -- the same full fact on both of a row's bars, so the words never depend
-    on which of the two the reader happens to be pointing at. A trailing
-    partner-rank clause is still appended per bar (A's bar reads
-    `rank_in_a`, B's reads `rank_in_b`) since that fact IS bar-specific.
-    Traces are matched by their OWN fill colour (deterministic:
-    `palette.institution_color(colors[0])`/`[1]`) rather than by add-order,
-    since `fig_metric_bars` orders traces by ascending SLOT, not by A/B
-    position."""
-    color_a = P.institution_color(int(colors[0]))
-    color_b = P.institution_color(int(colors[1]))
-    for tr in fig.data:
-        if not isinstance(tr, go.Bar) or not tr.marker or not tr.marker.color:
-            continue
-        mcolor = tr.marker.color[0] if isinstance(tr.marker.color, (list, tuple)) else tr.marker.color
-        if mcolor == color_a:
-            rank_col, this_name, other_name = "rank_in_a", name_a, name_b
-        elif mcolor == color_b:
-            rank_col, this_name, other_name = "rank_in_b", name_b, name_a
-        else:
-            continue
-        hovers = []
-        for ri in tr.y:
-            r = rows.iloc[int(ri)]
-            sentence = RECIPROCITY_HOVER_BASE.format(
-                field=r["field_name"], share_a=_fmt_pct(r["share_a"]), name_a=name_a,
-                share_b=_fmt_pct(r["share_b"]), name_b=name_b, joint=_gutter_value(r["vol_joint"]))
-            if has_rank and pd.notna(r.get(rank_col)):
-                sentence += "; " + RECIPROCITY_HOVER_RANK.format(
-                    other_name=other_name, this_name=this_name, rank=int(r[rank_col]))
-            hovers.append(sentence)
-        tr.customdata = hovers
+    finite_x = x[np.isfinite(x)]
+    finite_y = y[np.isfinite(y)]
+    axis_max = max(float(finite_x.max()) if len(finite_x) else 0.0,
+                   float(finite_y.max()) if len(finite_y) else 0.0)
+    axis_max = (axis_max or 1.0) * RECIP_AXIS_PAD_MULT
+    fig.add_shape(type="line", x0=0, y0=0, x1=axis_max, y1=axis_max,
+                 line=dict(color=P.INK_SECONDARY, width=C.HAIRLINE_PX, dash=RECIP_DIAGONAL_DASH))
+    fig.update_xaxes(range=[0, axis_max], tickformat=C._AXIS_PCT_FMT,
+                     title_text=AX_RECIPROCITY_SHARE.format(name=name_b),
+                     gridcolor=P.GRID, zerolinecolor=P.GRID, linecolor=P.BORDER,
+                     constrain="domain")
+    fig.update_yaxes(range=[0, axis_max], tickformat=C._AXIS_PCT_FMT,
+                     title_text=AX_RECIPROCITY_SHARE.format(name=name_a),
+                     gridcolor=P.GRID, zerolinecolor=P.GRID, linecolor=P.BORDER,
+                     # `constrain="domain"`, not the "range" default -- see
+                     # mirror_frontier's own note on the identical plotly
+                     # quirk this avoids (the shorter axis otherwise
+                     # silently grows a meaningless negative extent).
+                     scaleanchor="x", scaleratio=1, constrain="domain")
+    return C._base_layout(fig, C.SCATTER_HEIGHT,
+                          margin=dict(t=C.BASE_PX // 2, l=C.BASE_PX, r=16, b=C.BASE_PX))
 
 
 # ---------------------------------------------------------------------------

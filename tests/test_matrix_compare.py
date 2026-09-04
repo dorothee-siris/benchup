@@ -123,7 +123,7 @@ def test_fields_long_still_exported_for_collab_data(ctx, subs):
     assert list(df.columns) == CD.FIELDS_LONG_COLS
     # exercised end to end through the real consumer, not just a direct call
     recip = COL.reciprocity_frame(ctx, subs, a, b)
-    assert set(recip.columns) == {"field_id", "field_name", "domain_id", "domain_name", "x", "y", "joint_vol"}
+    assert set(recip.columns) == set(COL.RECIPROCITY_COLS)  # D27: fwci/pp10/stars/rank additions
 
 
 def test_deleted_matrix_machinery_is_gone():

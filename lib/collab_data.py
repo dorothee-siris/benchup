@@ -46,6 +46,7 @@ import numpy as np
 import pandas as pd
 
 from . import compare_data as CD
+from . import leaders_data as LD
 from . import links
 from . import palette as PAL
 from . import profile_data as P
@@ -290,7 +291,8 @@ def pulse(ctx: dict, a: str, b: str) -> dict | None:
 PAIR_TOPICS_FLOOR = 5    # -12: collab_pair_topics/collab_pair_fields ship only for pairs with copubs_total >= this
 
 FIELD_BREAKDOWN_COLS = ["field_id", "field_name", "domain_id", "domain_name", "vol_w1", "vol_w2",
-                        "vol", "n_covered", "n_top10", "n_sdg", "fwci_median", "mom_class", "arrow", "url"]
+                        "vol", "n_covered", "n_top10", "n_sdg", "fwci_median", "fwci_mean", "n_fwci",
+                        "mom_class", "arrow", "url"]
 FIELD_BREAKDOWN_NOTE = (
     "Field mix uses the repaired (best-fit) taxonomy only and does not change with the tree toggle."
 )
@@ -423,7 +425,140 @@ def pair_momentum(ctx: dict, a: str, b: str) -> dict | None:
     }
 
 
-RECIPROCITY_COLS = ["field_id", "field_name", "domain_id", "domain_name", "x", "y", "joint_vol"]
+MOMENTUM_EVIDENCE_STATES = ("numeric", "new", "dormant", "thin")
+MOMENTUM_EVIDENCE_SIG_STATES = ("significant", "not_significant", "no_test")
+
+
+def momentum_evidence(mom: dict, facts: dict) -> dict:
+    """The Relationship section's always-visible momentum EVIDENCE LINE (D27,
+    `compare_momentum_line`) -- a PURE classification over the pair's own
+    RAW figures (`mom["c1"]`/`c2`/`mom_rr`/`mom_p`), never over `mom_class`.
+    `facts` is `collab_facts.json` verbatim (`_load_collab_facts`'s own
+    return) -- every threshold below is READ from it, never a typed digit,
+    per the house rule this function's own review asked for: `band` (the
+    +-25% recentred-ratio width, `stable`'s own definition), `alpha` (the
+    significance level), `new_min_c2`/`dormant_min_c1`/`weak_base_max` (the
+    SAME three ints the upstream classifier itself uses for new/dormant/weak
+    -- reused here so this function can never silently drift from
+    `mom_class`'s own ladder even though it never reads that column).
+
+    Six states, in this priority:
+      1. c1==0 and c2 >= new_min_c2      -> "new" (a genuine emergence)
+      2. c1==0 and 0 < c2 < new_min_c2   -> "thin_ns" (an 'ns' row with
+                                            NEITHER mom_rr nor mom_p at all --
+                                            too little in EITHER window for
+                                            any rate, let alone a test)
+      3. 0 < c1 < weak_base_max + 1      -> "thin" ("weak": a real base-
+                                            window count, still too small
+                                            for a rate)
+      4. c2==0 (c1 already >= the floor) -> "dormant"
+      5. mom_rr within the stable band   -> "numeric", sig="stable_band"
+      6. otherwise (a real up/down       -> "numeric", sig="significant" |
+         direction, in or out of the        "not_significant" | "no_test"
+         upstream table's own "ns")         (the last only if mom_p itself
+                                             is somehow absent -- unreached
+                                             in the live data: every row
+                                             outside the stable band always
+                                             carries a p-value)
+
+    Live-verified on the shipped `app/data/collab_pairs.parquet`: of
+    1,450,358 'ns' rows, 316,171 carry BOTH mom_rr and mom_p (the demoted
+    up/down candidates -- state 6 above, "not_significant" by construction,
+    since a row that had cleared alpha would never have been demoted to
+    'ns' in the first place); the remaining 1,134,187 carry NEITHER (state
+    1 or 2 above, split on `new_min_c2`). 'stable'/'weak'/'dormant' rows
+    ALWAYS carry mom_rr but NEVER mom_p (no z-test is ever run for them
+    upstream) -- 'dormant'/'weak' need no test to begin with (states 3/4),
+    and 'stable' reads its own fixed sentence (state 5) rather than
+    "too little... for a test", which would be a category error for a row
+    that HAS a real, defined rate.
+
+    Returns exactly one of:
+      {"state": "new", "c2_mean": int}
+      {"state": "thin_ns"}
+      {"state": "thin"}
+      {"state": "dormant", "c1_mean": int}
+      {"state": "numeric", "c1_mean": int, "c2_mean": int, "pct": str,
+       "sig": "stable_band" | "significant" | "not_significant" | "no_test",
+       "p": float, "band_pct": str}
+
+    `c1_mean`/`c2_mean` are ROUNDED to whole works (the house convention for
+    this figure -- `charts._fmt_vol` already prints a whole int with the
+    thousands separator and no decimal once given one). `pct` is the signed,
+    space-before-percent, true-minus-sign text (`_delta_pct_text`) -- the
+    SAME formula `momentum_display`'s up/down/stable branches compute
+    (kept as its own small copy there, per that function's own "unchanged
+    ladder" contract), just reached here without going through `mom_class`
+    at all. `band_pct` (only on the "stable_band" sig) is `facts["band"]`
+    as a bare NUMBER string (e.g. "25", no percent sign -- the template
+    itself supplies " %", matching `pct`'s own space-before-percent
+    convention), for the evidence line's own "+-{band_pct} %" clause. Never
+    raises: a floor-cleared row with a
+    somehow-non-finite ratio (should not occur; defensive only) degrades to
+    "thin_ns" rather than printing a NaN percentage."""
+    c1, c2 = _mom_num(mom.get("c1")), _mom_num(mom.get("c2"))
+    n1 = CD.DYNAMICS_W1[1] - CD.DYNAMICS_W1[0] + 1
+    n2 = CD.DYNAMICS_W2[1] - CD.DYNAMICS_W2[0] + 1
+    new_min_c2 = facts["new_min_c2"]
+    dormant_min_c1 = facts["dormant_min_c1"]
+    weak_base_max = facts["weak_base_max"]
+    band = facts["band"]
+    alpha = facts.get("alpha")
+
+    if c1 == 0:
+        if c2 >= new_min_c2:
+            return {"state": "new", "c2_mean": round(c2 / n2)}
+        return {"state": "thin_ns"}
+    if c1 <= weak_base_max:
+        # matches the upstream ladder's OWN "weak" condition exactly
+        # (0 < c1 <= weak_base_max) -- checked BEFORE dormant, since
+        # "dormant" upstream is itself defined as c2==0 AND c1 >=
+        # dormant_min_c1, never a thin-base row that merely went quiet too.
+        return {"state": "thin"}
+    if c2 == 0:
+        return {"state": "dormant", "c1_mean": round(c1 / n1)}
+    rr = _mom_num(mom.get("mom_rr"))
+    if not np.isfinite(rr):
+        return {"state": "thin_ns"}
+    c1_mean, c2_mean = round(c1 / n1), round(c2 / n2)
+    pct = _delta_pct_text(rr)
+    lo, hi = 1.0 / (1.0 + band), 1.0 + band
+    if lo < rr < hi:
+        return {"state": "numeric", "c1_mean": c1_mean, "c2_mean": c2_mean,
+                "pct": pct, "sig": "stable_band", "p": float("nan"),
+                "band_pct": f"{band * 100:.0f}"}
+    p = _mom_num(mom.get("mom_p"))
+    if np.isfinite(p) and alpha is not None:
+        sig = "significant" if p <= alpha else "not_significant"
+    else:
+        sig = "no_test"
+    return {"state": "numeric", "c1_mean": c1_mean, "c2_mean": c2_mean,
+            "pct": pct, "sig": sig, "p": p}
+
+
+def _delta_pct_text(rr: float) -> str:
+    """Signed, no-decimal, SPACE-before-percent '{+/MINUS}NN %' from a
+    recentred ratio, clamped at `MOMENTUM_CLAMP_PCT` -- kept as its OWN small
+    formula (not factored out of `momentum_display`, whose own up-only
+    clamp condition and "+NN%" tile-facing text stay untouched per its
+    "unchanged ladder" contract) so `momentum_evidence` never risks
+    perturbing that function's existing, tested output.
+
+    A TRUE minus sign (U+2212), never a hyphen-minus, on a negative value --
+    the evidence SENTENCE sits a signed number directly after a colon
+    ("2023-2024: {pct} once.."), where a hyphen-minus would print as a
+    second dash immediately before the sign; the tile's own bare glyph
+    ("-> -3%", `momentum_display`) has no such neighbour and is unaffected."""
+    delta_pct = (rr - 1.0) * 100.0
+    if delta_pct > MOMENTUM_CLAMP_PCT:
+        return "> +999 %"
+    sign = "\N{MINUS SIGN}" if delta_pct < 0 else "+"
+    return f"{sign}{abs(delta_pct):.0f} %"
+
+
+RECIPROCITY_COLS = ["field_id", "field_name", "domain_id", "domain_name", "x", "y", "joint_vol",
+                    "fwci_mean", "fwci_median", "n_fwci", "n_top10", "n_covered",
+                    "n_stars_field", "rank_in_a", "rank_in_b"]
 
 
 def reciprocity_frame(ctx: dict, subs: dict, a: str, b: str) -> pd.DataFrame:
@@ -437,9 +572,32 @@ def reciprocity_frame(ctx: dict, subs: dict, a: str, b: str) -> pd.DataFrame:
     basis-aware via `subs` -- `compare_data.fields_long`, never recomputed
     here), `joint_vol` = the pair's CORE-AR joint volume in that field
     (`field_breakdown`'s own `vol`, the authoritative uncapped source, never
-    the topic-rollup lower bound). One row per qualifying field; SYMMETRIC by
-    construction -- swapping (a, b) swaps (x, y) and leaves `joint_vol`
-    unchanged (field_breakdown is itself a<b-orientation-invariant)."""
+    the topic-rollup lower bound). `x`/`y`/`joint_vol` are UNCHANGED by the
+    D27 scatter-return (byte-identical formula, still the bubble's position
+    and area) -- everything below is a NEW per-field addition:
+
+      fwci_mean, fwci_median, n_fwci -- `collab_pair_fields.parquet`'s own
+                       per-field FWCI of the pair's JOINT works (n_fwci is
+                       the FWCI population's own count, a slightly WIDER set
+                       than n_covered -- both genuine, both surfaced so a
+                       reader never confuses the two denominators, per the
+                       upstream reconciliation note on that column).
+      n_top10, n_covered -- the same table's joint top-decile count and its
+                       OWN (narrower) covered-works denominator; PP10_WD for
+                       the field is `n_top10 / n_covered`, computed by the
+                       caller at render time, never stored here as a ratio.
+      n_stars_field -- `leaders_data.pair_stars_by_field`, 0 when absent.
+      rank_in_a, rank_in_b -- the PAIR's own partner rank (`collab_pairs.
+                       rank_in_a`/`rank_in_b`, re-oriented to the caller's
+                       (a, b) exactly like `pulse`'s own reorientation),
+                       repeated on every field row -- a pair-level fact, not
+                       a per-field one; NaN when the pair has no
+                       `collab_pairs` row (never co-published).
+
+    One row per qualifying field; SYMMETRIC by construction -- swapping
+    (a, b) swaps (x, y) and leaves `joint_vol`/the field-level additions
+    unchanged (`field_breakdown` is itself a<b-orientation-invariant; the
+    pair-level rank_in_a/rank_in_b swap with (a, b), matching `pulse`)."""
     fb = field_breakdown(ctx, a, b)
     fb = fb[fb["vol"] > 0]
     if fb.empty:
@@ -447,7 +605,23 @@ def reciprocity_frame(ctx: dict, subs: dict, a: str, b: str) -> pd.DataFrame:
     fl = CD.fields_long(ctx, subs, [a, b])
     a_share = fl[fl["institution_id"] == a].set_index("field_id")["share"]
     b_share = fl[fl["institution_id"] == b].set_index("field_id")["share"]
-    out = fb[["field_id", "field_name", "domain_id", "domain_name", "vol"]].rename(columns={"vol": "joint_vol"})
+    out = fb[["field_id", "field_name", "domain_id", "domain_name", "vol",
+             "fwci_mean", "fwci_median", "n_fwci", "n_top10", "n_covered"]].rename(columns={"vol": "joint_vol"})
     out["x"] = out["field_id"].map(b_share).fillna(0.0)  # field's share of B's OWN corpus
     out["y"] = out["field_id"].map(a_share).fillna(0.0)  # field's share of A's OWN corpus
+
+    stars_by_field = LD.pair_stars_by_field(ctx, a, b)
+    out["n_stars_field"] = out["field_id"].map(stars_by_field).fillna(0).astype(int)
+
+    lo, hi = (a, b) if a < b else (b, a)
+    pair_row = _load_collab_pairs(ctx, a, b)
+    if len(pair_row):
+        swapped = a != lo  # caller's `a` is the table's `b` -- reorient like `pulse`
+        r = pair_row.iloc[0]
+        out["rank_in_a"] = float(r["rank_in_b"]) if swapped else float(r["rank_in_a"])
+        out["rank_in_b"] = float(r["rank_in_a"]) if swapped else float(r["rank_in_b"])
+    else:
+        out["rank_in_a"] = np.nan
+        out["rank_in_b"] = np.nan
+
     return out.reindex(columns=RECIPROCITY_COLS).sort_values("joint_vol", ascending=False).reset_index(drop=True)

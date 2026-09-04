@@ -168,21 +168,23 @@ def test_dagger_still_marks_every_cautioned_value():
         assert any(cautioned), metric
 
 
-def test_one_user_facing_sentence_for_both_mechanisms():
-    """ONE sentence for every cautioned bar, whichever mechanism triggered
-    it -- `HOVER_LOW_VOLUME` is a `{floor}` template filled from
-    `palette.RATIO_HATCH_FLOOR`, and it is the SAME string regardless of
-    which family cautioned."""
+def test_one_user_facing_sentence_per_mechanism_matching_the_tooltip_spec():
+    """docs/tooltip_spec.yaml's own `compare_thematic_profile` (share) and
+    `compare_thematic_impact` (pp) name TWO DIFFERENT dagger sentences for
+    their respective floors ("rests on few publications a year" vs "fewer
+    than {floor} articles and reviews behind the share") -- the two
+    mechanisms render their OWN sentence now, not a shared generic one."""
     rendered = {}
     for metric in ("pp", "share"):
         tr = _render(metric)
         hovers = "".join(tr.customdata)
-        expected = X.HOVER_LOW_VOLUME.format(floor=X._fmt_vol(P.RATIO_HATCH_FLOOR))
+        expected = (X.HOVER_LOW_VOLUME_IMPACT.format(floor=X._fmt_vol(P.RATIO_HATCH_FLOOR)) if metric == "pp"
+                   else X.HOVER_LOW_VOLUME_SHARE)
         assert expected in hovers, (metric, hovers)
         rendered[metric] = expected
-    assert rendered["pp"] == rendered["share"]  # literally the same rendered sentence
+    assert rendered["pp"] != rendered["share"]  # each mechanism states its OWN floor concept
 
-    # VACUITY: the two mechanisms really are different code paths even
-    # though they render the same sentence -- proven by the fixture-flip
-    # tests above (a metric collapsed onto the wrong rule renders a
-    # DIFFERENT caution PATTERN, not a different sentence).
+    # VACUITY: the two mechanisms really are different code paths, proven
+    # by the fixture-flip tests above (a metric collapsed onto the wrong
+    # rule renders a DIFFERENT caution PATTERN too, not just a different
+    # sentence).

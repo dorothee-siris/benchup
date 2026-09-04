@@ -23,6 +23,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import pytest
+import yaml
 
 APP_DIR = Path(__file__).resolve().parents[1]
 if str(APP_DIR) not in sys.path:
@@ -31,10 +32,39 @@ if str(APP_DIR) not in sys.path:
 from lib import charts as C                 # noqa: E402
 from lib import charts_compare as X         # noqa: E402
 from lib import palette as P                # noqa: E402
+from lib.app_config import CFG              # noqa: E402
 from tests.test_narrative import has_digit_violation, load_allowlist  # noqa: E402
 
 MODULE = APP_DIR / "lib" / "charts_compare.py"
 DATA = APP_DIR / "data"
+SPEC_PATH = APP_DIR / "docs" / "tooltip_spec.yaml"
+
+
+# ---------------------------------------------------------------------------
+# tooltip_spec.yaml -- load once; the same generic order-of-labels checker
+# `tests/test_charts_topics.py` uses (duplicated here by this fence's own
+# convention -- one small helper pair, not a cross-fence import).
+# ---------------------------------------------------------------------------
+@pytest.fixture(scope="module")
+def spec() -> dict:
+    with open(SPEC_PATH, encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+
+def _spec_labels(spec: dict, chart_key: str, *, unconditional_only: bool = False) -> list[str]:
+    lines = spec["charts"][chart_key]["lines"]
+    if unconditional_only:
+        lines = [ln for ln in lines if "when" not in ln]
+    return [ln["label"] for ln in lines if ln.get("label")]
+
+
+def assert_labels_in_order(hover: str, labels: list[str]) -> None:
+    pos = -1
+    for label in labels:
+        idx = hover.find(label)
+        assert idx != -1, f"label {label!r} not found in hover: {hover!r}"
+        assert idx > pos, f"label {label!r} out of order (at {idx}, expected after {pos}): {hover!r}"
+        pos = idx
 
 IDS = ["Iz", "Ia"]                       # deliberately NOT in id order
 KEYS = {"Iz": 11, "Ia": 22}
@@ -65,6 +95,12 @@ def two_tab_frame(ids, *, grouped_by_field: bool) -> pd.DataFrame:
                 vol_full=100 + 10 * i + n,
                 n_covered=n_covered[i],
                 si=1.0 + 0.1 * i, fwci_median=1.05 + 0.02 * i, vol_frac=60.0 + i,
+                # n_covered_fwci: row 1 sits BELOW the fwci_pair_2dp floor of
+                # three (no FWCI_EU line at all for that row); row 2 sits
+                # between three and ten (the line draws, daggered); every
+                # other row clears ten (the line draws, no dagger).
+                fwci_mean=1.20 + 0.02 * i,
+                n_covered_fwci=[81, 2, 5, 31, 71, 21][i],
             ))
     return pd.DataFrame(rows)
 
@@ -96,14 +132,21 @@ def yearly_frame() -> pd.DataFrame:
 
 
 def reciprocity_frame(n_fields: int = 4, with_ranks: bool = True) -> pd.DataFrame:
-    """The WIDE, one-row-per-field contract
-    field_id, field_name, domain_id, vol_joint, share_a, share_b, and the
-    OPTIONAL rank_in_a/rank_in_b."""
+    """The one-row-per-field contract `reciprocity_scatter` reads: field_id,
+    field_name, domain_id, share_a, share_b, vol_joint, plus fwci_mean/
+    fwci_median/n_fwci/n_top10/n_covered/n_stars_field and the OPTIONAL
+    rank_in_a/rank_in_b. Field 0 carries an n_fwci UNDER the fwci_pair_2dp
+    floor of three (no FWCI_EU line for that one row); field 1 carries
+    n_covered=0 (no PP10_WD line at all -- never a bare 0.0%)."""
     rows = []
     for f in range(n_fields):
         row = dict(field_id=f, field_name=f"Field {f}", domain_id=(f % 4) + 1,
                   vol_joint=float(40 - 8 * f), share_a=0.05 + 0.01 * f,
-                  share_b=0.04 + 0.015 * f)
+                  share_b=0.04 + 0.015 * f,
+                  fwci_mean=1.10 + 0.05 * f, fwci_median=0.90 + 0.03 * f,
+                  n_fwci=(2 if f == 0 else 12 + f),
+                  n_top10=(0 if f == 1 else 2 + f), n_covered=(0 if f == 1 else 20 + f),
+                  n_stars_field=f)
         if with_ranks:
             row["rank_in_a"] = f + 1
             row["rank_in_b"] = n_fields - f
@@ -216,13 +259,34 @@ def test_two_tab_bars_rows_ordered_as_given_and_grouped_under_field_boundaries(s
                and s.line.width == X.DOMAIN_RULE_PX], "SDG rows carry no field grouping"
 
 
-def test_two_tab_bars_hover_carries_the_extra_reader_prose_lines(slots):
+def test_two_tab_bars_profile_hover_carries_si_and_the_whole_run_vol_pair_line(slots):
+    """docs/tooltip_spec.yaml's compare_thematic_profile: the SI line and a
+    combined full+fractional 'publications, whole run' line -- no bare
+    fractional-only line any more (folded into the ONE vol_pair line)."""
     df = two_tab_frame(IDS, grouped_by_field=True)
     fig = X.two_tab_bars(df, "profile", NAMES, slots, grouped_by_field=True)
     hovers = [h for tr in _real_bars(fig) for h in tr.customdata]
-    assert any(C.HOVER_SI in h for h in hovers)
-    assert any(X.HOVER_FWCI_MEDIAN in h for h in hovers)
-    assert any(C.HOVER_VOL_FRAC in h for h in hovers)
+    assert any(X.HOVER_SI_LABEL in h for h in hovers)
+    assert any(X.HOVER_VOL_PAIR_SUBFIELD in h and "full" in h and "fractional" in h for h in hovers)
+    assert not any(X.HOVER_FWCI_LABEL in h for h in hovers), "the Profile tab never shows the FWCI_EU line"
+
+
+def test_two_tab_bars_impact_hover_carries_the_fwci_eu_line_floored_at_three(slots):
+    """docs/tooltip_spec.yaml's compare_thematic_impact: FWCI_EU (mean AND
+    median) joins the impact tab's hover, floored at n_covered_fwci >= 3
+    (row i=1's fixture value is 2 -- below the floor, line absent for that
+    row's own hover only) and daggered under ten (every fixture row is)."""
+    df = two_tab_frame(IDS, grouped_by_field=False)
+    fig = X.two_tab_bars(df, "impact", NAMES, slots, grouped_by_field=False)
+    hovers = [h for tr in _real_bars(fig) for h in tr.customdata]
+    with_fwci = [h for h in hovers if X.HOVER_FWCI_LABEL in h]
+    assert with_fwci, "at least one row clears the n_covered_fwci >= 3 floor"
+    assert any("mean" in h and "median" in h and "works" in h for h in with_fwci)
+    assert any(X.LOW_VOLUME_GLYPH in h.split(X.HOVER_FWCI_LABEL)[1].split("<br>")[0] for h in with_fwci), (
+        "every fixture row's n_covered_fwci is under ten -- the work count carries a dagger")
+    assert not any(C.HOVER_SI in h for h in hovers), "the Impact tab never shows the SI line"
+    row1_hover = next(h for h in hovers if "Row 1" in h)
+    assert X.HOVER_FWCI_LABEL not in row1_hover, "row 1's n_covered_fwci=2 is under the floor of three"
 
 
 def test_two_tab_bars_missing_institution_row_is_absent_not_zero(slots):
@@ -252,16 +316,21 @@ def test_two_tab_bars_sdg_rows_draw_no_domain_accent(slots):
     assert not any(C.ACCENT_GLYPH in t for t in styled)
 
 
-def test_two_tab_bars_grouped_by_field_hover_names_the_field_first(slots):
+def test_two_tab_bars_grouped_by_field_hover_names_the_entity_first_then_its_field(slots):
+    """docs/tooltip_spec.yaml's compare_thematic_profile line order: the
+    ENTITY (the subfield's own row label) first, the field it belongs to
+    second -- the reference version's own 'field names first' behaviour is
+    superseded by this stream's entity-first ruling."""
     df = two_tab_frame(IDS, grouped_by_field=True)
     fig = X.two_tab_bars(df, "profile", NAMES, slots, grouped_by_field=True)
     real = _real_bars(fig)
     hovers = [h for tr in real for h in tr.customdata]
     assert hovers
-    first_lines = [h.split("<br>")[0] for h in hovers]
-    assert all(fl.startswith(X.HOVER_FIELD_PREFIX) for fl in first_lines), (
-        "'Field: {name}' must be the literal FIRST hover line")
-    assert any("Field 0" in fl for fl in first_lines)
+    lines = [h.split("<br>") for h in hovers]
+    assert all(ln[0].startswith("Row ") for ln in lines), "line 1 is the entity (the row's own label)"
+    assert all(ln[1].startswith(X.HOVER_FIELD_LABEL) for ln in lines), "line 2 names its field"
+    assert any("Field 0" in ln[1] for ln in lines)
+    assert any(NAMES["Ia"] in ln[2] or NAMES["Iz"] in ln[2] for ln in lines), "line 3 is the institution"
 
 
 def test_two_tab_bars_sdg_hover_has_no_field_line(slots):
@@ -270,8 +339,8 @@ def test_two_tab_bars_sdg_hover_has_no_field_line(slots):
     real = _real_bars(fig)
     hovers = [h for tr in real for h in tr.customdata]
     assert hovers
-    assert not any(h.startswith(X.HOVER_FIELD_PREFIX) for h in hovers)
-    assert not any(X.HOVER_FIELD_PREFIX in h for h in hovers)
+    assert all(h.split("<br>")[0].startswith("Row ") for h in hovers), "line 1 is still the entity"
+    assert not any(X.HOVER_FIELD_LABEL in h for h in hovers)
 
 # ---------------------------------------------------------------------------
 # mirror_frontier -- shared-frontier mirror
@@ -462,85 +531,159 @@ def test_yearly_domain_stack_rejects_a_missing_column():
 
 
 # ---------------------------------------------------------------------------
-# reciprocity_bars -- adapted from views_collab._reciprocity_chart.
-# The WIDE one-row-per-field contract, a gutter
-# value drawn ONCE per row (not once per institution), and a custom
-# narrative hover sentence.
+# reciprocity_scatter -- a port of an earlier SIRIS Streamlit tool's own
+# "Zoom partenaire" bubble scatter (D27 -- back from the institution-
+# coloured bar adaptation this page drew in between). One bubble per field:
+# y = share of A's own output, x = share of B's own output, area = joint
+# volume, colour = domain, a dotted equal-weight diagonal, square axes.
 # ---------------------------------------------------------------------------
 RECIP_NAMES = ["Institution A", "Institution B"]
 RECIP_SLOTS = [0, 1]
 
 
-def test_reciprocity_bars_ranked_by_descending_joint_volume():
+def test_reciprocity_scatter_is_one_scatter_trace_area_true_and_positioned_by_share():
     df = reciprocity_frame()
-    fig = X.reciprocity_bars(df, RECIP_NAMES, RECIP_SLOTS)
-    real = _real_bars(fig)[0]
-    # field 0 carries the largest vol_joint (40), field 3 the smallest (16)
-    assert list(real.y) == [0, 1, 2, 3]
+    fig = X.reciprocity_scatter(df, RECIP_NAMES, RECIP_SLOTS)
+    assert len(fig.data) == 1
+    tr = fig.data[0]
+    assert isinstance(tr, go.Scatter) and tr.mode == "markers"
+    assert list(tr.x) == pytest.approx(list(df["share_b"]))  # x = B's own share
+    assert list(tr.y) == pytest.approx(list(df["share_a"]))  # y = A's own share
+    assert list(tr.marker.size) == pytest.approx(list(df["vol_joint"]))  # area = joint volume
+    assert tr.marker.sizemode == "area"
 
 
-def test_reciprocity_bars_gutter_drawn_once_per_row_centred_institution_colour_is_the_mark():
+def test_reciprocity_scatter_colour_is_domain_not_institution():
     df = reciprocity_frame()
-    fig = X.reciprocity_bars(df, RECIP_NAMES, RECIP_SLOTS)
-    bars = _bar_traces(fig)
-    gutters = [t for t in bars if t not in _real_bars(fig)]
-    assert len(bars) == 3, "two institution bars + exactly ONE gutter trace (not one per institution)"
-    assert len(gutters) == 1
-    assert list(gutters[0].text) == [X._gutter_value(v) for v in df.sort_values(
-        "vol_joint", ascending=False)["vol_joint"]]
-    assert not fig.layout.annotations, "no header above the gutter (bar-layout contract)"
-    real = _real_bars(fig)
-    colours = {c for t in real for c in t.marker.color}
-    assert colours == {P.institution_color(s) for s in RECIP_SLOTS}
-    assert not (colours & set(P.OA_DOMAIN_COLORS.values()))
+    fig = X.reciprocity_scatter(df, RECIP_NAMES, RECIP_SLOTS)
+    colours = set(fig.data[0].marker.color)
+    assert colours <= set(P.OA_DOMAIN_COLORS.values())
+    assert not (colours & set(P.INSTITUTION_COLORS)), "no institution colour anywhere on this chart"
 
 
-def test_reciprocity_bars_x_title_is_explicit():
-    fig = X.reciprocity_bars(reciprocity_frame(), RECIP_NAMES, RECIP_SLOTS)
-    assert fig.layout.xaxis.title.text == X.AX_RECIPROCITY
-    assert fig.layout.xaxis.title.text != "Share of output", "must not be the bare generic axis label"
+def test_reciprocity_scatter_draws_the_dotted_equal_weight_diagonal():
+    fig = X.reciprocity_scatter(reciprocity_frame(), RECIP_NAMES, RECIP_SLOTS)
+    diagonals = [s for s in fig.layout.shapes if s.line.dash == "dot"]
+    assert len(diagonals) == 1
+    d = diagonals[0]
+    assert d.x0 == d.y0 == 0 and d.x1 == pytest.approx(d.y1)  # a 45-degree line through the origin
 
 
-def test_reciprocity_bars_hover_is_a_narrative_sentence_with_rank_when_present():
-    fig = X.reciprocity_bars(reciprocity_frame(with_ranks=True), RECIP_NAMES, RECIP_SLOTS)
-    real = _real_bars(fig)
-    all_hovers = [h for t in real for h in t.customdata]
-    assert any("of Institution A's output" in h and "of Institution B's" in h
-               and "joint publications" in h for h in all_hovers)
-    assert any("is Institution A's partner #" in h for h in all_hovers)
-    assert any("is Institution B's partner #" in h for h in all_hovers)
-    # the skeleton's generic vocabulary must NOT leak into this custom hover
-    assert not any(X.HOVER_DENOMINATOR in h or X.HOVER_REFERENCE in h for h in all_hovers)
+def test_reciprocity_scatter_square_axes_via_scaleanchor():
+    fig = X.reciprocity_scatter(reciprocity_frame(), RECIP_NAMES, RECIP_SLOTS)
+    assert fig.layout.yaxis.scaleanchor == "x"
+    assert fig.layout.yaxis.scaleratio == 1
+    assert fig.layout.xaxis.range[0] == fig.layout.yaxis.range[0] == 0
+    assert fig.layout.xaxis.range[1] == pytest.approx(fig.layout.yaxis.range[1])
 
 
-def test_reciprocity_bars_hover_drops_the_rank_clause_when_ranks_are_absent():
-    fig = X.reciprocity_bars(reciprocity_frame(with_ranks=False), RECIP_NAMES, RECIP_SLOTS)
-    real = _real_bars(fig)
-    all_hovers = [h for t in real for h in t.customdata]
-    assert all_hovers
-    assert not any("partner #" in h for h in all_hovers)
-    assert all("joint publications" in h for h in all_hovers)
+def test_reciprocity_scatter_axis_titles_name_each_institution():
+    fig = X.reciprocity_scatter(reciprocity_frame(), RECIP_NAMES, RECIP_SLOTS)
+    assert "Institution B" in fig.layout.xaxis.title.text
+    assert "Institution A" in fig.layout.yaxis.title.text
+    assert fig.layout.xaxis.title.text != fig.layout.yaxis.title.text
 
 
-def test_reciprocity_bars_domain_survives_as_a_label_accent_only():
-    df = reciprocity_frame()
-    fig = X.reciprocity_bars(df, RECIP_NAMES, RECIP_SLOTS)
-    styled = list(fig.layout.yaxis.ticktext)
-    assert any(P.domain_color(d) in "".join(styled) for d in P.OA_DOMAIN_ORDER)
-    real = _real_bars(fig)
-    colours = {c for t in real for c in t.marker.color}
-    assert not (colours & set(P.OA_DOMAIN_COLORS.values())), "bars stay institution-coloured"
+def test_reciprocity_scatter_hover_carries_shares_joint_volume_fwci_pp10_and_stars():
+    fig = X.reciprocity_scatter(reciprocity_frame(with_ranks=True), RECIP_NAMES, RECIP_SLOTS)
+    hovers = list(fig.data[0].customdata)
+    assert all(h.startswith("Field ") for h in hovers), "the field's own name is the first hover line"
+    assert any("of Institution A's own publications" in h and "of Institution B's own publications" in h
+              and X.HOVER_RECIP_JOINT in h for h in hovers)
+    assert any(X.HOVER_FWCI_LABEL in h for h in hovers)
+    assert any(X.HOVER_RECIP_PP10 in h for h in hovers)
+    assert any(X.HOVER_RECIP_STARS in h for h in hovers)
+    assert any("is Institution A's partner #" in h for h in hovers)
+    assert any("is Institution B's partner #" in h for h in hovers)
 
 
-def test_reciprocity_bars_draws_no_reference_diamond():
-    fig = X.reciprocity_bars(reciprocity_frame(), RECIP_NAMES, RECIP_SLOTS)
-    assert not [t for t in fig.data if isinstance(t, go.Scatter)]
+def test_reciprocity_scatter_fwci_line_floored_at_three_and_pp10_omitted_at_zero_covered():
+    """Field 0's fixture n_fwci=2 (under the fwci_pair_2dp floor of three):
+    no FWCI_EU line at all for that row. Field 1's fixture n_covered=0: no
+    PP10_WD line at all (never a fabricated bare 0.0%)."""
+    fig = X.reciprocity_scatter(reciprocity_frame(), RECIP_NAMES, RECIP_SLOTS)
+    hovers = list(fig.data[0].customdata)
+    field0 = next(h for h in hovers if h.startswith("Field 0<"))
+    assert X.HOVER_FWCI_LABEL not in field0
+    field1 = next(h for h in hovers if h.startswith("Field 1<"))
+    assert X.HOVER_RECIP_PP10 not in field1
 
 
-def test_reciprocity_bars_rejects_a_missing_column():
+def test_reciprocity_scatter_hover_drops_the_rank_clause_when_ranks_are_absent():
+    fig = X.reciprocity_scatter(reciprocity_frame(with_ranks=False), RECIP_NAMES, RECIP_SLOTS)
+    hovers = list(fig.data[0].customdata)
+    assert hovers
+    assert not any("partner #" in h for h in hovers)
+    assert all(X.HOVER_RECIP_JOINT in h for h in hovers)
+
+
+def test_reciprocity_scatter_rejects_a_missing_column():
     with pytest.raises(ValueError):
-        X.reciprocity_bars(reciprocity_frame().drop(columns=["vol_joint"]),
-                           RECIP_NAMES, RECIP_SLOTS)
+        X.reciprocity_scatter(reciprocity_frame().drop(columns=["vol_joint"]),
+                              RECIP_NAMES, RECIP_SLOTS)
+
+
+# ---------------------------------------------------------------------------
+# docs/tooltip_spec.yaml conformance -- every chart this stream touches,
+# label order verbatim (the spec's own header: "a test checks each
+# builder's fields, order and formats against this file").
+# ---------------------------------------------------------------------------
+def test_thematic_profile_hover_matches_the_spec_label_order(spec):
+    df = two_tab_frame(IDS, grouped_by_field=True)
+    slots = {k: i for i, k in enumerate(sorted(KEYS, key=KEYS.get))}
+    fig = X.two_tab_bars(df, "profile", NAMES, slots, grouped_by_field=True,
+                         y0=CFG["window"][0], whole_y1=CFG["bonus_year"])
+    hover = _real_bars(fig)[0].customdata[0]
+    assert_labels_in_order(hover, _spec_labels(spec, "compare_thematic_profile"))
+
+
+def test_thematic_impact_hover_matches_the_spec_label_order(spec):
+    df = two_tab_frame(IDS, grouped_by_field=True)
+    slots = {k: i for i, k in enumerate(sorted(KEYS, key=KEYS.get))}
+    fig = X.two_tab_bars(df, "impact", NAMES, slots, grouped_by_field=True,
+                         y0=CFG["window"][0], y1=CFG["window"][1])
+    real = _real_bars(fig)
+    # row 0's fixture clears every floor (n_covered=80, n_covered_fwci=81) --
+    # every conditional line draws for it.
+    hover = next(h for tr in real for h in tr.customdata if "Row 0" in h)
+    assert_labels_in_order(hover, _spec_labels(spec, "compare_thematic_impact"))
+
+
+def test_sdg_hover_matches_the_spec_label_order(spec):
+    """`compare_sdg`'s own `vol_pair` line now states its REAL window
+    (2020-2024, the core window `sdg_frame`'s own vol_full/vol_frac actually
+    are -- a pre-existing, documented choice this builder did not change,
+    `_metric_hover`'s own docstring) -- the spec's label text was corrected
+    to match, so every line, including this one, matches verbatim now."""
+    df = two_tab_frame(IDS, grouped_by_field=False)
+    slots = {k: i for i, k in enumerate(sorted(KEYS, key=KEYS.get))}
+    fig = X.two_tab_bars(df, "profile", NAMES, slots, grouped_by_field=False,
+                         y0=CFG["window"][0], y1=CFG["window"][1])
+    hover = _real_bars(fig)[0].customdata[0]
+    assert_labels_in_order(hover, _spec_labels(spec, "compare_sdg"))
+
+
+def test_reciprocity_scatter_hover_matches_the_spec_label_order(spec):
+    fig = X.reciprocity_scatter(reciprocity_frame(with_ranks=True), RECIP_NAMES, RECIP_SLOTS)
+    # field 2's fixture clears every floor (n_fwci=14, n_covered=22) -- every
+    # conditional line draws for it.
+    hover = next(h for h in fig.data[0].customdata if h.startswith("Field 2<"))
+    # share_a/share_b share ONE spec label template ("share of A's own
+    # publications") -- this builder fills {name} with the real institution
+    # name for EACH of the two lines, so both are checked against the same
+    # rendered fragment ("own publications"), not the literal placeholder text.
+    assert "Field 2" in hover
+    assert "own publications" in hover
+    assert_labels_in_order(hover, [X.HOVER_RECIP_PP10, X.HOVER_RECIP_STARS])
+    assert hover.index(X.HOVER_RECIP_JOINT) < hover.index(X.HOVER_FWCI_LABEL) < hover.index(X.HOVER_RECIP_PP10)
+
+
+def test_yearly_domain_stack_hover_matches_the_spec_label_order(spec):
+    fig = X.yearly_domain_stack(yearly_frame())
+    hover = _bar_traces(fig)[0].customdata[0]
+    # year/vol carry no label text of their own (format year_label/int_
+    # thousands render the bare value) -- only share_of_year has a label.
+    assert X.HOVER_SHARE_OF_YEAR in hover
 
 
 # ---------------------------------------------------------------------------
@@ -553,7 +696,7 @@ FIGURES = {
         two_tab_frame(IDS, grouped_by_field=False), "impact", NAMES, slots, grouped_by_field=False),
     "mirror_frontier": lambda slots: X.mirror_frontier(mirror_frame(), ["A", "B"], [0, 1]),
     "yearly_domain_stack": lambda slots: X.yearly_domain_stack(yearly_frame()),
-    "reciprocity_bars": lambda slots: X.reciprocity_bars(reciprocity_frame(), RECIP_NAMES, RECIP_SLOTS),
+    "reciprocity_scatter": lambda slots: X.reciprocity_scatter(reciprocity_frame(), RECIP_NAMES, RECIP_SLOTS),
 }
 # `yearly_domain_stack` is the ONE builder in this
 # module with its OWN native Plotly legend (four unlabelled domain colours
@@ -685,6 +828,12 @@ def test_deleted_builders_are_actually_gone():
                 "fig_impact_subfields", "fig_frontier_map", "fig_diverging_shared",
                 "fig_pulse", "LOW_VOLUME_PATTERN_SHAPE", "LOW_VOLUME_PATTERN_SOLIDITY",
                 "SELECTOR_METRICS", "DYNAMICS_CLAMP_PCT",
+                # D27: reciprocity is a scatter again -- the bar adaptation
+                # this page drew in between, and its two bespoke helpers,
+                # leave no live code (docstring credits are exempt, as for
+                # every other renamed builder in this same list).
+                "reciprocity_bars", "_add_centred_gutter", "_rewrite_reciprocity_hover",
+                "RECIPROCITY_HOVER_BASE", "RECIPROCITY_HOVER_RANK",
                 # bar-layout contract: the diamond marker, the per-chart
                 # gutter headers, and mirror_frontier's own bespoke
                 # character-wrap/margin-cap machinery -- all retired in
