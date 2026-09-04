@@ -15,6 +15,14 @@ bare-process cycle.
 | **B** | sustained concurrent multi-user load | N browser contexts (`--sessions`, default 3) in parallel threads, each running a seeded-random action loop for `--minutes` (default 10) with only fixed 300–1500 ms pauses — **no waiting for spinners**, so it genuinely outruns what a careful user would do |
 | **C** | the engine in isolation, no browser/server at all | `cycle_scenarios.py`: one bare Python process calls `scenario_cache.bundle()` then `get()` for all six (tree, basis) scenarios in sequence |
 
+Phase B's own action set (`CHAOS_ACTIONS`, one picked at random per loop iteration):
+`find_seed`, `scenario_combo`, `compare_pair`, `methods`, `download`, `scroll`, plus two that
+exercise the bounded per-pair/per-institution topic-plane caches: `find_topic_controls`
+(open/reuse Find, expand the topic-planes panel, change the "Topics shown" selector / slider /
+FWCI-mean-median radio) and `compare_overlap_controls` (open/reuse Compare, change the SAME
+three controls on the topic-overlap section). Neither waits for the resulting rerun to settle,
+matching this phase's own "no waiting for spinners" rule.
+
 Every 0.5 s, a background thread samples the **Streamlit server's own python.exe**
 `WorkingSetSize` (via `ops/rss_probe.py`, stdlib ctypes — never the Playwright/
 Chromium client process) — the same method an earlier stress harness

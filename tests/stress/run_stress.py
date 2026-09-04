@@ -111,6 +111,16 @@ BASIS_COMBOBOX_LABEL = "Counting basis"
 SEED_SEARCH_LABEL = "Institution name, acronym or alternative name"
 SEED_PICK_COMBOBOX_LABEL = "Institution to profile"
 
+# The topic-plane / topic-overlap controls (live-verified DOM shape --
+# `tests/ui/switchback.py`'s own header comment carries the same discipline
+# note). Segmented-control options and radio labels read off `lib/copy.py`'s
+# own FIND keys (never guessed): "Top by volume", "Top by FWCI_EU", "Topics
+# led", "Topics with star papers", "Top decile of emergence" (Find and
+# Compare share the exact same five labels).
+TOPIC_MODE_OPTION_LABELS = ["Top by volume", "Top by FWCI_EU", "Topics led",
+                           "Topics with star papers", "Top decile of emergence"]
+FWCI_STAT_OPTION_LABELS = ["Mean", "Median"]
+
 # Actual rendered button text (confirmed live -- lib/copy.py's FIND/COMPARE
 # EXPORT_XLSX_BUTTON constants are NOT what render for Compare; views_compare.py
 # reads a different key. Two distinct strings, one per page).
@@ -441,7 +451,8 @@ def run_phase_a(page, base: str, sampler: RssSampler) -> list[dict]:
 
 # --------------------------------------------------------------- phase B ----
 
-CHAOS_ACTIONS = ["find_seed", "scenario_combo", "compare_pair", "methods", "download", "scroll"]
+CHAOS_ACTIONS = ["find_seed", "scenario_combo", "compare_pair", "methods", "download", "scroll",
+                 "find_topic_controls", "compare_overlap_controls"]
 
 
 def chaos_session(session_id: int, base: str, minutes: float, seed: int, out: dict) -> None:
@@ -495,6 +506,53 @@ def chaos_session(session_id: int, base: str, minutes: float, seed: int, out: di
                                 break
                 elif action == "scroll":
                     scroll_main(page, rng.randint(0, 6000))
+                elif action == "find_topic_controls":
+                    # Open/reuse Find, expand the topic-planes panel,
+                    # change the shared selector / slider / FWCI stat --
+                    # exercises the topic-planes frame cache + figure cache
+                    # under chaos (no wait_idle: chaos never waits for
+                    # spinners, per this function's own convention).
+                    if "/Find" not in page.url:
+                        _, name = rng.choice(SEEDS)
+                        page.goto(f"{base}/Find", wait_until="commit")
+                        pick_seed(page, name)
+                        resolve_picker_if_present(page, rng)
+                    summary = page.locator(".st-key-panel_topic_planes summary")
+                    if summary.count():
+                        summary.first.click(timeout=5000)
+                        page.wait_for_timeout(250)
+                        seg = page.locator(".st-key-topic_mode button[data-variant='segmented_control']") \
+                            .filter(has_text=rng.choice(TOPIC_MODE_OPTION_LABELS))
+                        if seg.count():
+                            seg.first.click(timeout=5000)
+                        slider = page.locator(".st-key-topic_n input[type='range']").first
+                        if slider.count():
+                            slider.click(force=True, timeout=5000)
+                            slider.press(rng.choice(["ArrowLeft", "ArrowRight"]))
+                        radio = page.locator(".st-key-topic_fwci_stat label") \
+                            .filter(has_text=rng.choice(FWCI_STAT_OPTION_LABELS))
+                        if radio.count():
+                            radio.first.click(timeout=5000)
+                elif action == "compare_overlap_controls":
+                    # Open/reuse Compare, change the topic-overlap
+                    # selector / slider / FWCI stat -- exercises `_pair_
+                    # topics_frame` + the topic-overlap figure cache.
+                    if "/Compare" not in page.url:
+                        a, b = rng.sample(SEED_IDS, 2)
+                        page.goto(f"{base}/Compare?compare={a},{b}", wait_until="commit")
+                        page.wait_for_timeout(1200)
+                    seg = page.locator(".st-key-compare_topic_mode button[data-variant='segmented_control']") \
+                        .filter(has_text=rng.choice(TOPIC_MODE_OPTION_LABELS))
+                    if seg.count():
+                        seg.first.click(timeout=5000)
+                    slider = page.locator(".st-key-compare_topic_n input[type='range']").first
+                    if slider.count():
+                        slider.click(force=True, timeout=5000)
+                        slider.press(rng.choice(["ArrowLeft", "ArrowRight"]))
+                    radio = page.locator(".st-key-compare_topic_fwci_stat label") \
+                        .filter(has_text=rng.choice(FWCI_STAT_OPTION_LABELS))
+                    if radio.count():
+                        radio.first.click(timeout=5000)
 
                 actions += 1
                 if has_error_box(page):

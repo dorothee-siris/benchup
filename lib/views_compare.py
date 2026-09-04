@@ -39,6 +39,7 @@ from lib import compare_data as CD
 from lib import copy
 from lib import charts_compare as X
 from lib import charts_topics as XT
+from lib import fig_cache
 from lib import palette as P
 from lib import selection, state, tiles
 from lib import topic_data as TD
@@ -207,7 +208,7 @@ def _copub_tile(row: pd.Series) -> str:
 
 def _render_cards(ctx: dict, ids: list[str], names: dict, slots: dict) -> pd.DataFrame:
     st.subheader(copy.COMPARE["CARDS_HEADER"])
-    df = CD.cards(ctx, ids)
+    df = _cards_frame(ids[0], ids[1])
     cells = df.set_index("institution_id")
     leaders = _leaders(df)
     cols = st.columns(len(ids))
@@ -281,29 +282,34 @@ def _render_two_tab_section(header: str, basis_caption: str, note_profile: str, 
             frame[accent_key_col] = df[accent_key_col].to_numpy()
         return frame
 
+    # (pair, key_prefix, tab) is a complete figure-cache identity --
+    # `df` itself is already the caller's own cached per-pair frame (`_top_
+    # subfields_frame`/`_sdg_pair_frame`), and neither section exposes any
+    # further control that could change `_frame(tab)`'s own content.
+    def _cached(tab: str, **kwargs) -> None:
+        fig = fig_cache.cached_figure(
+            f"two_tab_bars_{key_prefix}", (ids[0], ids[1], tab),
+            lambda: X.two_tab_bars(_frame(tab), tab, names, slots, grouped_by_field=grouped, **kwargs))
+        st.plotly_chart(fig, width="stretch", key=f"fig_{key_prefix}_{tab}")
+
     if not tabs:
         # the SDG section (its own frame's vol_full/vol_frac are the CORE
         # window, not whole-run -- see _metric_hover's own docstring)
-        fig = X.two_tab_bars(_frame("profile"), "profile", names, slots, grouped_by_field=grouped,
-                             y0=CORE_Y0, y1=CORE_Y1)
-        st.plotly_chart(fig, width="stretch", key=f"fig_{key_prefix}_profile")
+        _cached("profile", y0=CORE_Y0, y1=CORE_Y1)
         st.markdown(X.chart_note(note_profile), unsafe_allow_html=True)
         return
 
     tab_profile, tab_impact = st.tabs([copy.COMPARE["TAB_PROFILE"], copy.COMPARE["TAB_IMPACT"]])
     with tab_profile:
-        fig = X.two_tab_bars(_frame("profile"), "profile", names, slots, grouped_by_field=grouped,
-                             y0=CORE_Y0, whole_y1=WHOLE_Y1)
-        st.plotly_chart(fig, width="stretch", key=f"fig_{key_prefix}_profile")
+        _cached("profile", y0=CORE_Y0, whole_y1=WHOLE_Y1)
         st.markdown(X.chart_note(note_profile), unsafe_allow_html=True)
     with tab_impact:
-        fig = X.two_tab_bars(_frame("impact"), "impact", names, slots, grouped_by_field=grouped)
-        st.plotly_chart(fig, width="stretch", key=f"fig_{key_prefix}_impact")
+        _cached("impact")
         st.markdown(X.chart_note(note_impact.format(floor=int(P.RATIO_HATCH_FLOOR))), unsafe_allow_html=True)
 
 
 def _render_shape(ctx: dict, subs: dict, ids: list[str], names: dict, slots: dict) -> pd.DataFrame:
-    df = CD.top_subfields(ctx, subs, ids, n=TOP_N_SUBFIELDS)
+    df = _top_subfields_frame(ids[0], ids[1])
     n = df["subfield_id"].nunique()
     _render_two_tab_section(
         copy.COMPARE["SHAPE_HEADER"], copy.COMPARE["SHAPE_BASIS_CAPTION"].format(n=n),
@@ -322,7 +328,7 @@ def _render_sdg(ctx: dict, subs: dict, ids: list[str], names: dict, slots: dict)
     does not). `accent_key_col="sdg_number"` is the fix for the missing
     colour square: `sdg_frame` already carries the goal's own 1-based number,
     this just lets it reach the chart."""
-    df = CD.sdg_frame(ctx, subs, ids)
+    df = _sdg_pair_frame(ids[0], ids[1])
     _render_two_tab_section(
         copy.COMPARE["SDG_HEADER"], copy.COMPARE["SDG_BASIS_CAPTION"],
         copy.COMPARE["SDG_NOTE_PROFILE"], copy.COMPARE["SDG_NOTE_IMPACT"],
@@ -369,6 +375,39 @@ def _pair_topics_frame(a: str, b: str, mode: str, n: int, fwci_stat: str) -> pd.
     from the process-wide scenario cache inside, never passed as an
     argument, so the cache key stays a small hashable tuple."""
     return TD.pair_topics(SC.bundle()["ctx"], a, b, mode, n, fwci_stat)
+
+
+# ---------------------------------------------------------------------------
+# The OTHER per-pair Compare frames, bounded the SAME way as
+# `_pair_topics_frame` above (`max_entries=8, ttl=1800`, ctx/subs fetched
+# inside from the process-wide scenario cache -- never a cache_data argument,
+# matching `views_find.py`'s own house pattern, `_fields_frame`). Compare is
+# PINNED to bestfit/full (never a user control), so the pair id alone is a
+# complete, correct cache key: `subs` never varies while these are resident.
+# ---------------------------------------------------------------------------
+
+@st.cache_data(show_spinner=False, max_entries=8, ttl=1800)
+def _cards_frame(a: str, b: str) -> pd.DataFrame:
+    return CD.cards(SC.bundle()["ctx"], [a, b])
+
+
+@st.cache_data(show_spinner=False, max_entries=8, ttl=1800)
+def _top_subfields_frame(a: str, b: str) -> pd.DataFrame:
+    return CD.top_subfields(SC.bundle()["ctx"], SC.get("bestfit", "full"), [a, b], n=TOP_N_SUBFIELDS)
+
+
+@st.cache_data(show_spinner=False, max_entries=8, ttl=1800)
+def _sdg_pair_frame(a: str, b: str) -> pd.DataFrame:
+    return CD.sdg_frame(SC.bundle()["ctx"], SC.get("bestfit", "full"), [a, b])
+
+
+@st.cache_data(show_spinner=False, max_entries=8, ttl=1800)
+def _relationship_frame(a: str, b: str) -> dict:
+    """The relationship BUNDLE (momentum + pulse + yearly stack + reciprocity
+    + joint stars), cached as one dict -- `compare_data.relationship` already
+    computes all four together in one call, so one cache entry covers all of
+    JOB 1's 'relationship frames: momentum, yearly stack, reciprocity'."""
+    return CD.relationship(SC.bundle()["ctx"], [a, b], SC.get("bestfit", "full"))
 
 
 # ---------------------------------------------------------------------------
@@ -449,17 +488,27 @@ def _render_topic_overlap(ctx: dict, ids: list[str], names: dict, slots: dict) -
         n_b_only=_count(facts["n_b_only"]), n_catchall=_count(facts["n_catchall"]),
         n_no_frontier=_count(facts["n_no_frontier"]))), unsafe_allow_html=True)
 
+    # One figure-cache identity for both the plane and the bars --
+    # both are built from this SAME `pairs` frame (itself already
+    # `_pair_topics_frame`'s own cache hit on a repeat visit), so both
+    # figures skip their own rebuild on an unrelated rerun of this page.
+    overlap_key = (a, b, mode, n, fwci_stat)
+
     scored = pairs[np.isfinite(pd.to_numeric(pairs["expansion_latest"], errors="coerce"))
                   & np.isfinite(pd.to_numeric(pairs["acceleration_latest"], errors="coerce"))]
     if scored.empty:
         st.caption(Cw["TOPIC_OVERLAP_PLANE_EMPTY"])
     else:
-        fig = XT.fig_plane_frontier(pairs, color_by="owner", slots=slots, names=names, ids=ids)
+        fig = fig_cache.cached_figure(
+            "fig_topic_overlap_plane", overlap_key,
+            lambda: XT.fig_plane_frontier(pairs, color_by="owner", slots=slots, names=names, ids=ids))
         st.plotly_chart(fig, width="stretch", key="fig_topic_overlap_plane")
     st.caption(Fw["AXIS_DEF_TOPIC_PLANES"])
 
     bars_df = pairs.rename(columns={"expansion_latest": "expansion", "acceleration_latest": "acceleration"})
-    fig = XT.balance_bars(bars_df, ids, slots=slots, names=names, sort_col="combined_vol")
+    fig = fig_cache.cached_figure(
+        "fig_topic_overlap_bars", overlap_key,
+        lambda: XT.balance_bars(bars_df, ids, slots=slots, names=names, sort_col="combined_vol"))
     st.plotly_chart(fig, width="stretch", key="fig_topic_overlap_bars")
     st.markdown(X.chart_note(
         Cw["TOPIC_OVERLAP_BARS_NOTE"],
@@ -659,15 +708,21 @@ def _fallback_yearly_bar(pulse_yearly: pd.DataFrame) -> go.Figure:
 def _render_relationship(ctx: dict, subs: dict, ids: list[str], names: dict, slots: dict) -> dict:
     Cw = copy.COMPARE
     st.subheader(Cw["RELATIONSHIP_HEADER"])
-    rel = CD.relationship(ctx, ids, subs)
+    rel = _relationship_frame(ids[0], ids[1])
     if rel["momentum"] is None:
         st.caption(Cw["RELATIONSHIP_NEVER"])
         return rel
 
     _render_relationship_tiles(ctx, rel)
 
+    # Neither figure below has any control of its own -- `rel` is
+    # already the caller's own cached per-pair bundle (`_relationship_
+    # frame`), so `(a, b)` alone is a complete figure-cache identity.
+    pair_key = (ids[0], ids[1])
+
     if rel["yearly_qualifies"] and len(rel["yearly"]):
-        fig = X.yearly_domain_stack(rel["yearly"])
+        fig = fig_cache.cached_figure("yearly_domain_stack", pair_key,
+                                      lambda: X.yearly_domain_stack(rel["yearly"]))
         st.plotly_chart(fig, width="stretch", key="fig_relationship_yearly")
         caption = Cw["YEARLY_CAPTION"].format(y0=CORE_Y0, y1=CORE_Y1)
         if rel["topicless_note"]:
@@ -682,7 +737,10 @@ def _render_relationship(ctx: dict, subs: dict, ids: list[str], names: dict, slo
     recip = rel["reciprocity"]
     if len(recip):
         st.markdown(f"##### {Cw['RECIPROCITY_HEADER']}")
-        fig = X.reciprocity_scatter(recip, [names[ids[0]], names[ids[1]]], [slots[ids[0]], slots[ids[1]]])
+        fig = fig_cache.cached_figure(
+            "reciprocity_scatter", pair_key,
+            lambda: X.reciprocity_scatter(recip, [names[ids[0]], names[ids[1]]],
+                                          [slots[ids[0]], slots[ids[1]]]))
         st.plotly_chart(fig, width="stretch", key="fig_reciprocity")
         st.caption(Cw["RECIPROCITY_CAPTION"])
 
@@ -703,11 +761,11 @@ def _workbook_sheets(ctx: dict, subs: dict, ids: list[str], mode: str, n: int,
     `TOPIC_TABLE_CAP` applied (that cap is the on-page table's own, not the
     export's)."""
     Cw = copy.COMPARE
-    cards_df = CD.cards(ctx, ids)
-    subfields_df = CD.all_subfields(ctx, subs, ids)
-    sdg_df = CD.sdg_frame(ctx, subs, ids)
-    overlap_df = TD.pair_topics(ctx, ids[0], ids[1], mode, n, fwci_stat)
-    rel = CD.relationship(ctx, ids, subs)
+    cards_df = _cards_frame(ids[0], ids[1])
+    subfields_df = CD.all_subfields(ctx, subs, ids)  # uncapped (all 252) -- NOT _top_subfields_frame's top-20
+    sdg_df = _sdg_pair_frame(ids[0], ids[1])
+    overlap_df = _pair_topics_frame(ids[0], ids[1], mode, n, fwci_stat)
+    rel = _relationship_frame(ids[0], ids[1])
     if rel["yearly_qualifies"] and len(rel["yearly"]):
         yearly_df = rel["yearly"].copy()
     elif rel["pulse"] is not None:

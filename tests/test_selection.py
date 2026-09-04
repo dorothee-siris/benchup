@@ -246,6 +246,43 @@ def test_render_slots_seeds_slot0_from_find_seed_when_url_empty():
         data_cache.index = original_index
 
 
+def test_render_slots_selectbox_is_persisted():
+    """The `compare_slot_{i}` selectbox itself must carry `**state.PERSIST`,
+    not only its sibling query `text_input` (which already did before this
+    fix) -- confirmed LIVE before this fix, and again after: without it, a
+    real Compare -> Find -> Compare round trip (a genuine page hop, real
+    WebSocket session -- `tests/ui/switchback.py`'s own new `compare_
+    roundtrip_run`) reset BOTH slots to "Empty slot"; with it, both slots (and
+    a cleared slot's own on_click write) survive the round trip unchanged.
+    `lib/selection.py`'s own STREAMLIT TOUCHPOINT note explains why: the
+    hydration block's plain `session_state[key] = value` write only ever
+    runs ONCE per session, so on every later visit the widget's OWN cross-
+    page reattachment (what `persist_state` provides) is what has to carry
+    the value forward.
+
+    Source-inspected here, not functionally: AppTest's own `Selectbox`
+    widget proto carries no `persist_state`-shaped field at all (checked
+    directly, `[f.name for f in sb.proto.DESCRIPTOR.fields]`, before writing
+    this test) -- the kwarg is handled by a wrapper this Streamlit
+    distribution adds beneath the standard protobuf schema, invisible to
+    AppTest's own introspection either way, so the REAL cross-page proof
+    can only be a live browser test. The slice between `st.selectbox(` and
+    the immediately-following `st.button(` (the Clear button, right after
+    in `render_slots`' own source) isolates the selectbox CALL specifically
+    -- a plain substring search over the WHOLE function would pass even
+    without this fix, since the query text_input's own `**state.PERSIST`
+    sits a few lines above it."""
+    import inspect
+
+    src = inspect.getsource(selection.render_slots)
+    start = src.index("st.selectbox(")
+    end = src.index("st.button(", start)
+    selectbox_call = src[start:end]
+    assert "state.PERSIST" in selectbox_call, (
+        "the compare_slot_{i} selectbox call does not pass **state.PERSIST -- "
+        f"call text:\n{selectbox_call}")
+
+
 def test_render_slots_pick_from_search_hits():
     """A query that matches feeds real hits into the pick control; selecting
     one becomes that slot's returned pick -- proves the `search` callable

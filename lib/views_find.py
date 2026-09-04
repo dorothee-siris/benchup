@@ -58,7 +58,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from lib import baselines, charts, charts_topics, copy, countries, links, profile_data, state, tiles
+from lib import baselines, charts, charts_topics, copy, countries, fig_cache, links, profile_data, state, tiles
 from lib import palette as P
 from lib import topic_data as TopicData
 from lib.app_config import CFG
@@ -893,12 +893,13 @@ def _topic_mode_options() -> list[str]:
     return [label for label, _ in order]
 
 
-@st.cache_data(show_spinner=False, max_entries=12)
+@st.cache_data(show_spinner=False, max_entries=8, ttl=1800)
 def _topic_planes_frame(iid: str, tree: str) -> pd.DataFrame:
     """The topic-plane perimeter (articles+reviews 2020-2024, full
     counting, primary topic) is basis-INDEPENDENT -- this cache key
     deliberately carries no `basis`, unlike every other profile frame in
-    this file."""
+    this file. Bounded to the shared view-persistence budget (`max_entries=
+    8`, `ttl=1800`) -- was `max_entries=12` with no ttl."""
     return TopicData.institution_topics(SC.bundle()["ctx"], iid, tree)
 
 
@@ -944,9 +945,18 @@ def _panel_topic_planes(iid: str, ctl: dict, card: dict) -> None:
     facts = TopicData.topic_set_caption(shown, total_ar)
     share_text = NA_MARK if facts["share_of_ar"] is None else _pct(facts["share_of_ar"])
 
+    # Both planes share ONE figure-cache key -- the same (iid, tree,
+    # mode, n, fwci_stat) tuple `shown` was itself derived from, so a
+    # cache HIT here means `shown`'s own construction (the `_topic_planes_
+    # frame` cache hit above + the cheap `select_topics` re-filter) was
+    # not wasted on a figure the reader is about to see unchanged anyway.
+    fig_key = (iid, ctl["tree"], mode, n, fwci_stat)
+
     st.markdown(f"**{copy.FIND['TOPIC_PLANE_A_TITLE']}**")
-    st.plotly_chart(charts_topics.fig_plane_impact(shown, fwci_stat=fwci_stat),
-                    width="stretch", key="fig_plane_impact")
+    fig_a = fig_cache.cached_figure(
+        "fig_plane_impact", fig_key,
+        lambda: charts_topics.fig_plane_impact(shown, fwci_stat=fwci_stat))
+    st.plotly_chart(fig_a, width="stretch", key="fig_plane_impact")
     st.caption(copy.FIND["CAPTION_TOPIC_PLANE_A"].format(
         n_shown=f"{facts['n_shown']:,}", n_not_placed=f"{facts['n_not_placed_a']:,}",
         n_catchall=f"{facts['n_catchall']:,}", share=share_text,
@@ -960,8 +970,10 @@ def _panel_topic_planes(iid: str, ctl: dict, card: dict) -> None:
     if scored.empty:
         st.caption(copy.FIND["FRONTIER_EMPTY"])
     else:
-        st.plotly_chart(charts_topics.fig_plane_frontier(shown, color_by="domain"),
-                        width="stretch", key="fig_plane_frontier")
+        fig_b = fig_cache.cached_figure(
+            "fig_plane_frontier_find", fig_key,
+            lambda: charts_topics.fig_plane_frontier(shown, color_by="domain"))
+        st.plotly_chart(fig_b, width="stretch", key="fig_plane_frontier")
     st.caption(copy.FIND["CAPTION_TOPIC_PLANE_B"].format(
         n_no_frontier=f"{facts['n_no_frontier']:,}", n_shown=f"{facts['n_shown']:,}"))
 

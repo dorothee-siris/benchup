@@ -192,7 +192,10 @@ def render_slots(n: int, search) -> list[str | None]:
     a callable the CALLING PAGE passes, built the same way Find's own
     matcher is (`lib.search.build_search_index` + `lib.search.search`), kept
     as a parameter so this module stays free of that data-loading dependency
-    a selectbox over the top hits as the pick control, and a Clear button.
+    a selectbox over the top hits as the pick control (keyed, ALSO `state.
+    PERSIST` -- see the STREAMLIT TOUCHPOINT note below for why both the
+    manual session_state write below and this kwarg are needed together,
+    not either alone), and a Clear button.
 
     Deep-link hydration runs ONCE per session, on the first call: `?compare=`
     is parsed against the full institution index (`resolve_slot_hydration`)
@@ -207,7 +210,21 @@ def render_slots(n: int, search) -> list[str | None]:
     then that slot's selectbox is instantiated with `key=` alone (no
     `index=`) -- setting session_state for a key AND passing `index=`/`value=`
     on the SAME widget call is a Streamlit conflict; never add either kwarg
-    to the selectbox call below without re-reading this note."""
+    to the selectbox call below without re-reading this note. `**state.
+    PERSIST` (`persist_state="session"`) is a THIRD, unrelated kwarg -- it
+    does not conflict with that rule -- and is REQUIRED on this widget: per
+    `lib/state.py`'s own docstring, "Streamlit's per-page widget-id hashing
+    means a plain session_state write-through does not reliably reattach
+    across more than one page hop." The hydration block above only ever
+    performs that plain write ONCE per session (the very first render); on
+    every later visit to Compare (a reader who left for Find or Methods and
+    came back) the hydration guard skips it, so without `persist_state` the
+    widget's OWN cross-page reattachment is what has to carry the slot's
+    value forward -- confirmed both ways live before this was added: WITHOUT
+    it, a Compare -> Find -> Compare round trip reset both slots to "Empty
+    slot"; WITH it, both slots (and the Clear button's own session_state
+    write, which is the Streamlit-sanctioned on_click-callback form, not a
+    plain script-body write) survive the round trip unchanged."""
     import streamlit as st
 
     from lib import copy, state
@@ -251,7 +268,8 @@ def render_slots(n: int, search) -> list[str | None]:
 
             help_text = SLOT_HELP_TEMPLATE.format(iid=current) if current != SLOT_EMPTY else None
             pick = st.selectbox(copy.FIND["SLOT_LABEL"].format(n=i + 1), options,
-                                format_func=_fmt, key=_slot_key(i), help=help_text)
+                                format_func=_fmt, key=_slot_key(i), help=help_text,
+                                **state.PERSIST)
             st.button("Clear", key=f"compare_slot_clear_{i}", on_click=_clear_slot, args=(i,))
         picks.append(None if pick == SLOT_EMPTY else pick)
 

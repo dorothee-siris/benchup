@@ -425,6 +425,175 @@ def test_compare_pairs_sweep():
         f"lib/collab_data.py / lib/leaders_data.py / lib/compare_data.py may be unbounded again")
 
 
+def _call_counting_spy(module, name: str):
+    """Wraps `module.name` to count calls, returning `(counter, restore)` --
+    this file has NO fixtures (its own module docstring), so the cache-
+    eviction proofs below manage their own monkeypatch by hand, save/
+    restore in a `try`/`finally` at the call site."""
+    orig = getattr(module, name)
+    counter = {"n": 0}
+
+    def wrapped(*a, **k):
+        counter["n"] += 1
+        return orig(*a, **k)
+
+    setattr(module, name, wrapped)
+
+    def restore() -> None:
+        setattr(module, name, orig)
+
+    return counter, restore
+
+
+PAIR_FRAME_CACHE_SEED = 101
+
+
+def test_compare_pair_frame_caches_evict_at_max_entries_8():
+    """`lib/views_compare.py`'s bounded per-pair `@st.cache_data`
+    wrappers (`_cards_frame`, `_top_subfields_frame`, `_sdg_pair_frame`,
+    `_relationship_frame`, `_pair_topics_frame`) are all `max_entries=8`.
+    For each wrapper: 9 DISTINCT qualifying pairs are inserted (a call-count
+    spy on the underlying `compare_data`/`topic_data` function proves each
+    of the 9 was a genuine miss), then pair 1 is re-requested -- a cache HIT
+    there (the spy's count staying at 0) would mean the 9th distinct insert
+    did NOT evict pair 1, i.e. the bound is broken; the correct behaviour is
+    exactly ONE more fresh call.
+
+    Reuses `_qualifying_pairs` (this file's own helper, already proven by
+    `test_compare_pairs_sweep` above) rather than a fresh sampling method,
+    with its own seed so the two tests' samples never need to agree."""
+    import lib.views_compare as VC
+    from lib import compare_data as CD
+    from lib import topic_data as TD
+
+    SC.bundle()
+    SC.get("bestfit", "full")
+    pairs = _qualifying_pairs(9, PAIR_FRAME_CACHE_SEED)
+    assert len(pairs) == 9, f"expected 9 sampled pairs, got {len(pairs)}"
+
+    checks = [
+        ("_cards_frame", CD, "cards", lambda a, b: VC._cards_frame(a, b)),
+        ("_top_subfields_frame", CD, "top_subfields", lambda a, b: VC._top_subfields_frame(a, b)),
+        ("_sdg_pair_frame", CD, "sdg_frame", lambda a, b: VC._sdg_pair_frame(a, b)),
+        ("_relationship_frame", CD, "relationship", lambda a, b: VC._relationship_frame(a, b)),
+        ("_pair_topics_frame", TD, "pair_topics",
+         lambda a, b: VC._pair_topics_frame(a, b, TD.MODE_VOLUME, 50, "mean")),
+    ]
+
+    for wrapper_name, module, fn_name, call in checks:
+        wrapper = getattr(VC, wrapper_name)
+        wrapper.clear()
+        counter, restore = _call_counting_spy(module, fn_name)
+        try:
+            for a, b in pairs:
+                call(a, b)
+            assert counter["n"] == 9, (
+                f"{wrapper_name}: expected 9 fresh calls for 9 distinct pairs, got {counter['n']} -- "
+                f"a cache hit among 9 DISTINCT pairs would itself be a correctness bug")
+            counter["n"] = 0
+            a0, b0 = pairs[0]
+            call(a0, b0)
+            print(f"[ram] {wrapper_name}: re-request of pair 1 after 9 distinct inserts -> "
+                 f"{counter['n']} fresh call(s) (1 == evicted as expected, 0 == still cached, BROKEN)")
+            assert counter["n"] == 1, (
+                f"{wrapper_name}: re-requesting pair 1 after 9 distinct pairs was a CACHE HIT "
+                f"({counter['n']} fresh calls) -- max_entries=8 did not evict it")
+        finally:
+            restore()
+            wrapper.clear()
+
+
+def test_topic_planes_frame_cache_evicts_at_max_entries_8():
+    """`lib/views_find.py`'s `_topic_planes_frame(iid, tree)` (`topic_
+    data.institution_topics` per (institution, tree)) is bounded at
+    `max_entries=8` (was 12, no ttl). Same call-count-
+    spy proof as the Compare pair caches above, over 9 distinct institutions
+    sampled off `inst_topic_impact.parquet`'s own distinct institution_id
+    column (a duckdb pushdown, never the whole multi-million-row table)."""
+    import lib.views_find as VF
+    from lib import topic_data as TD
+
+    SC.bundle()
+    con = duckdb.connect()
+    try:
+        ids_df = con.execute(
+            "SELECT DISTINCT institution_id FROM read_parquet(?) ORDER BY institution_id",
+            [str((DATA_DIR / "inst_topic_impact.parquet").as_posix())],
+        ).df()
+    finally:
+        con.close()
+    rng = random.Random(202)
+    ids9 = rng.sample(list(ids_df["institution_id"]), 9)
+    assert len(set(ids9)) == 9
+
+    wrapper = VF._topic_planes_frame
+    wrapper.clear()
+    counter, restore = _call_counting_spy(TD, "institution_topics")
+    try:
+        for iid in ids9:
+            wrapper(iid, "bestfit")
+        assert counter["n"] == 9, f"expected 9 fresh calls for 9 distinct institutions, got {counter['n']}"
+        counter["n"] = 0
+        wrapper(ids9[0], "bestfit")
+        print(f"[ram] _topic_planes_frame: re-request of institution 1 after 9 distinct inserts -> "
+             f"{counter['n']} fresh call(s) (1 == evicted as expected, 0 == still cached, BROKEN)")
+        assert counter["n"] == 1, (
+            f"_topic_planes_frame: re-requesting institution 1 after 9 distinct institutions was a "
+            f"CACHE HIT ({counter['n']} fresh calls) -- max_entries=8 did not evict it")
+    finally:
+        restore()
+        wrapper.clear()
+
+
+FIG_CACHE_RSS_BUDGET_MB = 10.0
+
+
+def test_figure_cache_ram_bound():
+    """`lib.fig_cache`'s bounded JSON cache (`max_entries=16`) filled
+    with 16 DISTINCT keys of the SINGLE HEAVIEST figure this app builds
+    (Compare's topic-overlap balance bars for a real, populous pair -- the
+    largest single figure measured directly against the shipped data,
+    ~146 KB) -- the true pessimistic worst case (a real 16-entry
+    population would be a MIX of smaller figures too). Asserts the process
+    RSS growth attributable to that fill stays under `FIG_CACHE_RSS_BUDGET_
+    MB` -- generous tolerance over the measured ~2.3 MB pessimistic total
+    (16 x the single largest figure's own JSON size)."""
+    from lib import fig_cache as FC
+    from lib import charts_topics as XT
+    from lib import topic_data as TD
+
+    ctx = SC.bundle()["ctx"]
+    a, b = "I68947357", "I1294671590"  # Universite de Strasbourg x CNRS, the anchor pair
+    pairs = TD.pair_topics(ctx, a, b, TD.MODE_VOLUME, 50, "mean")
+    assert not pairs.empty, f"anchor pair {a}/{b} has no topic overlap -- cannot exercise the heaviest figure"
+    ids = [a, b]
+    idx_by_id = ctx["index_by_id"]
+    names = {iid: str(idx_by_id.loc[iid, "display_name"]) for iid in ids}
+    slots = {a: 0, b: 1}
+    bars_df = pairs.rename(columns={"expansion_latest": "expansion", "acceleration_latest": "acceleration"})
+
+    FC._figure_json.clear()
+    gc.collect()
+    before = process_rss_mb()
+    assert before is not None, "could not read baseline process RSS before the figure-cache fill"
+
+    for i in range(FC.FIG_CACHE_MAX_ENTRIES):
+        FC.cached_figure(
+            "ram_test_heaviest_figure", (a, b, i),  # 16 DISTINCT keys, same heavy content each time
+            lambda: XT.balance_bars(bars_df, ids, slots=slots, names=names, sort_col="combined_vol"))
+
+    gc.collect()
+    after = process_rss_mb()
+    assert after is not None, "could not read process RSS after the figure-cache fill"
+    delta = after[0] - before[0]
+    print(f"[ram] figure cache {FC.FIG_CACHE_MAX_ENTRIES}-entry fill (heaviest figure x "
+         f"{FC.FIG_CACHE_MAX_ENTRIES}) RSS delta: {delta:.2f} MB (budget {FIG_CACHE_RSS_BUDGET_MB} MB)")
+    assert delta < FIG_CACHE_RSS_BUDGET_MB, (
+        f"figure cache {FC.FIG_CACHE_MAX_ENTRIES}-entry RSS delta {delta:.2f} MB >= "
+        f"budget {FIG_CACHE_RSS_BUDGET_MB} MB")
+    FC._figure_json.clear()
+
+
 REPEATED_CYCLE_N_SWAPS = 12
 REPEATED_CYCLE_SEED = 3
 # Measured post-fix: 12 random swaps against an already-
