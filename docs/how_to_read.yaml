@@ -69,10 +69,10 @@ charts:
   # institution's own change in publications between the two windows.
   compare_balance_bars:
     volume: "One row per topic: the left bar is publications {a} holds without {b}, the centre bar the joint publications, the right bar {b}'s own; rows run from the largest combined total, the number in the gutter. A row with a wide centre is a topic the two mostly publish together."
-    fwci: "One row per topic: paired bars run outward from the centre, the left one {a}'s own FWCI_EU, the right one {b}'s, with a red dashed tick at 1.0 on each side, the European average; rows run from the highest value. A bar reaching past its tick is a topic cited above the European average."
+    fwci: "One row per topic: paired bars run outward from the centre, the left one {a}'s own FWCI_EU, the right one {b}'s, with a red dashed tick at 1.0 on each side, the European average; rows run from the higher of the two values, the number in the gutter. A bar reaching past its tick is a topic cited above the European average."
     led: "One row per topic: each bar is an institution's world rank drawn as the distance to number one, so a longer bar means a better rank, the rank itself sits at the tip, and a red dashed tick marks rank twenty; rows run from the best rank. A bar well past the tick is a topic the institution ranks near the top of the world in."
     stars: "One row per topic: the left bar is star papers {a} holds without {b}, the centre bar the pair's joint star papers, the right bar {b}'s own; rows run from the largest combined count in the gutter. A wide centre bar means the most-cited papers come out of the joint work."
-    emergence: "One row per topic: each bar is an institution's own change in publications from 2020-22 to 2023-24, the bar length the size of the change, grey a decline, the signed percentage at the tip; rows run from the largest change. A long grey bar is a fast-moving topic the institution is pulling out of."
+    emergence: "One row per topic: each bar is an institution's own change in publications from 2020-22 to 2023-24, the bar length the size of the change, grey a decline, the signed percentage at the tip; rows run from the highest frontier score, the number in the gutter. A long grey bar is a fast-moving topic the institution is pulling out of."
 
   # ------------------------------------------- Compare, reciprocity scatter
   # Each institution's own share of its output on one axis, so a bubble's
