@@ -204,7 +204,6 @@ def test_methods_values_carry_the_new_figures_pinned_independently():
     from lib.topic_data import (
         FWCI_MODE_FLOOR, N_MAX, N_MIN, PAIR_N_MAX, PLANE_A_MIN_COVERED, emergence_threshold,
     )
-    from lib.views_compare import TOPIC_TABLE_CAP
     from lib.views_find import TOPIC_N_DEFAULT
     from lib.views_methods import methods_values
 
@@ -216,7 +215,10 @@ def test_methods_values_carry_the_new_figures_pinned_independently():
     assert values["n_topic_max"] == N_MAX
     assert values["topic_n_default"] == TOPIC_N_DEFAULT
     assert values["pair_n_max"] == PAIR_N_MAX
-    assert values["topic_table_cap"] == TOPIC_TABLE_CAP
+    # topic_table_cap is retired: the on-page topic-overlap recap table it
+    # capped is gone, and the workbook sheet it left uncapped needs no
+    # figure stated on this page any more.
+    assert "topic_table_cap" not in values
     assert values["scale_guard_ratio"] == f"{CFG['scale_guard']['ratio']:g}"
 
     threshold = emergence_threshold()
@@ -301,3 +303,50 @@ def test_matching_section_states_depth_and_concordance():
     values = methods_values()
     assert values["depth_max"] == 50
     assert values["concordance_n"] == 50
+
+
+# ------------------------------------------------ corrected frontier wording
+
+def test_frontier_and_topic_planes_sections_carry_the_corrected_wording():
+    """The corrected reading (three-year bins through 2019-21 plus the
+    2022-23 latest bin, the 0.7/0.3 weighting) must reach the rendered page
+    through `frontier_scores_intro` -- filled from `lib.how_to_read.methods`,
+    the one source `docs/how_to_read.yaml` also feeds to the topic planes'
+    own caption and Compare's overlay how-to-read line."""
+    from lib.views_methods import methods_values
+
+    values = methods_values()
+    for token in ("2019-21", "2022-23", "0.7"):
+        assert token in values["frontier_scores_intro"], (token, values["frontier_scores_intro"])
+
+    at = _methods_app().run()
+    assert not at.exception
+    text = _page_text(at)
+    for token in ("2019-21", "2022-23", "0.7"):
+        assert token in text, token
+
+
+def test_old_frontier_wording_is_gone_everywhere():
+    """'grew over the latest period' (and 'over the latest period' on its
+    own) named the retired reading; neither survives on the rendered Methods
+    page, in copy.py's own two sections, nor in the source note."""
+    from lib.views_methods import methods_values
+
+    banned = ("over the latest period", "grew over")
+    values = methods_values()
+    for key in ("frontier_scores", "topic_planes"):
+        section = copy.METHODS[key]
+        rendered = section["body"].format(**values)
+        for phrase in banned:
+            assert phrase not in rendered, (key, phrase)
+
+    at = _methods_app().run()
+    assert not at.exception
+    text = _page_text(at)
+    for phrase in banned:
+        assert phrase not in text, phrase
+
+    note = (Path(__file__).resolve().parents[1] / "docs" / "METHODS_NOTE.md").read_text(
+        encoding="utf-8")
+    for phrase in banned:
+        assert phrase not in note, phrase

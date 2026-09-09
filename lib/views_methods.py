@@ -35,6 +35,7 @@ import streamlit as st
 import yaml
 
 from lib import copy
+from lib import how_to_read as HTR
 from lib.app_config import CFG
 from lib.compare_data import ELITE_FRONTIER_PERCENTILE, PAIR_QUALIFYING_FLOOR
 from lib.data_cache import DATA_DIR, index, manifest, topics_dim
@@ -44,7 +45,6 @@ from lib.topic_data import (
     FWCI_MODE_FLOOR, N_MAX as TOPIC_N_MAX, N_MIN as TOPIC_N_MIN,
     PAIR_N_MAX, PLANE_A_MIN_COVERED, emergence_threshold,
 )
-from lib.views_compare import TOPIC_TABLE_CAP
 from lib.views_find import TOPIC_N_DEFAULT, _sidebar_scenario
 
 DOCS_DIR = Path(__file__).resolve().parent.parent / "docs"
@@ -266,6 +266,7 @@ def methods_values() -> dict:
         "n_best_diff": f"{taxonomy['n_best_diff']:,}",
         "n_cons_diff": f"{taxonomy['n_cons_diff']:,}",
         "n_forced_or_nofit": f"{taxonomy['n_forced_or_nofit']:,}",
+        "frontier_scores_intro": HTR.methods("frontier_scores"),
         "top_decile_pct": _pct(1 - ELITE_FRONTIER_PERCENTILE, decimals=0),
         "leader_depth": _leader_depth(),
         "star_pct": f"{STAR_TOP_PCT:g}%",
@@ -288,7 +289,6 @@ def methods_values() -> dict:
         "n_topic_max": TOPIC_N_MAX,
         "topic_n_default": TOPIC_N_DEFAULT,
         "pair_n_max": PAIR_N_MAX,
-        "topic_table_cap": TOPIC_TABLE_CAP,
         "scale_guard_ratio": f"{scale_guard_ratio:g}" if scale_guard_ratio is not None else NA_MARK,
         "p7_fwci_residual_cells": P7_FWCI_RESIDUAL_CELLS,
         "p7_fwci_anchor_cells": P7_FWCI_ANCHOR_CELLS,

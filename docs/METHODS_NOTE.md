@@ -103,12 +103,17 @@ own top decile.
 
 ## Frontier scores
 
-Frontier scores read how fast world attention to a topic is moving. Expansion is a standardised
-reading of how fast the world's publication volume in a topic grew over the latest period;
-acceleration is a standardised reading of whether that growth is itself speeding up or slowing
-down, against the period before it (`topics_dim.parquet` `expansion_latest`/`acceleration_
-latest`). A well-established, foundational topic can carry a low score simply because the world's
-attention to it has stopped growing.
+Frontier scores read where a topic sits in world attention and where it is heading. They are
+built on three-year bins of world publication volume, 2004-06 through 2019-21, plus a two-year
+latest bin, 2022-23 (`topics_dim.parquet` `expansion_latest`/`acceleration_latest`). Expansion is
+a position: how far the topic's world volume in the latest bin sits above or below the global
+baseline, standardised across topics, so zero means the topic has expanded no more than science
+as a whole over the long run. Acceleration is momentum: the topic's growth against that baseline
+from 2019-21 to 2022-23, again standardised, so zero means it is moving with science as a whole,
+and the frontier score weighs the two at 0.7 expansion plus 0.3 acceleration. A topic at expansion
+0.01 with acceleration 0.5 therefore reads as an average long-run position that gained momentum in
+2022-23. A well-established, foundational topic can carry a low score simply because the world's
+attention to it is no longer expanding.
 
 811 of the taxonomy's 4,516 topics carry no frontier score at all: catch-all topics sitting
 outside the taxonomy's own subject scope, excluded by construction (`topics_dim.parquet`
@@ -200,20 +205,30 @@ institution only keeps that institution's own colour. The perimeter is the same 
 planes: articles and reviews, 2020 to 2024, full counting, primary topic.
 
 A balance-bar chart carries exactly the topics on the plane, sorted by whichever metric the
-selector reads. Each bar has three segments: one institution's own publications on the topic to
-one side, the other institution's own publications to the other side, and, when the pair's joint
-output on that specific topic clears five joint articles and reviews
-(`lib.compare_data.PAIR_QUALIFYING_FLOOR`, the same floor the relationship block uses), a third,
-distinctly coloured segment (`lib.palette.JOINT_TOPIC_COLOR`, amber) between them for the joint
-count; below that floor the joint segment is left off rather than shown as zero, since the true
-count is not known precisely enough to state (a topic can clear one institution's own top set
-while the other holds fewer than three articles and reviews on it, `lib.topic_data.
-PLANE_A_MIN_COVERED`, the true count then unrecoverable between zero and two).
+selector reads; what each bar shows changes with that same selector. Top by volume draws each
+institution's own publications on the topic either side, the pair's joint publications centred
+between; top by FWCI_EU draws each institution's own FWCI_EU as paired bars running outward from a
+shared centre, a red dashed tick at the European average (1.0) on each side; topics led draws each
+institution's own world rank as its distance to the world's number one, a longer bar reading as a
+better rank, with a tick at rank 20; topics with star papers draws star papers the same way volume
+draws publications, joint star papers centred; and top decile of emergence draws each
+institution's own change in publications between the two dynamics windows (2020-2022 against
+2023-2024), a decline shown in grey. Below five joint articles and reviews
+(`lib.compare_data.PAIR_QUALIFYING_FLOOR`, the same floor the relationship block uses) a topic's
+own joint segment is left off rather than shown as zero, since the true count is not known
+precisely enough to state (a topic can clear one institution's own top set while the other holds
+fewer than three articles and reviews on it, `lib.topic_data.PLANE_A_MIN_COVERED`, the true count
+then unrecoverable between zero and two).
 
-A table beneath carries every topic on the chart, its keywords, both institutions' own figures and
-three links to OpenAlex; past 200 rows (`lib.views_compare.TOPIC_TABLE_CAP`) it shows only the
-first 200 by combined volume and says so, though the workbook download always carries the
-complete set, uncapped.
+A right-margin column beside the bars, headed "Joint pubs", gives one linked figure per topic: the
+joint publication count, opening those joint articles and reviews on OpenAlex; in the star-papers
+mode the same column links the pair's own joint star papers instead (their exact OpenAlex work
+ids, up to 100 per topic, comfortably above the largest joint count any one topic carries), the
+exact works the bar counts. Below the joint floor the column shows a dash rather than a link. The
+workbook download still carries the complete topic table, every column, uncapped.
+
+Reading the hovers: every hover line on this page and on Find's own charts names its own indicator
+in bold before the value it states.
 
 ## The relationship
 
@@ -249,7 +264,10 @@ star-paper count for the joint works alone; two different counts sit behind that
 (`collab_pair_fields.parquet` `n_fwci`/`n_covered`): one, `n_fwci`, counts every joint work
 carrying a computed FWCI; the other, `n_covered`, narrower, counts only the works eligible for
 the world top-decile share (a threshold-covered, non-retracted population); on the shipped table
-`n_fwci` is at least `n_covered` on every one of its 3,571,800 rows.
+`n_fwci` is at least `n_covered` on every one of its 3,571,800 rows. A toggle switches the same
+chart from the pair's shared fields to its top 30 subfields by joint publications instead
+(`collab_pair_subfields.parquet`), at a finer grain but reading the same two axes and the same
+hover.
 
 ## Reading momentum
 

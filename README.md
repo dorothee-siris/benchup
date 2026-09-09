@@ -26,7 +26,8 @@ either, since a topic is the taxonomy's base unit and a tree only decides which 
 up into. An institution's own topics sit on two linked charts, volume against impact and expansion
 against acceleration, under one shared selector (top by volume, by FWCI_EU, topics led, topics
 with star papers, or the world top decile of emergence); a thin ring marks a topic the institution
-leads.
+leads. A short "how to read" line sits above each of the two charts, naming what the marks and the
+reference lines show for whichever mode is on screen.
 
 **Compare** answers "where do these institutions differ, and by how much?" Put two institutions
 side by side, in this order: key figures, thematic shape, SDG profile, topic overlap, and the
@@ -35,12 +36,23 @@ the European mean) and an Impact tab (PP10_WD against the world reference); SDG 
 with no Impact toggle. Topic overlap places both institutions' topics on the same frontier-style
 chart Find uses, over the union of each institution's own top topics under the shared selector,
 coloured by whichever institution's own set a topic came from, or by both when a topic is held by
-both; a balance-bar chart and a table sit beneath, every topic linked straight to its publications
-on OpenAlex. Compare pins every figure to the best-fit taxonomy and full counting, so the two
-institutions on the page are always read the same way; the fractional count sits in hover. A
-6-sheet workbook and a shareable link (`?compare=<id>,<id>`) close the page; opening an
-institution on Find seeds the first Compare slot, so a reader moving from one page to the other
-never re-types a name.
+both, with its own "how to read" line above it. A balance-bar chart sits beneath, sorted by
+whichever quantity the selector reads and drawing a different pair of bars per mode: publications
+either side of the joint count for "top by volume"; each institution's own FWCI_EU against the
+European average for "top by FWCI_EU"; each institution's own world rank as a bar's distance to
+number one for "topics led"; star papers, joint centred, for "topics with star papers"; and each
+institution's own change in publications between the two dynamics windows for "top decile of
+emergence". A right-margin column headed "Joint pubs" gives one linked figure per topic: the joint
+publication count, opening those joint publications on OpenAlex, or, in the star-papers mode, the
+pair's own joint star papers, opening exactly those works. There is no on-page table; the workbook
+still carries the complete topic table, every column, uncapped. The relationship section closes on
+a reciprocity chart, each institution's own share of a shared field against the pair's joint output
+there, with a toggle to the same reading over the pair's own top 30 subfields by joint publications
+instead. Compare pins every figure to the best-fit taxonomy and full counting, so the two
+institutions on the page are always read the same way; the fractional count sits in hover, where
+every line names its own indicator in bold before the value. A 6-sheet workbook and a shareable
+link (`?compare=<id>,<id>`) close the page; opening an institution on Find seeds the first Compare
+slot, so a reader moving from one page to the other never re-types a name.
 
 **How it is built** (the Methods page) answers "where does each number come from, and what does
 it leave out?" One section per question a reader is entitled to ask, every figure filled in at

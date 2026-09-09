@@ -59,6 +59,7 @@ import pandas as pd
 import streamlit as st
 
 from lib import baselines, charts, charts_topics, copy, countries, fig_cache, links, profile_data, state, tiles
+from lib import how_to_read as HTR
 from lib import palette as P
 from lib import topic_data as TopicData
 from lib.app_config import CFG
@@ -164,12 +165,12 @@ MISSING_KPI_MARK = "—"
 KPI_STARS_LABEL = copy.FIND["KPI_STARS_LABEL"]
 KPI_LED_LABEL = copy.FIND["KPI_LED_LABEL"]
 _STARS_SUBLINE = "world top 1% by citations, 2020–2024"
-_STARS_HELP = ("A star paper is one of the world's top 1% most-cited articles or reviews "
-              "in its topic and publication year, 2020-2024 (ties beyond the cut are not "
-              "counted). The share is star papers over this institution's own article and "
-              "review output in the same window.")
+_STARS_HELP = ("**Window**: 2020-2024, articles and reviews. A star paper is one of the "
+              "world's top 1% most-cited works in its topic and publication year (ties "
+              "beyond the cut are not counted). The share is star papers over this "
+              "institution's own article and review output in the same window.")
 _LED_SUBLINE = "world top 20, all institutions"
-_LED_HELP_TEMPLATE = "World top-20 publisher (all institutions) in {n} topics."
+_LED_HELP_TEMPLATE = "**Topics led**: {n}, world top 20, all institutions."
 
 SORT_VOLUME, SORT_TAXONOMY = "volume", "taxonomy"
 
@@ -581,7 +582,8 @@ def _card_specs(card: dict, row) -> list[tuple]:
          f"{copy.FIND['PUBLICATIONS_TOOLTIP'].format(bonus_year=CFG['bonus_year'], **window)} "
          f"{copy.FIND['KPI_PUBS_HELP_FULL']}"),
         ("sdg_tagged_share", copy.FIND["KPI_SDG_LABEL"],
-         card["sdg_tagged_share"], _pct, copy.FIND["KPI_SDG_HELP"]),
+         card["sdg_tagged_share"], _pct,
+         copy.FIND["KPI_SDG_HELP"].format(window=SDG_ERC_WINDOW_LABEL)),
         ("frontier_top25_share", copy.FIND["KPI_FRONTIER_LABEL"],
          card["frontier_top25_share_index"], _pct, copy.FIND["KPI_FRONTIER_HELP"]),
         ("pp_top10_frac", copy.FIND["KPI_PP_LABEL"],
@@ -952,6 +954,10 @@ def _panel_topic_planes(iid: str, ctl: dict, card: dict) -> None:
     # not wasted on a figure the reader is about to see unchanged anyway.
     fig_key = (iid, ctl["tree"], mode, n, fwci_stat)
 
+    # One visible "how to read" line per plane, between the control row
+    # above and the chart it describes -- mode-aware, so it always names
+    # what is actually on screen (`how_to_read.text`, `docs/how_to_read.yaml`).
+    st.caption(HTR.text("find_plane_impact", mode))
     st.markdown(f"**{copy.FIND['TOPIC_PLANE_A_TITLE']}**")
     fig_a = fig_cache.cached_figure(
         "fig_plane_impact", fig_key,
@@ -962,8 +968,9 @@ def _panel_topic_planes(iid: str, ctl: dict, card: dict) -> None:
         n_catchall=f"{facts['n_catchall']:,}", share=share_text,
         y0=WINDOW_START, y1=WINDOW_END))
 
-    st.caption(copy.FIND["AXIS_DEF_TOPIC_PLANES"])
+    st.caption(HTR.methods("axis_def_topic_planes"))
 
+    st.caption(HTR.text("find_plane_frontier", mode))
     st.markdown(f"**{copy.FIND['TOPIC_PLANE_B_TITLE']}**")
     scored = shown[np.isfinite(pd.to_numeric(shown["expansion_latest"], errors="coerce"))
                    & np.isfinite(pd.to_numeric(shown["acceleration_latest"], errors="coerce"))]

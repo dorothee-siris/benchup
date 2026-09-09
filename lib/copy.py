@@ -245,13 +245,13 @@ FIND = {
     # `app/config.yaml`).
     "PUBLICATIONS_TOOLTIP": (
         "A publication here is an OpenAlex record of type article, review, book, book chapter or "
-        "letter, carrying a DOI and published between {y0} and {y1}. {bonus_year} is harvested as a "
-        "bonus year and reported for volumes only, never in the impact indicators. A record counts "
-        "for an institution when that institution is named on the record itself: full counting "
-        "credits the whole publication to each institution named, fractional counting credits the "
-        "author share it holds. Retracted records are counted in the totals and left out of the "
-        "subject classification, so the subfield, topic, ERC and SDG panels rest on a slightly "
-        "smaller set than the size tiles."),
+        "letter, carrying a DOI. **Window**: {y0} to {y1}. **Bonus year**: {bonus_year}, harvested "
+        "and reported for volumes only, never in the impact indicators. A record counts for an "
+        "institution when that institution is named on the record itself: full counting credits "
+        "the whole publication to each institution named, fractional counting credits the author "
+        "share it holds. Retracted records are counted in the totals and left out of the subject "
+        "classification, so the subfield, topic, ERC and SDG panels rest on a slightly smaller set "
+        "than the size tiles."),
 
     # ---- legacy seed card, superseded by the profile tiles below ---------
     "EV_L2F": ("L2f compares specialisations only in subfields where both institutions publish enough "
@@ -411,9 +411,10 @@ FIND = {
     "KPI_SDG_LABEL": "SDG-tagged share",
     "KPI_SDG_HELP": (
         "Share of the institution's SDG-eligible fractional mass that carries at least one hit "
-        "from the SDG keyword vocabulary. Eligibility excludes records the classifier cannot "
-        "read (no usable text, or an untranslated language); the SDG panel below names the goals "
-        "the vocabulary does not cover, which are missing from every institution alike."),
+        "from the SDG keyword vocabulary. **Window**: {window}, whole run. Eligibility excludes "
+        "records the classifier cannot read (no usable text, or an untranslated language); the "
+        "SDG panel below names the goals the vocabulary does not cover, which are missing from "
+        "every institution alike."),
     "KPI_FRONTIER_LABEL": "Frontier top-quartile share",
     "KPI_FRONTIER_HELP": (
         "Share of the institution's frontier-scorable output sitting in topics that fall in the "
@@ -494,10 +495,22 @@ FIND = {
         "three covered articles and reviews); {n_catchall} are catch-all topics, outside the "
         "subject scope. Together they hold {share} of this institution's articles and reviews, "
         "{y0}-{y1}."),
+    # Corrected wording (the old "grew"/"over the latest period" phrasing is
+    # gone: expansion is a POSITION against the long-run baseline, not a
+    # growth reading; acceleration is the MOMENTUM between the two most
+    # recent periods, not a second growth reading of the first). Find's own
+    # call site now prints the fuller, numbered version of this same
+    # definition straight from `docs/how_to_read.yaml`'s `methods.axis_def_
+    # topic_planes` (`lib.how_to_read.methods`, no digit-ban exposure since
+    # that text never passes through this module); this digit-free string
+    # stays here only for any other reader of this key.
     "AXIS_DEF_TOPIC_PLANES": (
-        "Expansion reads how fast world attention to a topic is growing, a standardised reading "
-        "of publication-volume growth over the latest period. Acceleration reads whether that "
-        "growth is itself speeding up or slowing down, against the period before it."),
+        "Expansion reads a position: where the topic's world publication volume now sits "
+        "against its own long-run baseline, standardised across topics, so zero means it has "
+        "expanded no more than science as a whole over the long run. Acceleration reads "
+        "momentum: whether that position is moving further ahead of the baseline or falling "
+        "back against it, again standardised, so zero means it is moving with science as a "
+        "whole."),
     "CAPTION_TOPIC_PLANE_B": (
         "{n_no_frontier} of the {n_shown} topics shown carry no frontier score and cannot be "
         "placed here. A dark outline marks a topic in the global top quarter of emergence."),
@@ -588,14 +601,15 @@ FIND = {
     "KPI_INTL_LABEL": "International co-publications",
     "KPI_COMPANY_LABEL": "Industrial co-publications",
     "KPI_INTL_HELP": (
-        "Share of the institution's publications from {y0} to {y1}, full counting, carrying at "
-        "least one other institution named on the record and based in another country. "
-        "Institutions OpenAlex cannot place in a country are counted in the denominator and never "
-        "treated as domestic."),
+        "**Window**: {y0} to {y1}, full counting. Share of the institution's publications "
+        "carrying at least one other institution named on the record and based in another "
+        "country. Institutions OpenAlex cannot place in a country are counted in the denominator "
+        "and never treated as domestic."),
     "KPI_COMPANY_HELP": (
-        "Share of the institution's publications from {y0} to {y1}, full counting, carrying at "
-        "least one company named on the record. The type is the one OpenAlex records for the "
-        "partner, so an institute a company owns but OpenAlex types otherwise is not counted."),
+        "**Window**: {y0} to {y1}, full counting. Share of the institution's publications "
+        "carrying at least one company named on the record. The type is the one OpenAlex records "
+        "for the partner, so an institute a company owns but OpenAlex types otherwise is not "
+        "counted."),
 
     # -8 (Find scope) needs NO new string: what stays visible under a
     # chart is ONE reading line, and the second and third grey lines move
@@ -1013,12 +1027,8 @@ METHODS = {
     "frontier_scores": {
         "title": "Frontier scores",
         "body": (
-            "Frontier scores read how fast world attention to a topic is moving. Expansion is a "
-            "standardised reading of how fast the world's publication volume in a topic grew over "
-            "the latest period; acceleration is a standardised reading of whether that growth is "
-            "itself speeding up or slowing down, against the period before it. A well-established, "
-            "foundational topic can carry a low score simply because the world's attention to it has "
-            "stopped growing.\n\n"
+            "{frontier_scores_intro} A well-established, foundational topic can carry a low score "
+            "simply because the world's attention to it is no longer expanding.\n\n"
             "{n_excluded} of the taxonomy's {n_topics} topics carry no frontier score at all: "
             "catch-all topics sitting outside the taxonomy's own subject scope, excluded by "
             "construction. Every scored topic sits in one of four quadrants, crossing the sign of "
@@ -1102,17 +1112,26 @@ METHODS = {
             "held by one institution only keeps that institution's own colour. The perimeter is "
             "the same as Find's topic planes: {core_ar_window}, primary topic.\n\n"
             "A balance-bar chart carries exactly the topics on the plane, sorted by whichever "
-            "metric the selector reads. Each bar has three segments: one institution's own "
-            "publications on the topic to one side, the other institution's own publications to "
-            "the other side, and, when the pair's joint output on that specific topic clears "
-            "{pair_qualifying_floor} joint articles and reviews, a third, distinctly coloured "
-            "segment between them for the joint count; below that floor the joint segment is "
-            "left off rather than shown as zero, since the true count is not known precisely "
-            "enough to state.\n\n"
-            "A table beneath carries every topic on the chart, its keywords, both institutions' "
-            "own figures and three links to OpenAlex; past {topic_table_cap} rows it shows only "
-            "the first {topic_table_cap} by combined volume and says so, though the workbook "
-            "download always carries the complete set, uncapped."),
+            "metric the selector reads; what each bar shows changes with that same selector. Top "
+            "by volume draws each institution's own publications on the topic either side, the "
+            "pair's joint publications centred between; top by FWCI_EU draws each institution's "
+            "own FWCI_EU as paired bars running outward from a shared centre, a red dashed tick "
+            "at the European average on each side; topics led draws each institution's own world "
+            "rank as its distance to the world's number one, a longer bar reading as a better "
+            "rank, with a tick at rank twenty; topics with star papers draws star papers the same "
+            "way volume draws publications, joint star papers centred; and top decile of "
+            "emergence draws each institution's own change in publications between the two "
+            "dynamics windows, a decline shown in grey. Below {pair_qualifying_floor} joint "
+            "articles and reviews a topic's own joint segment is left off rather than shown as "
+            "zero, since the true count is not known precisely enough to state.\n\n"
+            "A right-margin column beside the bars, headed 'Joint pubs', gives one linked figure "
+            "per topic: the joint publication count, opening those joint articles and reviews on "
+            "OpenAlex; in the star-papers mode the same column links the pair's own joint star "
+            "papers instead, the exact works the bar counts. Below the joint floor the column "
+            "shows a dash rather than a link. The workbook download still carries the complete "
+            "topic table, every column, uncapped.\n\n"
+            "Reading the hovers: every hover line on this page and on Find's own charts names its "
+            "own indicator in bold before the value it states."),
     },
     "relationship": {
         "title": "The relationship",
@@ -1144,7 +1163,10 @@ METHODS = {
             "PP10_WD and star-paper count for the joint works alone; two different counts sit "
             "behind that FWCI figure, one counting every joint work carrying a computed FWCI, the "
             "other, narrower, counting only the works eligible for the world top-decile share, "
-            "and the first is always the larger or equal of the two."),
+            "and the first is always the larger or equal of the two. A toggle switches the same "
+            "chart from the pair's shared fields to its top thirty subfields by joint "
+            "publications instead, at a finer grain but reading the same two axes and the same "
+            "hover."),
     },
     "reading_momentum": {
         "title": "Reading momentum",
@@ -1243,6 +1265,7 @@ METHODS_SOURCES = {
     "n_best_diff": "count of topics_dim rows where bestfit_subfield_id differs from original_subfield_id",
     "n_cons_diff": "count of topics_dim rows where conservative_subfield_id differs from original_subfield_id",
     "n_forced_or_nofit": "count of topics_dim rows with fit_quality in (forced, no_fit)",
+    "frontier_scores_intro": "docs/how_to_read.yaml methods.frontier_scores, read through lib.how_to_read.methods (the one corrected-wording source shared with the topic planes' own how-to-read line)",
     "top_decile_pct": "the complement of lib.compare_data.ELITE_FRONTIER_PERCENTILE, formatted as a percent",
     "leader_depth": "measured live: the maximum rank value in topic_leaders.parquet",
     "star_pct": "views_methods.STAR_TOP_PCT, the star-paper cut's own k formula (not shipped to any table), formatted as a percent",
@@ -1265,7 +1288,6 @@ METHODS_SOURCES = {
     "n_topic_max": "lib.topic_data.N_MAX",
     "topic_n_default": "lib.views_find.TOPIC_N_DEFAULT",
     "pair_n_max": "lib.topic_data.PAIR_N_MAX",
-    "topic_table_cap": "lib.views_compare.TOPIC_TABLE_CAP",
     "scale_guard_ratio": "CFG scale_guard.ratio",
     "p7_fwci_residual_cells": ("a fixed build-time count, not recomputed live: measured once, during the "
                                "institution-by-topic table's own pipeline build, by reconciling its cells "

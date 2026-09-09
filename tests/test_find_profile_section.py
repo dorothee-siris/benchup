@@ -300,6 +300,24 @@ def test_the_card_spec_is_the_ruled_order_of_six(profile_app):
     assert all(len(s) == 5 for s in specs), specs      # no companion-figure slots left
 
 
+# --------------------------------------------- topic planes' how-to-read lines
+
+def test_topic_planes_show_the_default_modes_how_to_read_lines(profile_app):
+    """A visible "how to read" line sits between the controls and each
+    plane, mode-aware -- the segmented control's own default is "Top by
+    volume" (`TopicData.MODE_VOLUME`), so that is the pair of lines a first
+    visitor sees."""
+    from lib import how_to_read as HTR
+    from lib.topic_data import MODE_VOLUME
+
+    captions = [c.value for c in profile_app.caption]
+    assert HTR.text("find_plane_impact", MODE_VOLUME) in captions
+    assert HTR.text("find_plane_frontier", MODE_VOLUME) in captions
+    # the corrected axis-definition caption between the two planes, read
+    # through the same how_to_read source (not the stale copy.FIND key).
+    assert HTR.methods("axis_def_topic_planes") in captions
+
+
 def test_the_wordcloud_caption_states_the_two_bases_render_differently(profile_app):
     """ / A15: the cap alone is not the fix -- a reader also has to be
     told the two bases are not on one scale."""
