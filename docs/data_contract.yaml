@@ -15,7 +15,7 @@
 # here because they are still part of the contract between the shipped data and what the UI
 # is allowed to claim.
 #
-# Current state: 24 declared files (23 parquet tables + 1 override CSV) plus the
+# Current state: 25 declared files (24 parquet tables + 1 override CSV) plus the
 # `data/scenarios/` folder (the ranking engine's precomputed per-scenario substrates,
 # documented separately in `scenario_files` below -- its members are not one-row-per-key
 # tables, so the column/key contract shape does not fit them).
@@ -31,7 +31,7 @@
 # limit minus headroom); the whole deploy target (`data/`, scenarios included) stays under
 # 700 MB.
 
-contract_version: "1.7"
+contract_version: "1.8"
 snapshot: august_2026 # the OpenAlex harvest vintage this file describes
 generated_at: "2026-08-27T13:41:28.350794+00:00" # when the source harvest was generated
 deploy_target: "data/"
@@ -377,6 +377,24 @@ files:
       - {name: n_fwci, dtype: int32, meaning: "ADDED (v1.7): count of this row's CORE-AR joint works with a valid FWCI value -- the fwci_mean denominator, unfloored. n_fwci >= n_covered on every shipped row: n_fwci counts every FWCI-covered joint work (FWCI's own fallback rule reaches a work whose exact subfield x year x type stratum has no world PP10 threshold), while n_covered counts only the narrower, non-fallback, retraction-excluded set of joint works eligible for the world top-decile flag above."}
     dropped_column: "mean_citations (v1's uncapped-table impact proxy, the ONE table that could still afford it after the retired pair-topic table dropped it for size) is SUPERSEDED by fwci_median and dropped."
     build_note: "Field-level accumulation runs in the same per-work pass as the retired pair-topic table's topic-level one, restricted to the same core_total>=5 qualifying pairs."
+
+  # ---- collab_pair_subfields.parquet ----
+  collab_pair_subfields.parquet:
+    grain: "One row per (a, b, bestfit subfield_id), same core_total>=5 qualifying-pair set as collab_pair_fields.parquet (913,513 pairs), CAPPED to each pair's top 30 subfields by joint volume (ties broken by subfield_id ascending) -- unlike collab_pair_fields.parquet, which is uncapped. 7,995,178 rows, ~48.9 MB, zstd (max compression level; fwci_mean/fwci_median stored rounded to three decimals, which alone took this file from ~64 MB to ~49 MB -- float noise beyond the 3rd decimal was dominating the compressed stream). Same eu27_aug+supplement UNION universe, filtered to type in {article,review}, 2020-2024 (window_conventions.core_ar_window) before any row enters this table."
+    keys: [a, b, subfield_id]
+    columns:
+      - {name: a, dtype: category, meaning: "institution_id, smaller of the pair (same a<b convention as collab_pairs)"}
+      - {name: b, dtype: category, meaning: "institution_id, larger of the pair"}
+      - {name: subfield_id, dtype: int16, meaning: "OpenAlex subfield id (topics_dim.bestfit_subfield_id), reached via each joint work's PRIMARY topic -> BESTFIT subfield (one step coarser than topic, one step finer than collab_pair_fields.field_id)"}
+      - {name: vol, dtype: int32, meaning: "joint CORE-AR works with primary topic in this subfield = vol_w1+vol_w2. Wider dtype than collab_pair_fields.vol (int32 not int16): a few cells on the largest pairs exceed int16 range at this finer grain, same reasoning as collab_topic_vols.parquet's own vol column."}
+      - {name: vol_w1, dtype: int32, meaning: "joint CORE-AR works with primary topic in this subfield, WINDOW = 2020-2022 (dynamics window 1)"}
+      - {name: vol_w2, dtype: int32, meaning: "joint CORE-AR works with primary topic in this subfield, WINDOW = 2023-2024 (dynamics window 2)"}
+      - {name: n_covered, dtype: int32, meaning: "same convention as collab_pair_fields.n_covered, rolled up to subfield grain. VERIFIED: n_top10 <= n_covered <= vol on every shipped row."}
+      - {name: n_top10, dtype: int32, meaning: "same convention as collab_pair_fields.n_top10, rolled up to subfield grain."}
+      - {name: fwci_mean, dtype: float32, meaning: "mean FWCI over this row's CORE-AR joint works with a valid FWCI value, stored to three decimals; NaN iff n_fwci==0. Same unfloored convention as collab_pair_fields.fwci_mean (which is NOT rounded -- this table's rounding is a size-only difference between the two tables, not a precision-policy one)."}
+      - {name: fwci_median, dtype: float32, meaning: "median FWCI over the same population as fwci_mean, stored to three decimals; NULL when n_fwci < 3 (same floor as collab_pair_fields.fwci_median, which is NOT rounded)."}
+      - {name: n_fwci, dtype: int32, meaning: "count of this row's CORE-AR joint works with a valid FWCI value -- the fwci_mean denominator, unfloored."}
+    build_note: "Same per-year source tables as collab_pair_fields.parquet (one row per joint CORE-AR work), rolled up one grain finer via topics_dim.bestfit_subfield_id instead of field_id, then capped to each pair's top 30 subfields by vol. A pair with <=30 distinct subfields is therefore identical, field-by-field, to a same-pair rollup of collab_pair_fields.parquet (verified); a pair with more than 30 loses its smallest-volume subfields, by design -- this table trades completeness for a bounded row count per pair, the way collab_pair_fields.parquet does not need to."
 
   # ---- collab_topic_vols.parquet ----
   collab_topic_vols.parquet:

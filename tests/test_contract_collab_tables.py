@@ -82,15 +82,18 @@ def test_contract_declares_24_files(contract: dict) -> None:
     # deleted whole (its only non-key columns, mass_any_frac/mass_any_full,
     # had no caller in lib/) alongside column-level drops on index.parquet,
     # topics_dim.parquet, topic_leaders.parquet and fwci_taxa_ref.parquet that
-    # do not change the FILE count. `collab_facts.json` (momentum constants)
-    # and the build-internal `fwci_ref.parquet`/`fwci_work.parquet` do NOT
-    # join this count -- all are DELIBERATELY excluded from `contract["files"]`
-    # by the contract's own documented design (not a parquet table this
-    # app/data/ directory ships with a column schema to check). `data/scenarios/`
-    # (the ranking engine's precomputed substrates) is ALSO not counted here --
-    # it is validated separately via `contract["scenario_files"]`, since its
-    # members are not one-row-per-key tables.
-    assert len(contract["files"]) == 24, sorted(contract["files"])
+    # do not change the FILE count -> 25 (contract v1.8): one new table,
+    # collab_pair_subfields.parquet (pair x bestfit-subfield reciprocity,
+    # top 30 subfields by joint volume per pair). `collab_facts.json` (momentum
+    # constants) and the build-internal `fwci_ref.parquet`/`fwci_work.parquet`
+    # do NOT join this count -- all are DELIBERATELY excluded from
+    # `contract["files"]` by the contract's own documented design (not a
+    # parquet table this app/data/ directory ships with a column schema to
+    # check). `data/scenarios/` (the ranking engine's precomputed substrates)
+    # is ALSO not counted here -- it is validated separately via
+    # `contract["scenario_files"]`, since its members are not one-row-per-key
+    # tables.
+    assert len(contract["files"]) == 25, sorted(contract["files"])
 
 
 # ---------------------------------------------------------------------------

@@ -42,8 +42,8 @@ def test_impact_fields_deleted() -> None:
     )
 
 
-def test_deployed_table_count_is_24() -> None:
-    assert len(PARQUET_FILES) == 23, sorted(PARQUET_FILES)  # 23 parquet + 1 override csv = 24
+def test_deployed_table_count_is_25() -> None:
+    assert len(PARQUET_FILES) == 24, sorted(PARQUET_FILES)  # 24 parquet + 1 override csv = 25 (contract v1.8)
 
 
 @pytest.mark.parametrize("fname", PARQUET_FILES)
