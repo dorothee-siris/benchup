@@ -1,0 +1,91 @@
+# how_to_read.yaml -- the visible "How to read" line that sits between a
+# chart's own controls and the chart itself, on the five charts a first-time
+# reader cannot decode from the axes alone: the two topic planes on Find, the
+# topic overlay and the balance bars on Compare's topic overlap, and the
+# reciprocity scatter on Compare's relationship section.
+#
+# One entry per (chart, mode). The mode keys are the five "Topics shown" cuts
+# the selector offers -- volume ("Top by volume"), fwci ("Top by FWCI_EU"),
+# led ("Topics led"), stars ("Topics with star papers") and emergence ("Top
+# decile of emergence") -- so the line always describes what is actually on
+# screen. The reciprocity scatter switches on its own toggle instead, fields
+# or subfields.
+#
+# `{a}` / `{b}` stand for the two compared institutions' short names, in slot
+# order; the page formats them in (`text(chart, mode, a=..., b=...)`).
+#
+# House rules for every chart string here (enforced by the test beside it):
+#   * one or two sentences, at most 340 characters, plain reader-facing English
+#   * it names what the marks encode, the reference line or tick when the chart
+#     draws one, how the set on screen was chosen or sorted, and one worked
+#     reading a reader can check against the picture in front of them
+#   * no term a reader outside this tool would not recognise
+#
+# The `methods` block holds the two longer definitions the same wording has to
+# stay in step with: the Methods page's "Frontier scores" section and the
+# caption printed under the topic planes. Expansion and acceleration are read
+# off three-year bins of world publication volume (2004-06 through 2019-21)
+# plus a two-year latest bin, 2022-23: expansion is a POSITION in that latest
+# bin against the global baseline, acceleration is the MOMENTUM between the two
+# last bins, and the frontier score weighs them 0.7 to 0.3.
+
+version: 1
+
+charts:
+
+  # ------------------------------------------------------- Find, first plane
+  # Volume against impact: publications on a log axis, FWCI_EU up, bubble area
+  # the topic's star papers, a red dashed line at the European average of 1.0.
+  find_plane_impact:
+    volume: "Each bubble is a topic: publications left to right, FWCI_EU bottom to top, bubble area the topic's star papers, and the red dashed line marks the European average of 1.0; the topics shown are the institution's largest by publication count. A bubble far to the right and above the line is a large topic cited above the European average."
+    fwci: "Each bubble is a topic: publications left to right, FWCI_EU bottom to top, bubble area the topic's star papers, red dashed line at the European average of 1.0; only topics with at least ten citation-eligible papers are shown, highest FWCI_EU first. A bubble high above the line but far left is strong impact on a small base."
+    led: "Each bubble is a topic: publications left to right, FWCI_EU bottom to top, bubble area the topic's star papers, red dashed line at the European average of 1.0; only topics where the institution ranks in the world top twenty are shown, largest first. A bubble above the line is a topic it both leads and publishes well in."
+    stars: "Each bubble is a topic: publications left to right, FWCI_EU bottom to top, bubble area the topic's star papers, red dashed line at the European average of 1.0; only topics holding at least one star paper are shown, most stars first. The largest bubble above the line is where the most-cited papers sit."
+    emergence: "Each bubble is a topic: publications left to right, FWCI_EU bottom to top, bubble area the topic's star papers, red dashed line at the European average of 1.0; only topics in the world's fastest-moving decile are shown, highest frontier score first. A large bubble above the line is a fast-moving topic with scale and impact."
+
+  # ------------------------------------------------------ Find, second plane
+  # Expansion against acceleration, bubble area the institution's own
+  # publications in the topic, zero on both axes = the pace of science overall.
+  find_plane_frontier:
+    volume: "Each bubble is a topic: expansion across, its world volume in 2022-23 against the long-run baseline, acceleration up, its momentum from 2019-21 to 2022-23, bubble area the institution's publications; the two zero lines mark the pace of science as a whole, and the largest topics are shown. Top right: long expanded, still gaining."
+    fwci: "Each bubble is a topic: expansion across, world volume in 2022-23 against the long-run baseline, acceleration up, momentum from 2019-21 to 2022-23, bubble area the institution's publications; the zero lines mark the pace of science as a whole, and the topics shown are its strongest by FWCI_EU. A bubble above zero is one gaining pace."
+    led: "Each bubble is a topic: expansion across, world volume in 2022-23 against the long-run baseline, acceleration up, momentum from 2019-21 to 2022-23, bubble area its own publications; zero on both axes is the pace of science as a whole, and only topics it ranks in the world top twenty for are shown. Top right: it leads a rising topic."
+    stars: "Each bubble is a topic: expansion across, world volume in 2022-23 against the long-run baseline, acceleration up, momentum from 2019-21 to 2022-23, bubble area the institution's publications; zero is the pace of science as a whole, and only topics holding a star paper are shown. Top right: a rising topic with a most-cited paper."
+    emergence: "Each bubble is a topic: expansion across, world volume in 2022-23 against the long-run baseline, acceleration up, momentum from 2019-21 to 2022-23, bubble area the institution's publications; zero is the pace of science as a whole, and only the world's fastest-moving decile is shown. Near zero across but high up: a late riser."
+
+  # -------------------------------------------- Compare, topic overlap plane
+  # The same two frontier axes, drawn for a pair: bubble area is the pair's
+  # combined publications and the colour says who holds the topic.
+  compare_topic_overlay:
+    volume: "One bubble per topic in the two top sets: expansion across, the long-run position of its world volume in 2022-23, acceleration up, its momentum from 2019-21 to 2022-23, area the pair's combined publications, colour who holds it; the largest topics are shown. Top right: a topic both hold that is expanding and gaining pace."
+    fwci: "One bubble per topic in the two top sets: expansion across, the long-run position of world volume in 2022-23, acceleration up, momentum from 2019-21 to 2022-23, area the combined publications, colour who holds it; the topics shown are each institution's strongest by FWCI_EU. Top right and shared: a rising topic both do well in."
+    led: "One bubble per topic in the two top sets: expansion across, the long-run position of world volume in 2022-23, acceleration up, momentum from 2019-21 to 2022-23, area the combined publications, colour who holds it; only topics ranked in the world top twenty are shown. A single-colour bubble top right is a rising topic only one leads."
+    stars: "One bubble per topic in the two top sets: expansion across, the long-run position of world volume in 2022-23, acceleration up, momentum from 2019-21 to 2022-23, area the combined publications, colour who holds it; only topics holding a star paper are shown. Top right: a rising topic where the most-cited papers sit."
+    emergence: "One bubble per topic in the two top sets: expansion across, the long-run position of world volume in 2022-23, acceleration up, momentum from 2019-21 to 2022-23, area the combined publications, colour who holds it; only the world's fastest-moving decile is shown. A large shared bubble is a rising topic both invest in."
+
+  # ---------------------------------------------- Compare, topic balance bars
+  # Five different quantities, one per mode: publications, each institution's
+  # own FWCI_EU, world rank as distance to number one, star papers, and each
+  # institution's own change in publications between the two windows.
+  compare_balance_bars:
+    volume: "One row per topic: the left bar is publications {a} holds without {b}, the centre bar the joint publications, the right bar {b}'s own; rows run from the largest combined total, the number in the gutter. A row with a wide centre is a topic the two mostly publish together."
+    fwci: "One row per topic: paired bars run outward from the centre, the left one {a}'s own FWCI_EU, the right one {b}'s, with a red dashed tick at 1.0 on each side, the European average; rows run from the highest value. A bar reaching past its tick is a topic cited above the European average."
+    led: "One row per topic: each bar is an institution's world rank drawn as the distance to number one, so a longer bar means a better rank, the rank itself sits at the tip, and a red dashed tick marks rank twenty; rows run from the best rank. A bar well past the tick is a topic the institution ranks near the top of the world in."
+    stars: "One row per topic: the left bar is star papers {a} holds without {b}, the centre bar the pair's joint star papers, the right bar {b}'s own; rows run from the largest combined count in the gutter. A wide centre bar means the most-cited papers come out of the joint work."
+    emergence: "One row per topic: each bar is an institution's own change in publications from 2020-22 to 2023-24, the bar length the size of the change, grey a decline, the signed percentage at the tip; rows run from the largest change. A long grey bar is a fast-moving topic the institution is pulling out of."
+
+  # ------------------------------------------- Compare, reciprocity scatter
+  # Each institution's own share of its output on one axis, so a bubble's
+  # distance from the dotted diagonal reads as unequal weight.
+  compare_reciprocity:
+    fields: "One bubble per field: across is the field's share of {b}'s own output, up is the same field's share of {a}'s, and bubble area is the pair's joint publications there; the dotted diagonal marks equal weight. A bubble well above the diagonal is a field that matters far more to {a}."
+    subfields: "One bubble per subfield, the thirty with the most joint publications: across is the subfield's share of {b}'s own output, up is its share of {a}'s, bubble area the joint publications there; the dotted diagonal marks equal weight. A bubble on the diagonal is a subfield of equal weight to both."
+
+methods:
+
+  # The Methods page's "Frontier scores" section, in full (this one entry is
+  # allowed to run to several sentences -- it is a definition, not a caption).
+  frontier_scores: "Frontier scores read where a topic sits in world attention and where it is heading. They are built on three-year bins of world publication volume, 2004-06 through 2019-21, plus a two-year latest bin, 2022-23. Expansion is a position: how far the topic's world volume in the latest bin sits above or below the global baseline, standardised across topics, so zero means the topic has expanded no more than science as a whole over the long run. Acceleration is momentum: the topic's growth against that baseline from 2019-21 to 2022-23, again standardised, so zero means it is moving with science as a whole, and the frontier score weighs the two at 0.7 expansion plus 0.3 acceleration. A topic at expansion 0.01 with acceleration 0.5 therefore reads as an average long-run position that gained momentum in 2022-23."
+
+  # The short caption printed under the pair of topic planes.
+  axis_def_topic_planes: "Expansion is a position: how far the topic's world publication volume in 2022-23 sits above or below the global baseline, standardised across topics, so zero means it has expanded no more than science as a whole over the long run. Acceleration is momentum: how the topic moved against that same baseline from 2019-21 to 2022-23, standardised, so zero means it is moving with science as a whole."
