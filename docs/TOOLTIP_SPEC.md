@@ -170,6 +170,17 @@ that field. The partner-rank clause draws when one institution ranks among the o
 partners in that field. There is no FWCI at pair-and-topic grain anywhere in the app, which is
 why the topic surfaces carry volumes and the field surfaces carry impact.
 
+**Reciprocity, subfield grain.** The same chart over the top thirty subfields by joint
+publication volume instead of the twenty-six fields — same two shares, same joint-volume
+bubble, same FWCI_EU/top-decile/star lines, read through the subfield's own numbers rather
+than its parent field's. One line is added and one dropped relative to the field grain: the
+bold subfield name is followed by a plain `field: {name}` line naming its parent, so a reader
+never loses the coarser context while looking at the finer one; the partner-rank clause is
+left out at this grain — it is a pair-level fact, identical on every bubble, and keeping it
+alongside the new field-name line would push a row that clears every other floor past the
+eight-line cap. A reader who wants the partner-rank sentence still has it on the field-grain
+view one toggle away.
+
 ## What was deliberately left out
 
 - **Star papers on the Find field and subfield panels.** The star count lives at topic grain;

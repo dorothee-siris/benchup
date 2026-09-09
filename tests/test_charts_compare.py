@@ -15,6 +15,7 @@ Run from cwd `app/`: python -m pytest tests/test_charts_compare.py -q
 from __future__ import annotations
 
 import ast
+import json
 import re
 import sys
 from pathlib import Path
@@ -136,6 +137,32 @@ def reciprocity_frame(n_fields: int = 4, with_ranks: bool = True) -> pd.DataFram
         if with_ranks:
             row["rank_in_a"] = f + 1
             row["rank_in_b"] = n_fields - f
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+
+def reciprocity_frame_subfields(n_subfields: int = 4, with_ranks: bool = True) -> pd.DataFrame:
+    """The subfield-grain sibling of `reciprocity_frame` above: the SAME
+    per-row contract (share_a/share_b/vol_joint/fwci/pp10/stars/rank) plus
+    `subfield_name` (required at this grain) and `field_name` repurposed to
+    name the subfield's PARENT field -- exactly the shape `charts_compare.
+    reciprocity_scatter(grain="subfields")` reads. Subfield 3's fixture
+    clears every optional floor at once (n_fwci, n_covered, n_stars_field,
+    ranks) -- the worst-case line-count row this grain's hover cap is
+    checked against."""
+    rows = []
+    for f in range(n_subfields):
+        row = dict(subfield_id=3100 + f, subfield_name=f"Subfield {f}",
+                  field_id=f % 2, field_name=f"Field {f % 2}", domain_id=(f % 4) + 1,
+                  vol_joint=float(40 - 8 * f), share_a=0.05 + 0.01 * f,
+                  share_b=0.04 + 0.015 * f,
+                  fwci_mean=1.10 + 0.05 * f, fwci_median=0.90 + 0.03 * f,
+                  n_fwci=(2 if f == 0 else 12 + f),
+                  n_top10=(0 if f == 1 else 2 + f), n_covered=(0 if f == 1 else 20 + f),
+                  n_stars_field=f)
+        if with_ranks:
+            row["rank_in_a"] = f + 1
+            row["rank_in_b"] = n_subfields - f
         rows.append(row)
     return pd.DataFrame(rows)
 
@@ -466,6 +493,122 @@ def test_reciprocity_scatter_rejects_a_missing_column():
                               RECIP_NAMES, RECIP_SLOTS)
 
 
+def test_reciprocity_scatter_rejects_an_unknown_grain():
+    with pytest.raises(ValueError):
+        X.reciprocity_scatter(reciprocity_frame(), RECIP_NAMES, RECIP_SLOTS, grain="topics")
+
+
+# ---------------------------------------------------------------------------
+# reciprocity_scatter(grain="subfields") -- the top-30-subfields toggle
+# ---------------------------------------------------------------------------
+def test_reciprocity_scatter_subfields_grain_requires_subfield_name():
+    with pytest.raises(ValueError):
+        X.reciprocity_scatter(reciprocity_frame_subfields().drop(columns=["subfield_name"]),
+                              RECIP_NAMES, RECIP_SLOTS, grain="subfields")
+
+
+def test_reciprocity_scatter_subfields_grain_axis_titles_say_subfield():
+    fig = X.reciprocity_scatter(reciprocity_frame_subfields(), RECIP_NAMES, RECIP_SLOTS, grain="subfields")
+    assert "subfield" in fig.layout.xaxis.title.text
+    assert "subfield" in fig.layout.yaxis.title.text
+    assert "Institution B" in fig.layout.xaxis.title.text
+    assert "Institution A" in fig.layout.yaxis.title.text
+    # fields grain must stay untouched -- no "subfield" word anywhere in it
+    fig_fields = X.reciprocity_scatter(reciprocity_frame(), RECIP_NAMES, RECIP_SLOTS)
+    assert "subfield" not in fig_fields.layout.xaxis.title.text
+    assert "subfield" not in fig_fields.layout.yaxis.title.text
+
+
+def test_reciprocity_scatter_subfields_grain_entity_line_is_the_subfield_name():
+    fig = X.reciprocity_scatter(reciprocity_frame_subfields(), RECIP_NAMES, RECIP_SLOTS, grain="subfields")
+    hovers = list(fig.data[0].customdata)
+    assert all(h.startswith("<b>Subfield ") for h in hovers), \
+        "the subfield's own bold name is the first hover line at this grain"
+
+
+def test_reciprocity_scatter_subfields_grain_second_line_names_the_parent_field():
+    fig = X.reciprocity_scatter(reciprocity_frame_subfields(), RECIP_NAMES, RECIP_SLOTS, grain="subfields")
+    hover0 = next(h for h in fig.data[0].customdata if h.startswith("<b>Subfield 0</b>"))
+    lines = hover0.split("<br>")
+    assert lines[1] == f"<b>{X.HOVER_RECIP_FIELD_LABEL}</b>: Field 0"
+
+
+def test_reciprocity_scatter_subfields_grain_drops_the_rank_clause_even_when_present():
+    """The partner-rank clause is a pair-level fact repeated on every row --
+    dropped at subfields grain to hold the 8-line hover cap, even when
+    rank_in_a/rank_in_b columns ARE present in the frame."""
+    df = reciprocity_frame_subfields(with_ranks=True)
+    assert "rank_in_a" in df.columns and "rank_in_b" in df.columns
+    fig = X.reciprocity_scatter(df, RECIP_NAMES, RECIP_SLOTS, grain="subfields")
+    hovers = list(fig.data[0].customdata)
+    assert hovers
+    assert not any("partner #" in h for h in hovers)
+    assert not any(X.HOVER_PARTNER_RANK_LABEL in h for h in hovers)
+
+
+def test_reciprocity_scatter_subfields_grain_hover_line_cap_holds_at_the_worst_case_row():
+    """Subfield 2/3's fixture clears every optional floor at once (fwci,
+    pp10, stars) -- the worst-case row for the 8-line hover cap every chart
+    in this app holds to. entity + field + 2 shares + joint + fwci + pp10 +
+    stars = 8, with the rank clause dropped (see the test above) to make
+    room."""
+    fig = X.reciprocity_scatter(reciprocity_frame_subfields(with_ranks=True), RECIP_NAMES, RECIP_SLOTS,
+                                grain="subfields")
+    worst = next(h for h in fig.data[0].customdata if h.startswith("<b>Subfield 3</b>"))
+    n_lines = worst.count("<br>") + 1
+    assert n_lines <= 8, f"{n_lines} lines: {worst!r}"
+    assert X.HOVER_FWCI_LABEL in worst and X.HOVER_RECIP_PP10 in worst and X.HOVER_RECIP_STARS_SUBFIELD in worst
+
+
+def test_reciprocity_scatter_subfields_grain_hover_carries_shares_and_joint():
+    fig = X.reciprocity_scatter(reciprocity_frame_subfields(with_ranks=True), RECIP_NAMES, RECIP_SLOTS,
+                                grain="subfields")
+    hovers = list(fig.data[0].customdata)
+    assert any("of Institution A's own publications" in h and "of Institution B's own publications" in h
+              and X.HOVER_RECIP_JOINT in h for h in hovers)
+
+
+def _strip_env_dependent_template(fig_json: str) -> dict:
+    """Parses a figure's own `.to_json()` and drops `layout.template` --
+    IMPORTING STREAMLIT ANYWHERE IN THE PROCESS REGISTERS ITS OWN GLOBAL
+    PLOTLY DEFAULT TEMPLATE (`st.plotly_chart`'s own theme, confirmed by a
+    standalone probe: a bare `go.Figure()`'s `layout.template` differs
+    entirely, colours and all, before vs after `import streamlit`), so this
+    key's content depends on test COLLECTION ORDER across the whole suite
+    (whether some other file already imported streamlit), never on this
+    builder's own code. Every other key -- data, every axis, every shape,
+    every hover string -- is environment-independent and compared verbatim."""
+    d = json.loads(fig_json)
+    d.get("layout", {}).pop("template", None)
+    return d
+
+
+def test_reciprocity_scatter_fields_grain_untouched_by_the_subfields_addition():
+    """grain="fields" (default AND explicit) must be figure-JSON-identical
+    to the untouched builder -- proven against a real-data golden fixture in
+    `tests/fixtures/reciprocity_scatter_fields_strasbourg_cnrs.json`, saved
+    from this exact function before the subfield grain existed.
+    `layout.template` is stripped before comparing (`_strip_env_dependent_
+    template`'s own docstring)."""
+    from lib import compare_data as CD
+    from lib.engine import load_context, load_substrates
+
+    fix_path = APP_DIR / "tests" / "fixtures" / "reciprocity_scatter_fields_strasbourg_cnrs.json"
+    strasbourg, cnrs = "I68947357", "I1294671590"
+    ctx = load_context(DATA)
+    subs_full = load_substrates(ctx, "bestfit", "full")
+    rel = CD.relationship(ctx, [strasbourg, cnrs], subs_full)
+    names = {strasbourg: "Universite de Strasbourg", cnrs: "CNRS"}
+    slots_map = {strasbourg: 0, cnrs: 1}
+    fig_default = X.reciprocity_scatter(rel["reciprocity"], [names[strasbourg], names[cnrs]],
+                                       [slots_map[strasbourg], slots_map[cnrs]])
+    fig_explicit = X.reciprocity_scatter(rel["reciprocity"], [names[strasbourg], names[cnrs]],
+                                        [slots_map[strasbourg], slots_map[cnrs]], grain="fields")
+    golden = _strip_env_dependent_template(fix_path.read_text(encoding="utf-8"))
+    assert _strip_env_dependent_template(fig_default.to_json()) == golden
+    assert _strip_env_dependent_template(fig_explicit.to_json()) == golden
+
+
 # ---------------------------------------------------------------------------
 # docs/tooltip_spec.yaml conformance -- every chart this stream touches,
 # label order verbatim (the spec's own header: "a test checks each
@@ -525,6 +668,34 @@ def test_reciprocity_scatter_hover_matches_the_spec_label_order(spec):
     assert "own publications" in hover
     assert_labels_in_order(hover, [X.HOVER_RECIP_PP10, X.HOVER_RECIP_STARS])
     assert hover.index(X.HOVER_RECIP_JOINT) < hover.index(X.HOVER_FWCI_LABEL) < hover.index(X.HOVER_RECIP_PP10)
+
+
+def test_reciprocity_scatter_subfields_hover_matches_the_spec_label_order(spec):
+    fig = X.reciprocity_scatter(reciprocity_frame_subfields(with_ranks=True), RECIP_NAMES, RECIP_SLOTS,
+                                grain="subfields")
+    # subfield 3's fixture clears every floor at once -- every conditional line draws for it.
+    hover = next(h for h in fig.data[0].customdata if h.startswith("<b>Subfield 3</b>"))
+    # share_a/share_b share ONE spec label template per institution (same
+    # {name}-filled convention `test_reciprocity_scatter_hover_matches_the_
+    # spec_label_order` already checks at field grain) -- checked here
+    # against the rendered "own publications" fragment, not the literal
+    # placeholder text.
+    assert "own publications" in hover
+    assert_labels_in_order(hover, [f"<b>{X.HOVER_RECIP_FIELD_LABEL}</b>: ", X.HOVER_RECIP_JOINT,
+                                   X.HOVER_FWCI_LABEL, X.HOVER_RECIP_PP10, X.HOVER_RECIP_STARS_SUBFIELD])
+
+
+def test_compare_reciprocity_subfields_spec_entry_drops_partner_rank(spec):
+    """The one deliberate structural difference from `compare_reciprocity`:
+    no `partner_rank` line at this grain (dropped to hold the 8-line hover
+    cap once the new `field` line is added), and exactly one new
+    unconditional `field` line."""
+    fields_lines = spec["charts"]["compare_reciprocity"]["lines"]
+    sub_lines = spec["charts"]["compare_reciprocity_subfields"]["lines"]
+    assert not any(ln["field"] == "partner_rank" for ln in sub_lines)
+    assert any(ln["field"] == "partner_rank" for ln in fields_lines)  # still there at field grain
+    assert any(ln["field"] == "field_name" and ln["label"] == "field" for ln in sub_lines)
+    assert len(sub_lines) == len(fields_lines)  # +1 (field_name) -1 (partner_rank)
 
 
 def test_yearly_domain_stack_hover_matches_the_spec_label_order(spec):

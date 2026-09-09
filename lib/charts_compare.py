@@ -971,30 +971,41 @@ RECIP_AXIS_PAD_MULT = 1.1    # squared axes [0, max * 1.1] on both sides
 RECIP_DIAGONAL_DASH = "dot"
 RECIP_BUBBLE_OUTLINE_PX = 0.5
 AX_RECIPROCITY_SHARE = "Share of {name}'s own publications"
+AX_RECIPROCITY_SHARE_SUBFIELD = "Share of {name}'s own publications (subfield)"
 HOVER_RECIP_SHARE = "share of {name}'s own publications"
 HOVER_RECIP_JOINT = "joint publications"
 HOVER_RECIP_PP10 = "joint papers in the world top decile"
 HOVER_RECIP_STARS = "joint star papers in this field"
+HOVER_RECIP_STARS_SUBFIELD = "joint star papers in this subfield"
 HOVER_PARTNER_RANK_LABEL = "partner rank"    # the partner-rank sentence(s)
                                               # had no label at all before
+HOVER_RECIP_FIELD_LABEL = "field"            # subfield grain only: the
+                                              # subfield's parent field, one
+                                              # bold-colon line right after
+                                              # the bold subfield name
+RECIPROCITY_GRAINS = ("fields", "subfields")
 
 
-def reciprocity_scatter(frame: pd.DataFrame, names: Sequence, colors: Sequence) -> go.Figure:
-    """"Strategic reciprocity by field", BACK to the bubble SCATTER an
+def reciprocity_scatter(frame: pd.DataFrame, names: Sequence, colors: Sequence,
+                        grain: str = "fields") -> go.Figure:
+    """"Strategic reciprocity", BACK to the bubble SCATTER an
     earlier SIRIS Streamlit tool's own "Zoom partenaire" view drew (this
-    module's own header docstring): one bubble per field, `y` = that
-    field's share of A's OWN output, `x` = the same field's share of B's
-    OWN output, area = the pair's joint volume in the field (area-true:
-    `sizemode="area"`, one `sizeref` shared by every bubble), colour = the
-    field's OpenAlex domain, one dotted 45-degree "equal weight" diagonal,
-    squared axes (`scaleanchor` locking the aspect ratio so the square is
-    real, not just numerically equal ranges). Replaces the institution-
-    coloured bar adaptation this page drew in between (`reciprocity_bars`,
-    retired with its own `_add_centred_gutter`/`_rewrite_reciprocity_hover`
-    helpers) -- there is no institution-coloured mark on this chart at all
-    any more, matching the ORIGINAL reading exactly.
+    module's own header docstring): one bubble per field OR subfield
+    (`grain`), `y` = that taxon's share of A's OWN output, `x` = the same
+    taxon's share of B's OWN output, area = the pair's joint volume there
+    (area-true: `sizemode="area"`, one `sizeref` shared by every bubble),
+    colour = the taxon's OpenAlex domain, one dotted 45-degree "equal
+    weight" diagonal, squared axes (`scaleanchor` locking the aspect ratio
+    so the square is real, not just numerically equal ranges). Replaces the
+    institution-coloured bar adaptation this page drew in between
+    (`reciprocity_bars`, retired with its own `_add_centred_gutter`/
+    `_rewrite_reciprocity_hover` helpers) -- there is no institution-
+    coloured mark on this chart at all any more, matching the ORIGINAL
+    reading exactly.
 
-    INPUT FRAME CONTRACT (one row per field):
+    `grain="fields"` (default) -- INPUT FRAME CONTRACT (one row per field),
+    BYTE-IDENTICAL to every version of this function before the subfield
+    grain existed:
       field_id, field_name, domain_id -- identity + the bubble's own colour
       share_a, share_b -- that field's share of A's / B's own output, 0-1
                       -- the vertical / horizontal axis respectively
@@ -1013,13 +1024,27 @@ def reciprocity_scatter(frame: pd.DataFrame, names: Sequence, colors: Sequence) 
                       the same on every row) -- omit the columns, or leave
                       a row's cells null, to drop the clause entirely
 
+    `grain="subfields"` -- the SAME contract, plus `subfield_name`
+    (required) naming each bubble; `field_name` then names the subfield's
+    PARENT field, printed as its own `<b>field</b>: {name}` hover line right
+    after the bold subfield-name entity line. Axis titles say "subfield"
+    instead of "field". The partner-rank clause (`rank_in_a`/`rank_in_b`) is
+    DROPPED at this grain even when the columns are present -- a pair-level
+    fact already shown on the field-grain chart, traded for the one extra
+    line the field-name context costs, to hold the 8-line hover cap that
+    holds everywhere else.
+
     `names`/`colors` are TWO-ITEM SEQUENCES `[a, b]` (this module's own
     fixed-pair convention, see the module docstring's `colors` paragraph)
     -- this frame carries no `institution_id` column to key a Mapping by.
     `colors` is accepted for that same signature
-    parity but unused for the MARK colour here (the field's domain is the
+    parity but unused for the MARK colour here (the taxon's domain is the
     only colour channel this chart draws)."""
-    required = ("field_id", "field_name", "domain_id", "share_a", "share_b", "vol_joint")
+    if grain not in RECIPROCITY_GRAINS:
+        raise ValueError(f"grain must be one of {RECIPROCITY_GRAINS}, got {grain!r}")
+    subfield_grain = grain == "subfields"
+    required = ["domain_id", "share_a", "share_b", "vol_joint"]
+    required.append("subfield_name" if subfield_grain else "field_name")
     for col in required:
         if col not in frame.columns:
             raise ValueError(f"missing column {col!r}")
@@ -1034,15 +1059,18 @@ def reciprocity_scatter(frame: pd.DataFrame, names: Sequence, colors: Sequence) 
     n = len(d)
     marker_colors = [P.domain_color(v) for v in d["domain_id"]]
     vmax = float(vol.max()) if n and vol.max() > 0 else 1.0
-    has_rank = "rank_in_a" in d.columns or "rank_in_b" in d.columns
+    has_rank = (not subfield_grain) and ("rank_in_a" in d.columns or "rank_in_b" in d.columns)
 
     hovers = []
     for i in range(n):
         r = d.iloc[i]
-        parts = [C.hover_entity(str(r["field_name"])),
-                C.hover_line(HOVER_RECIP_SHARE.format(name=name_a), _fmt_pct(r["share_a"])),
-                C.hover_line(HOVER_RECIP_SHARE.format(name=name_b), _fmt_pct(r["share_b"])),
-                C.hover_line(HOVER_RECIP_JOINT, _fmt_vol(r["vol_joint"]))]
+        entity_name = str(r["subfield_name"]) if subfield_grain else str(r["field_name"])
+        parts = [C.hover_entity(entity_name)]
+        if subfield_grain:
+            parts.append(C.hover_line(HOVER_RECIP_FIELD_LABEL, str(r["field_name"])))
+        parts += [C.hover_line(HOVER_RECIP_SHARE.format(name=name_a), _fmt_pct(r["share_a"])),
+                 C.hover_line(HOVER_RECIP_SHARE.format(name=name_b), _fmt_pct(r["share_b"])),
+                 C.hover_line(HOVER_RECIP_JOINT, _fmt_vol(r["vol_joint"]))]
         fwci_line = _fmt_fwci_pair(r.get("fwci_mean"), r.get("fwci_median"), r.get("n_fwci"))
         if fwci_line:
             parts.append(C.hover_line(HOVER_FWCI_LABEL, fwci_line))
@@ -1053,7 +1081,8 @@ def reciprocity_scatter(frame: pd.DataFrame, names: Sequence, colors: Sequence) 
             parts.append(C.hover_line(HOVER_RECIP_PP10, f"{_fmt_pct(pp10)}{dagger}"))
         n_stars = _num(r.get("n_stars_field"))
         if np.isfinite(n_stars):
-            parts.append(C.hover_line(HOVER_RECIP_STARS, _fmt_vol(n_stars)))
+            parts.append(C.hover_line(HOVER_RECIP_STARS_SUBFIELD if subfield_grain else HOVER_RECIP_STARS,
+                                      _fmt_vol(n_stars)))
         if has_rank:
             rank_lines = []
             if pd.notna(r.get("rank_in_a")):
@@ -1079,12 +1108,13 @@ def reciprocity_scatter(frame: pd.DataFrame, names: Sequence, colors: Sequence) 
     axis_max = (axis_max or 1.0) * RECIP_AXIS_PAD_MULT
     fig.add_shape(type="line", x0=0, y0=0, x1=axis_max, y1=axis_max,
                  line=dict(color=P.INK_SECONDARY, width=C.HAIRLINE_PX, dash=RECIP_DIAGONAL_DASH))
+    ax_share_tmpl = AX_RECIPROCITY_SHARE_SUBFIELD if subfield_grain else AX_RECIPROCITY_SHARE
     fig.update_xaxes(range=[0, axis_max], tickformat=C._AXIS_PCT_FMT,
-                     title_text=AX_RECIPROCITY_SHARE.format(name=name_b),
+                     title_text=ax_share_tmpl.format(name=name_b),
                      gridcolor=P.GRID, zerolinecolor=P.GRID, linecolor=P.BORDER,
                      constrain="domain")
     fig.update_yaxes(range=[0, axis_max], tickformat=C._AXIS_PCT_FMT,
-                     title_text=AX_RECIPROCITY_SHARE.format(name=name_a),
+                     title_text=ax_share_tmpl.format(name=name_a),
                      gridcolor=P.GRID, zerolinecolor=P.GRID, linecolor=P.BORDER,
                      # `constrain="domain"`, not the "range" default -- a
                      # plotly quirk: with `scaleanchor` set, the "range"

@@ -74,6 +74,13 @@ def topics_dim_field_map():
     return df
 
 
+@pytest.fixture(scope="module")
+def topics_dim_subfield_map():
+    df = pd.read_parquet(DATA_DIR / "topics_dim.parquet", columns=["topic_id", "bestfit_subfield_id"])
+    df["topic_id"] = df["topic_id"].astype(str)
+    return df
+
+
 # ============================================================== invariants =
 
 def test_n_stars_equals_sum_of_inst_stars(index_df, inst_stars):
@@ -327,3 +334,58 @@ def test_pair_stars_by_field_hand_recount(ctx, star_works, topics_dim_field_map)
 
     # symmetry
     assert LD.pair_stars_by_field(ctx, CNRS, STRASBOURG) == by_field
+
+
+NIOZ = "I4210107283"
+
+
+def _hand_recount_pair_stars_by_subfield(star_works, topics_dim_subfield_map, a, b):
+    def _has_token(inst_ids: str, iid: str) -> bool:
+        return f"|{inst_ids}|".find(f"|{iid}|") >= 0
+
+    mask = star_works["inst_ids"].apply(lambda s: _has_token(s, a) and _has_token(s, b))
+    joint = star_works.loc[mask, ["work_id", "topic_id"]].merge(
+        topics_dim_subfield_map, on="topic_id", how="left")
+    return joint
+
+
+def test_pair_stars_by_subfield_hand_recount_strasbourg_cnrs(ctx, star_works, topics_dim_subfield_map):
+    """A hand recount of pair_stars_by_subfield for the Strasbourg x CNRS
+    pair, straight from star_works.parquet + topics_dim.parquet's own
+    bestfit_subfield_id (the same join `pair_stars_by_field` runs one grain
+    coarser), for the subfield with the largest joint count (non-vacuous),
+    plus a whole-pair cross-check against `pair_stars`."""
+    joint = _hand_recount_pair_stars_by_subfield(star_works, topics_dim_subfield_map, STRASBOURG, CNRS)
+    assert len(joint) > 0, "Strasbourg x CNRS must hold >=1 joint star paper for this test to be non-vacuous"
+
+    by_subfield = LD.pair_stars_by_subfield(ctx, STRASBOURG, CNRS)
+    assert sum(by_subfield.values()) == joint["work_id"].nunique()
+    assert sum(by_subfield.values()) == LD.pair_stars(ctx, STRASBOURG, CNRS)
+
+    top_subfield = int(joint["bestfit_subfield_id"].value_counts().idxmax())
+    hand_count = int((joint["bestfit_subfield_id"] == top_subfield).sum())
+    assert by_subfield[top_subfield] == hand_count, (top_subfield, by_subfield[top_subfield], hand_count)
+
+    # symmetry
+    assert LD.pair_stars_by_subfield(ctx, CNRS, STRASBOURG) == by_subfield
+
+
+def test_pair_stars_by_subfield_hand_recount_ifremer_nioz(ctx, star_works, topics_dim_subfield_map):
+    """Second anchor pair (acceptance: 'recount from star_works on 2
+    pairs') -- Ifremer x NIOZ, the same anchor pair test_collab_data.py's
+    own reciprocity-star cross-check already uses."""
+    joint = _hand_recount_pair_stars_by_subfield(star_works, topics_dim_subfield_map, IFREMER, NIOZ)
+    assert len(joint) > 0, "Ifremer x NIOZ must hold >=1 joint star paper for this test to be non-vacuous"
+
+    by_subfield = LD.pair_stars_by_subfield(ctx, IFREMER, NIOZ)
+    assert sum(by_subfield.values()) == joint["work_id"].nunique()
+    assert sum(by_subfield.values()) == LD.pair_stars(ctx, IFREMER, NIOZ)
+    assert LD.pair_stars_by_subfield(ctx, NIOZ, IFREMER) == by_subfield
+
+
+def test_pair_stars_by_subfield_empty_for_a_pair_with_no_joint_stars(ctx):
+    """Two small, unrelated institutions (same precondition used elsewhere
+    in this suite for a never-co-published pair) -- an empty dict, never a
+    raise or a fabricated zero-row for every possible subfield."""
+    got = LD.pair_stars_by_subfield(ctx, "I1305429183", "I1308570094")
+    assert got == {}

@@ -301,6 +301,144 @@ def test_reciprocity_frame_empty_below_floor(ctx, subs_bestfit):
     assert len(df) == 0
 
 
+def test_reciprocity_frame_rejects_an_unknown_grain(ctx, subs_bestfit):
+    with pytest.raises(ValueError):
+        CL.reciprocity_frame(ctx, subs_bestfit, STRASBOURG, CNRS, grain="topics")
+
+
+FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
+
+
+def test_reciprocity_frame_fields_grain_matches_the_golden_fixture(ctx, subs_bestfit):
+    """`grain="fields"` (the default) must return EXACTLY today's frame --
+    pinned against `tests/fixtures/reciprocity_frame_fields_strasbourg_cnrs.
+    json`, saved from this exact function's output before the subfield grain
+    existed. Float columns compare with a tight tolerance (JSON round-trips
+    a float32-origin value through float64 text, not bit-for-bit) -- every
+    non-float column compares exact."""
+    golden = pd.read_json(FIXTURES_DIR / "reciprocity_frame_fields_strasbourg_cnrs.json")
+    got = CL.reciprocity_frame(ctx, subs_bestfit, STRASBOURG, CNRS)
+    assert list(got.columns) == CL.RECIPROCITY_COLS
+    pd.testing.assert_frame_equal(
+        got.reset_index(drop=True), golden.reset_index(drop=True),
+        check_dtype=False, check_categorical=False, check_exact=False, rtol=1e-6)
+    # explicit grain="fields" must be identical to the default
+    got_explicit = CL.reciprocity_frame(ctx, subs_bestfit, STRASBOURG, CNRS, grain="fields")
+    pd.testing.assert_frame_equal(got, got_explicit)
+
+
+# ============================================================================
+# subfield_breakdown / reciprocity_frame(grain="subfields"). A 3-decimal
+# rounding pass on `collab_pair_subfields.parquet`'s own FWCI columns is
+# pending (a file-size fix, not a schema change) -- no test below pins a raw
+# fwci_mean/fwci_median value; every FWCI check re-reads the live parquet at
+# test-run time instead, so it stays correct whichever build of the file is
+# on disk.
+# ============================================================================
+
+def _load_raw_pair_subfields():
+    return pd.read_parquet(Path(__file__).resolve().parents[1] / "data" / "collab_pair_subfields.parquet")
+
+
+def test_subfield_breakdown_columns_cap_and_invariants(ctx):
+    """Strasbourg x CNRS is the largest qualifying pair in the dataset
+    (12,694 core co-publications) -- almost certainly over the shipped
+    table's own 30-subfield-per-pair cap, so this is a non-vacuous check of
+    `SUBFIELD_BREAKDOWN_CAP` itself, not just the column contract."""
+    df = CL.subfield_breakdown(ctx, STRASBOURG, CNRS)
+    assert list(df.columns) == CL.SUBFIELD_BREAKDOWN_COLS
+    assert 0 < len(df) <= CL.SUBFIELD_BREAKDOWN_CAP
+    assert df["vol"].is_monotonic_decreasing
+    assert (df["n_top10"] <= df["n_covered"]).all()
+    assert (df["n_covered"] <= df["vol"]).all()
+    assert df["subfield_name"].notna().all()
+    assert df["field_name"].notna().all()
+    assert df.attrs["note"] == CL.SUBFIELD_BREAKDOWN_NOTE
+    assert df.attrs["floor"] == CL.PAIR_TOPICS_FLOOR
+
+
+def test_subfield_breakdown_matches_a_live_reread_of_the_shipped_table(ctx):
+    """Independent re-read of `collab_pair_subfields.parquet` (never a
+    cached fixture -- the FWCI restage note above), joined by hand to the
+    same subfield/field name map `subfield_breakdown` itself uses, for the
+    pair's single largest-joint-volume subfield (non-vacuous)."""
+    raw = _load_raw_pair_subfields()
+    lo, hi = sorted([STRASBOURG, CNRS])
+    raw_pair = raw[(raw["a"] == lo) & (raw["b"] == hi)]
+    assert len(raw_pair) > 0
+    top_row = raw_pair.sort_values("vol", ascending=False).iloc[0]
+    top_subfield = int(top_row["subfield_id"])
+
+    df = CL.subfield_breakdown(ctx, STRASBOURG, CNRS)
+    row = df[df["subfield_id"] == top_subfield].iloc[0]
+    assert int(row["vol"]) == int(top_row["vol"])
+    assert int(row["n_covered"]) == int(top_row["n_covered"])
+    assert int(row["n_top10"]) == int(top_row["n_top10"])
+    # exact -- same live file, no transformation of the FWCI columns at all
+    assert float(row["fwci_mean"]) == float(top_row["fwci_mean"]) or (
+        np.isnan(row["fwci_mean"]) and np.isnan(top_row["fwci_mean"]))
+
+
+def test_subfield_breakdown_empty_below_floor(ctx):
+    df = CL.subfield_breakdown(ctx, "I1305429183", "I1308570094")
+    assert list(df.columns) == CL.SUBFIELD_BREAKDOWN_COLS
+    assert len(df) == 0
+
+
+def test_reciprocity_frame_subfields_grain_columns_and_shares(ctx, subs_bestfit):
+    df = CL.reciprocity_frame(ctx, subs_bestfit, STRASBOURG, CNRS, grain="subfields")
+    assert list(df.columns) == CL.RECIPROCITY_SUBFIELD_COLS
+    assert 0 < len(df) <= CL.SUBFIELD_BREAKDOWN_CAP
+    assert (df["n_fwci"] >= df["n_covered"]).all()
+    # each institution's own subfield shares, restricted to this pair's
+    # capped subset, can never exceed that institution's TOTAL share (1.0)
+    assert df["x"].sum() <= 1.0 + 1e-6
+    assert df["y"].sum() <= 1.0 + 1e-6
+    assert (df["x"] >= 0.0).all() and (df["y"] >= 0.0).all()
+    # a pair-level fact -- the SAME rank on every subfield row, same as fields grain
+    assert df["rank_in_a"].nunique() == 1
+    assert df["rank_in_b"].nunique() == 1
+    pulse = CL.pulse(ctx, STRASBOURG, CNRS)
+    assert int(df["rank_in_a"].iloc[0]) == pulse["rank_in_a"]
+    assert int(df["rank_in_b"].iloc[0]) == pulse["rank_in_b"]
+    # field_id/field_name at this grain name the subfield's PARENT field --
+    # never the subfield's own identity a second time
+    assert not (df["field_id"] == df["subfield_id"]).all()
+
+
+def test_reciprocity_frame_subfields_grain_field_name_is_the_parent(ctx, subs_bestfit):
+    """One concrete row: the subfield's own `field_name` must equal what
+    `profile_data._subfield_field_domain_map` names as that subfield's
+    parent -- never the subfield's own name repeated."""
+    from lib import profile_data as P
+
+    df = CL.reciprocity_frame(ctx, subs_bestfit, STRASBOURG, CNRS, grain="subfields")
+    dim = P._subfield_field_domain_map(ctx)
+    row = df.iloc[0]
+    parent = dim[dim["subfield_id"] == row["subfield_id"]].iloc[0]
+    assert row["field_id"] == parent["field_id"]
+    assert row["field_name"] == parent["field_name"]
+    assert row["subfield_name"] == parent["subfield_name"]
+    assert row["subfield_name"] != row["field_name"]
+
+
+def test_reciprocity_frame_subfields_sum_of_stars_within_tolerance_of_pair_stars(ctx, subs_bestfit):
+    """Same style cross-check as the field-grain version above -- joint
+    stars summed over the capped subfield subset never exceed the pair's
+    whole-pair total by more than a small cross-table vintage drift."""
+    from lib import leaders_data as LD
+
+    df = CL.reciprocity_frame(ctx, subs_bestfit, STRASBOURG, CNRS, grain="subfields")
+    total_pair_stars = LD.pair_stars(ctx, STRASBOURG, CNRS)
+    assert int(df["n_stars_field"].sum()) <= total_pair_stars
+
+
+def test_reciprocity_frame_subfields_empty_below_floor(ctx, subs_bestfit):
+    df = CL.reciprocity_frame(ctx, subs_bestfit, "I1305429183", "I1308570094", grain="subfields")
+    assert list(df.columns) == CL.RECIPROCITY_SUBFIELD_COLS
+    assert len(df) == 0
+
+
 # ============================================================================
 # momentum_evidence -- the always-visible evidence line's value-driven
 # classification, independent of `mom_class`. `FACTS` mirrors

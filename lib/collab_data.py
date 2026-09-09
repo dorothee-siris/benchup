@@ -352,6 +352,53 @@ def field_breakdown(ctx: dict, a: str, b: str) -> pd.DataFrame:
     return out
 
 
+SUBFIELD_BREAKDOWN_COLS = ["subfield_id", "subfield_name", "field_id", "field_name", "domain_id", "domain_name",
+                          "vol_w1", "vol_w2", "vol", "n_covered", "n_top10", "fwci_median", "fwci_mean", "n_fwci"]
+SUBFIELD_BREAKDOWN_CAP = 30   # collab_pair_subfields.parquet's own build-time cap, per pair
+SUBFIELD_BREAKDOWN_NOTE = (
+    "Subfield mix is capped to each pair's top 30 subfields by joint publication volume "
+    "(the shipped table's own cap) -- a pair with more than 30 distinct subfields therefore "
+    "shows only its largest ones here; the field-level breakdown above stays uncapped."
+)
+
+
+def _load_collab_pair_subfields(ctx: dict, a: str, b: str) -> pd.DataFrame:
+    """Reads `collab_pair_subfields.parquet`'s rows for this ONE pair only,
+    duckdb-pushed and ctx-cached (a NEW slice namespace, same bounded-LRU
+    idiom as every other table `_collab_pair_slice` serves) -- never the
+    ~8M-row whole table. Pair x BESTFIT subfield, CAPPED at the pair's own
+    top 30 by joint volume (unlike `collab_pair_fields`, which is uncapped),
+    same a<b/floor-5 qualifying-pair convention. The ONE source
+    `subfield_breakdown` reads."""
+    return _collab_pair_slice(ctx, "collab_pair_subfields", a, b)
+
+
+def subfield_breakdown(ctx: dict, a: str, b: str) -> pd.DataFrame:
+    """The subfield breakdown of the joint corpus -- one row per BESTFIT
+    subfield the pair has any joint CORE-AR mass in, from `collab_pair_
+    subfields.parquet` (CAPPED at the pair's own top 30 subfields by joint
+    volume -- `.attrs['note']` carries that caveat for the caller's caption,
+    `.attrs['floor']` the same qualifying-pair floor `field_breakdown` uses).
+    Joined to `subfield_name`/parent `field_id`/`field_name`/`domain_id`/
+    `domain_name` via `profile_data._subfield_field_domain_map` (the SAME
+    subfield dimension `subfields.parquet`/`topics_dim.parquet` back, already
+    loaded on `ctx`). Sorted by `vol` (CORE-AR) descending; empty (with the
+    right columns) when the pair never co-published or falls below
+    `PAIR_TOPICS_FLOOR`. Never more than `SUBFIELD_BREAKDOWN_CAP` (30) rows --
+    the shipped table's own per-pair cap, asserted here defensively."""
+    rows = _load_collab_pair_subfields(ctx, a, b)  # already pushed down to this ONE pair
+    name_map = P._subfield_field_domain_map(ctx)[
+        ["subfield_id", "subfield_name", "field_id", "field_name", "domain_id", "domain_name"]]
+    out = rows.merge(name_map, on="subfield_id", how="left")
+    out = out.sort_values("vol", ascending=False).reset_index(drop=True).reindex(columns=SUBFIELD_BREAKDOWN_COLS)
+    assert len(out) <= SUBFIELD_BREAKDOWN_CAP, (
+        f"subfield_breakdown({a}, {b}): {len(out)} rows > the {SUBFIELD_BREAKDOWN_CAP}-subfield "
+        f"cap collab_pair_subfields.parquet is built to -- a build regression, not a display choice")
+    out.attrs["note"] = SUBFIELD_BREAKDOWN_NOTE
+    out.attrs["floor"] = PAIR_TOPICS_FLOOR
+    return out
+
+
 # ============================================================================
 #  CD4 items 5/6 ( SS2.3 momentum, SS1.6 reciprocity)
 # ============================================================================
@@ -575,21 +622,71 @@ RECIPROCITY_COLS = ["field_id", "field_name", "domain_id", "domain_name", "x", "
                     "fwci_mean", "fwci_median", "n_fwci", "n_top10", "n_covered",
                     "n_stars_field", "rank_in_a", "rank_in_b"]
 
+# The subfield-grain sibling of RECIPROCITY_COLS (the reciprocity scatter's
+# top-30-subfields toggle): `subfield_id`/`subfield_name` PREPENDED,
+# everything else the SAME column set -- at this grain `field_id`/`field_name`
+# hold the subfield's PARENT field (never the subfield's own id/name a second
+# time), so a caller that only reads the tail RECIPROCITY_COLS-shaped columns
+# (x, y, joint_vol, the FWCI/star/rank block) sees an identical contract at
+# either grain.
+RECIPROCITY_SUBFIELD_COLS = ["subfield_id", "subfield_name"] + RECIPROCITY_COLS
 
-def reciprocity_frame(ctx: dict, subs: dict, a: str, b: str) -> pd.DataFrame:
-    """"Strategic reciprocity by field" (SS1.6, ported from an earlier SIRIS
+RECIPROCITY_GRAINS = ("fields", "subfields")
+
+
+def reciprocity_frame(ctx: dict, subs: dict, a: str, b: str, grain: str = "fields") -> pd.DataFrame:
+    """"Strategic reciprocity" (SS1.6, ported from an earlier SIRIS
     Streamlit tool, HONEST both-sides variant -- that tool's own
     x-axis builder divides pair co-works by the PARTNER's total, which is in
     tension with its own copy; BenchUp implements the version that matches
-    what the chart actually claims to show): per field with joint CORE-AR
-    volume > 0, `x` = that field's share of B's OWN corpus, `y` = that
-    field's share of A's OWN corpus (both `fields.parquet`, current tree/
-    basis-aware via `subs` -- `compare_data.fields_long`, never recomputed
-    here), `joint_vol` = the pair's CORE-AR joint volume in that field
-    (`field_breakdown`'s own `vol`, the authoritative uncapped source, never
-    the topic-rollup lower bound). `x`/`y`/`joint_vol` are UNCHANGED by the
-    the scatter-return (byte-identical formula, still the bubble's position
-    and area) -- everything below is a NEW per-field addition:
+    what the chart actually claims to show), at either of two grains:
+
+      grain="fields" (default) -- ONE ROW PER FIELD, `RECIPROCITY_COLS`,
+                       BYTE-IDENTICAL to every version of this function
+                       before the subfield grain existed (`_reciprocity_
+                       frame_fields`'s own docstring carries the full
+                       per-column contract; `tests/test_collab_data.py`'s
+                       Strasbourg x CNRS fixture pins it).
+      grain="subfields" -- ONE ROW PER SUBFIELD (the shipped `collab_pair_
+                       subfields.parquet`'s own top-30-by-joint-volume cap),
+                       `RECIPROCITY_SUBFIELD_COLS` -- see `_reciprocity_
+                       frame_subfields`'s own docstring.
+
+    Raises `ValueError` for any other `grain`."""
+    if grain not in RECIPROCITY_GRAINS:
+        raise ValueError(f"grain must be one of {RECIPROCITY_GRAINS}, got {grain!r}")
+    if grain == "fields":
+        return _reciprocity_frame_fields(ctx, subs, a, b)
+    return _reciprocity_frame_subfields(ctx, subs, a, b)
+
+
+def _pair_ranks(ctx: dict, a: str, b: str) -> tuple[float, float]:
+    """The pair's own `collab_pairs.rank_in_a`/`rank_in_b`, re-oriented to
+    the CALLER's (a, b) exactly like `pulse`'s own reorientation -- shared by
+    both reciprocity grains below (a pair-level fact, repeated on every
+    field/subfield row, NOT a per-taxon one). `(nan, nan)` when the pair has
+    no `collab_pairs` row at all (never co-published)."""
+    lo, hi = (a, b) if a < b else (b, a)
+    pair_row = _load_collab_pairs(ctx, a, b)
+    if not len(pair_row):
+        return np.nan, np.nan
+    swapped = a != lo  # caller's `a` is the table's `b` -- reorient like `pulse`
+    r = pair_row.iloc[0]
+    rank_in_a = float(r["rank_in_b"]) if swapped else float(r["rank_in_a"])
+    rank_in_b = float(r["rank_in_a"]) if swapped else float(r["rank_in_b"])
+    return rank_in_a, rank_in_b
+
+
+def _reciprocity_frame_fields(ctx: dict, subs: dict, a: str, b: str) -> pd.DataFrame:
+    """Per field with joint CORE-AR volume > 0, `x` = that field's share of
+    B's OWN corpus, `y` = that field's share of A's OWN corpus (both
+    `fields.parquet`, current tree/basis-aware via `subs` --
+    `compare_data.fields_long`, never recomputed here), `joint_vol` = the
+    pair's CORE-AR joint volume in that field (`field_breakdown`'s own `vol`,
+    the authoritative uncapped source, never the topic-rollup lower bound).
+    `x`/`y`/`joint_vol` are UNCHANGED by the the scatter-return (byte-
+    identical formula, still the bubble's position and area) -- everything
+    below is a NEW per-field addition:
 
       fwci_mean, fwci_median, n_fwci -- `collab_pair_fields.parquet`'s own
                        per-field FWCI of the pair's JOINT works (n_fwci is
@@ -602,12 +699,7 @@ def reciprocity_frame(ctx: dict, subs: dict, a: str, b: str) -> pd.DataFrame:
                        the field is `n_top10 / n_covered`, computed by the
                        caller at render time, never stored here as a ratio.
       n_stars_field -- `leaders_data.pair_stars_by_field`, 0 when absent.
-      rank_in_a, rank_in_b -- the PAIR's own partner rank (`collab_pairs.
-                       rank_in_a`/`rank_in_b`, re-oriented to the caller's
-                       (a, b) exactly like `pulse`'s own reorientation),
-                       repeated on every field row -- a pair-level fact, not
-                       a per-field one; NaN when the pair has no
-                       `collab_pairs` row (never co-published).
+      rank_in_a, rank_in_b -- `_pair_ranks`, repeated on every field row.
 
     One row per qualifying field; SYMMETRIC by construction -- swapping
     (a, b) swaps (x, y) and leaves `joint_vol`/the field-level additions
@@ -628,15 +720,46 @@ def reciprocity_frame(ctx: dict, subs: dict, a: str, b: str) -> pd.DataFrame:
     stars_by_field = LD.pair_stars_by_field(ctx, a, b)
     out["n_stars_field"] = out["field_id"].map(stars_by_field).fillna(0).astype(int)
 
-    lo, hi = (a, b) if a < b else (b, a)
-    pair_row = _load_collab_pairs(ctx, a, b)
-    if len(pair_row):
-        swapped = a != lo  # caller's `a` is the table's `b` -- reorient like `pulse`
-        r = pair_row.iloc[0]
-        out["rank_in_a"] = float(r["rank_in_b"]) if swapped else float(r["rank_in_a"])
-        out["rank_in_b"] = float(r["rank_in_a"]) if swapped else float(r["rank_in_b"])
-    else:
-        out["rank_in_a"] = np.nan
-        out["rank_in_b"] = np.nan
+    out["rank_in_a"], out["rank_in_b"] = _pair_ranks(ctx, a, b)
 
     return out.reindex(columns=RECIPROCITY_COLS).sort_values("joint_vol", ascending=False).reset_index(drop=True)
+
+
+def _reciprocity_frame_subfields(ctx: dict, subs: dict, a: str, b: str) -> pd.DataFrame:
+    """Per BESTFIT subfield (`subfield_breakdown`'s own top-30-by-joint-
+    volume cap), `x`/`y` = that subfield's share of B's/A's OWN corpus
+    (`subfields.parquet`, bestfit tree, full counting -- `compare_data.
+    subfields_long`, the SAME source Compare's 'Top subfields' panel reads;
+    0.0 when the institution has no mass there at all, never a missing
+    row), `joint_vol` = `subfield_breakdown`'s own `vol`. `fwci_mean`/
+    `fwci_median`/`n_fwci`/`n_top10`/`n_covered` are `subfield_breakdown`'s
+    own columns, carried through unchanged. `n_stars_field` keeps its
+    FIELD-grain name for the chart's shared contract, but at this grain it
+    is filled from `leaders_data.pair_stars_by_subfield`. `rank_in_a`/
+    `rank_in_b` -- `_pair_ranks`, the SAME pair-level fact `_reciprocity_
+    frame_fields` repeats, unaffected by grain. `field_id`/`field_name` name
+    the subfield's PARENT field (`subfield_breakdown`'s own join), never the
+    subfield's own identity a second time -- that lives in the two new
+    leading columns, `subfield_id`/`subfield_name`.
+
+    One row per qualifying subfield (<=30, the shipped table's own cap);
+    SYMMETRIC by construction, same reasoning as the field grain."""
+    fb = subfield_breakdown(ctx, a, b)
+    fb = fb[fb["vol"] > 0]
+    if fb.empty:
+        return pd.DataFrame(columns=RECIPROCITY_SUBFIELD_COLS)
+    fl = CD.subfields_long(ctx, subs, [a, b])
+    a_share = fl[fl["institution_id"] == a].set_index("subfield_id")["share"]
+    b_share = fl[fl["institution_id"] == b].set_index("subfield_id")["share"]
+    out = fb[["subfield_id", "subfield_name", "field_id", "field_name", "domain_id", "domain_name", "vol",
+             "fwci_mean", "fwci_median", "n_fwci", "n_top10", "n_covered"]].rename(columns={"vol": "joint_vol"})
+    out["x"] = out["subfield_id"].map(b_share).fillna(0.0)  # subfield's share of B's OWN corpus
+    out["y"] = out["subfield_id"].map(a_share).fillna(0.0)  # subfield's share of A's OWN corpus
+
+    stars_by_subfield = LD.pair_stars_by_subfield(ctx, a, b)
+    out["n_stars_field"] = out["subfield_id"].map(stars_by_subfield).fillna(0).astype(int)
+
+    out["rank_in_a"], out["rank_in_b"] = _pair_ranks(ctx, a, b)
+
+    return (out.reindex(columns=RECIPROCITY_SUBFIELD_COLS)
+              .sort_values("joint_vol", ascending=False).reset_index(drop=True))
