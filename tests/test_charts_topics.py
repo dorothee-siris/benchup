@@ -236,7 +236,10 @@ def test_fig_plane_impact_caps_at_a_hundred_marks_without_error():
 def test_fig_plane_frontier_domain_hover_matches_spec_order(spec):
     df = _impact_frame()
     fig = X.fig_plane_frontier(df, color_by="domain")
-    labels = _spec_labels(spec, "find_plane_frontier")
+    # unconditional_only: this fixture's rows draw neither the top-quartile
+    # flag nor the top-20 leader clause (both `when`-gated) -- the
+    # unconditional labels are the ones every row of THIS fixture carries.
+    labels = _spec_labels(spec, "find_plane_frontier", unconditional_only=True)
     for h in fig.data[0].customdata:
         assert_labels_in_order(h, labels)
 

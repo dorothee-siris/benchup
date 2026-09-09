@@ -121,6 +121,11 @@ HOVER_EXPANSION = C.HOVER_EXPANSION
 HOVER_ACCELERATION = C.HOVER_ACCELERATION
 HOVER_PUBLICATIONS_CORE_PAIR = f"publications {C.CORE_WINDOW_START}-{C.CORE_WINDOW_END}, full counting"
 HOVER_JOINT_PUBLICATIONS = "joint publications"
+# (`docs/tooltip_spec.yaml`'s `label_style: bold_colon`): labels for the
+# three lines that used to draw as a bare, unlabelled clause.
+HOVER_TOPIC_LEADER = "topic leader"          # world_rank_and_leader
+HOVER_FRONTIER_STANDING = "frontier standing"  # frontier_flag
+HOVER_HELD_BY = "held by"                    # owner_clause
 
 
 # ---------------------------------------------------------------------------
@@ -131,24 +136,42 @@ HOVER_JOINT_PUBLICATIONS = "joint publications"
 # ---------------------------------------------------------------------------
 
 def _fmt_topic_name_flagged(name, is_excluded, exclusion_reason_label) -> str:
-    """`topic_name_flagged`: the name, plus ' - catch-all topic: {label}'
-    when the topic is on the catch-all list."""
+    """`topic_name_flagged`: the PLAIN name, plus ' - catch-all topic:
+    {label}' when the topic is on the catch-all list. Plain text on
+    purpose: `views_compare.py`'s own topic TABLE ("Topic" column) calls
+    this directly and renders it through a data-grid cell, never a hover --
+    `<b>` markup there would leak as literal text, not bold. A hover
+    caller wraps the SAME clause in bold via `_hover_topic_line1`, below,
+    which keeps the flag text outside the bold span."""
     if is_excluded:
         label = P.NA_MARK if _is_na(exclusion_reason_label) else str(exclusion_reason_label)
         return f"{name} - catch-all topic: {label}"
     return str(name)
 
 
+def _hover_topic_line1(name, is_excluded, exclusion_reason_label) -> str:
+    """Line 1 of every topic HOVER (never the table): the bold entity,
+    no label, the catch-all flag clause (if any) OUTSIDE the bold span --
+    the same clause `_fmt_topic_name_flagged` computes, wrapped for a
+    hover instead of a table cell."""
+    if is_excluded:
+        label = P.NA_MARK if _is_na(exclusion_reason_label) else str(exclusion_reason_label)
+        return C.hover_entity(name, suffix=f" - catch-all topic: {label}")
+    return C.hover_entity(name)
+
+
 def _fmt_keywords_2x5(keywords) -> str:
-    """`keywords_2x5`: the topic's 10 pipe-delimited keywords, comma-
-    separated, as TWO lines of five (one `<br>` inside this single hover
+    """`keywords_2x5`: `<b>keywords</b>: ` on the topic's first five
+    pipe-delimited keywords, comma-separated, then a SECOND line of the
+    next five with no repeated label (one `<br>` inside this single hover
     "line" -- it counts as 2 against the 8-line cap, never as 1)."""
     if _is_na(keywords):
-        return P.NA_MARK
+        return C.hover_line("keywords", P.NA_MARK)
     parts = [k.strip() for k in str(keywords).split("|") if k.strip()]
     line1 = ", ".join(parts[:5])
     line2 = ", ".join(parts[5:10])
-    return f"{line1}<br>{line2}" if line2 else line1
+    value = f"{line1}<br>{line2}" if line2 else line1
+    return C.hover_line("keywords", value)
 
 
 def _fmt_rank_and_leader(rank, leader_name) -> str | None:
@@ -250,21 +273,21 @@ def fig_plane_impact(
     for i in range(n):
         row = d.iloc[i]
         parts = [
-            _fmt_topic_name_flagged(row["topic_name"], excluded[i], row.get("exclusion_reason_label")),
+            _hover_topic_line1(row["topic_name"], excluded[i], row.get("exclusion_reason_label")),
             _fmt_keywords_2x5(row.get("keywords")),
-            f"{HOVER_N_AR_CORE}{C.THIN_SPACE}{C._fmt_vol(row['n_ar'])}",
-            f"{HOVER_FWCI_EU}{C.THIN_SPACE}"
-            f"{C._fmt_fwci_pair(row.get('fwci_mean'), row.get('fwci_median'), row.get('n_covered'))}",
+            C.hover_line(HOVER_N_AR_CORE, C._fmt_vol(row["n_ar"])),
+            C.hover_line(HOVER_FWCI_EU,
+                        C._fmt_fwci_pair(row.get("fwci_mean"), row.get("fwci_median"), row.get("n_covered"))),
         ]
         n_stars_v = row.get("n_stars")
         if not _is_na(n_stars_v) and float(n_stars_v) >= 1:
-            parts.append(f"{HOVER_STAR_PAPERS}{C.THIN_SPACE}{C._fmt_vol(n_stars_v)}")
-        parts.append(f"{HOVER_VOL_PAIR_RUN_ALL_TYPES}{C.THIN_SPACE}"
-                     f"{C._fmt_vol_pair(row.get('vol_full_run'), row.get('vol_frac_run'))}")
+            parts.append(C.hover_line(HOVER_STAR_PAPERS, C._fmt_vol(n_stars_v)))
+        parts.append(C.hover_line(HOVER_VOL_PAIR_RUN_ALL_TYPES,
+                                  C._fmt_vol_pair(row.get("vol_full_run"), row.get("vol_frac_run"))))
         rank_leader = _fmt_rank_and_leader(row.get("world_rank"), row.get("leader_name"))
         if rank_leader is not None:
-            parts.append(rank_leader)
-        hover.append("<br>".join(parts))
+            parts.append(C.hover_line(HOVER_TOPIC_LEADER, rank_leader))
+        hover.append("<br>".join(p for p in parts if p is not None))
 
     star_max = float(stars.max()) if n and np.isfinite(stars).any() else 0.0
     size_ref = 2.0 * max(star_max, 1.0) / (C.BUBBLE_MAX_PX ** 2)
@@ -370,31 +393,30 @@ def fig_plane_frontier(
     for i in range(n):
         row = d.iloc[i]
         parts = [
-            _fmt_topic_name_flagged(row["topic_name"], excluded[i], row.get("exclusion_reason_label")),
+            _hover_topic_line1(row["topic_name"], excluded[i], row.get("exclusion_reason_label")),
             _fmt_keywords_2x5(row.get("keywords")),
-            f"{HOVER_EXPANSION}{C.THIN_SPACE}{C._fmt_frontier(x[i])}",
-            f"{HOVER_ACCELERATION}{C.THIN_SPACE}{C._fmt_frontier(y[i])}",
+            C.hover_line(HOVER_EXPANSION, C._fmt_frontier(x[i])),
+            C.hover_line(HOVER_ACCELERATION, C._fmt_frontier(y[i])),
         ]
         if color_by == COLOR_BY_DOMAIN:
-            parts.append(f"{HOVER_N_AR_CORE}{C.THIN_SPACE}{C._fmt_vol(row['n_ar'])}")
+            parts.append(C.hover_line(HOVER_N_AR_CORE, C._fmt_vol(row["n_ar"])))
             if top[i]:
-                parts.append(FRONTIER_FLAG_TEXT)
+                parts.append(C.hover_line(HOVER_FRONTIER_STANDING, FRONTIER_FLAG_TEXT))
             rank_leader = None
             rank = row.get("world_rank")
             if not _is_na(rank) and int(rank) <= FIND_LED_RANK_FLOOR:
                 rank_leader = _fmt_rank_and_leader(rank, row.get("leader_name"))
             if rank_leader is not None:
-                parts.append(rank_leader)
+                parts.append(C.hover_line(HOVER_TOPIC_LEADER, rank_leader))
         else:
             name_a, name_b = str(names.get(ids[0], ids[0])), str(names.get(ids[1], ids[1]))
             pair_vol = _fmt_pair_volumes(
                 name_a, row.get("vol_a"), name_b, row.get("vol_b"),
                 under_floor_a=bool(row.get("under_floor_a", False)), under_floor_b=bool(row.get("under_floor_b", False)))
-            parts.append(f"{HOVER_PUBLICATIONS_CORE_PAIR}{C.THIN_SPACE}{pair_vol}")
-            parts.append(f"{HOVER_JOINT_PUBLICATIONS}{C.THIN_SPACE}"
-                         f"{_fmt_joint_or_floor(row.get('vol_joint'))}")
-            parts.append(_fmt_owner_clause(row.get("owner"), name_a, name_b))
-        hover.append("<br>".join(parts))
+            parts.append(C.hover_line(HOVER_PUBLICATIONS_CORE_PAIR, pair_vol))
+            parts.append(C.hover_line(HOVER_JOINT_PUBLICATIONS, _fmt_joint_or_floor(row.get("vol_joint"))))
+            parts.append(C.hover_line(HOVER_HELD_BY, _fmt_owner_clause(row.get("owner"), name_a, name_b)))
+        hover.append("<br>".join(p for p in parts if p is not None))
 
     fig = go.Figure(go.Scatter(
         x=x, y=y, mode="markers",
@@ -495,15 +517,15 @@ def balance_bars(
             name_a, row["vol_a"], name_b, row["vol_b"],
             under_floor_a=bool(row.get("under_floor_a", False)), under_floor_b=bool(row.get("under_floor_b", False)))
         parts = [
-            _fmt_topic_name_flagged(row["topic_name"], excluded[i], row.get("exclusion_reason_label")),
+            _hover_topic_line1(row["topic_name"], excluded[i], row.get("exclusion_reason_label")),
             _fmt_keywords_2x5(row.get("keywords")),
-            f"{HOVER_PUBLICATIONS_CORE_PAIR}{C.THIN_SPACE}{pair_vol}",
-            f"{HOVER_JOINT_PUBLICATIONS}{C.THIN_SPACE}{_fmt_joint_or_floor(row.get('vol_joint'))}",
-            f"{HOVER_EXPANSION}{C.THIN_SPACE}{C._fmt_frontier(row.get('expansion'))}",
-            f"{HOVER_ACCELERATION}{C.THIN_SPACE}{C._fmt_frontier(row.get('acceleration'))}",
-            _fmt_owner_clause(row.get("owner"), name_a, name_b),
+            C.hover_line(HOVER_PUBLICATIONS_CORE_PAIR, pair_vol),
+            C.hover_line(HOVER_JOINT_PUBLICATIONS, _fmt_joint_or_floor(row.get("vol_joint"))),
+            C.hover_line(HOVER_EXPANSION, C._fmt_frontier(row.get("expansion"))),
+            C.hover_line(HOVER_ACCELERATION, C._fmt_frontier(row.get("acceleration"))),
+            C.hover_line(HOVER_HELD_BY, _fmt_owner_clause(row.get("owner"), name_a, name_b)),
         ]
-        hover.append("<br>".join(parts))
+        hover.append("<br>".join(p for p in parts if p is not None))
 
     fig = go.Figure()
     fig.add_trace(go.Bar(

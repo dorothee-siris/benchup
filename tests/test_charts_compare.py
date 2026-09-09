@@ -313,10 +313,12 @@ def test_two_tab_bars_grouped_by_field_hover_names_the_entity_first_then_its_fie
     hovers = [h for tr in real for h in tr.customdata]
     assert hovers
     lines = [h.split("<br>") for h in hovers]
-    assert all(ln[0].startswith("Row ") for ln in lines), "line 1 is the entity (the row's own label)"
-    assert all(ln[1].startswith(X.HOVER_FIELD_LABEL) for ln in lines), "line 2 names its field"
+    assert all(ln[0].startswith("<b>Row ") and ln[0].endswith("</b>") for ln in lines), \
+        "line 1 is the bold entity (the row's own label), no label"
+    assert all(ln[1].startswith(f"<b>{X.HOVER_FIELD_LABEL}</b>: ") for ln in lines), "line 2 names its field"
     assert any("Field 0" in ln[1] for ln in lines)
-    assert any(NAMES["Ia"] in ln[2] or NAMES["Iz"] in ln[2] for ln in lines), "line 3 is the institution"
+    assert any(ln[2].startswith(f"<b>{X.HOVER_INSTITUTION_LABEL}</b>: ")
+              and (NAMES["Ia"] in ln[2] or NAMES["Iz"] in ln[2]) for ln in lines), "line 3 is the labelled institution"
 
 
 def test_two_tab_bars_sdg_hover_has_no_field_line(slots):
@@ -325,8 +327,9 @@ def test_two_tab_bars_sdg_hover_has_no_field_line(slots):
     real = _real_bars(fig)
     hovers = [h for tr in real for h in tr.customdata]
     assert hovers
-    assert all(h.split("<br>")[0].startswith("Row ") for h in hovers), "line 1 is still the entity"
-    assert not any(X.HOVER_FIELD_LABEL in h for h in hovers)
+    assert all(h.split("<br>")[0].startswith("<b>Row ") and h.split("<br>")[0].endswith("</b>")
+              for h in hovers), "line 1 is still the bold entity"
+    assert not any(f"<b>{X.HOVER_FIELD_LABEL}</b>" in h for h in hovers)
 
 # ---------------------------------------------------------------------------
 # mirror_frontier -- shared-frontier mirror. DELETED: retired along
@@ -427,14 +430,14 @@ def test_reciprocity_scatter_axis_titles_name_each_institution():
 def test_reciprocity_scatter_hover_carries_shares_joint_volume_fwci_pp10_and_stars():
     fig = X.reciprocity_scatter(reciprocity_frame(with_ranks=True), RECIP_NAMES, RECIP_SLOTS)
     hovers = list(fig.data[0].customdata)
-    assert all(h.startswith("Field ") for h in hovers), "the field's own name is the first hover line"
+    assert all(h.startswith("<b>Field ") for h in hovers), "the field's own bold name is the first hover line"
     assert any("of Institution A's own publications" in h and "of Institution B's own publications" in h
               and X.HOVER_RECIP_JOINT in h for h in hovers)
     assert any(X.HOVER_FWCI_LABEL in h for h in hovers)
     assert any(X.HOVER_RECIP_PP10 in h for h in hovers)
     assert any(X.HOVER_RECIP_STARS in h for h in hovers)
-    assert any("is Institution A's partner #" in h for h in hovers)
-    assert any("is Institution B's partner #" in h for h in hovers)
+    assert any(f"<b>{X.HOVER_PARTNER_RANK_LABEL}</b>: " in h and "is Institution A's partner #" in h for h in hovers)
+    assert any(f"<b>{X.HOVER_PARTNER_RANK_LABEL}</b>: " in h and "is Institution B's partner #" in h for h in hovers)
 
 
 def test_reciprocity_scatter_fwci_line_floored_at_three_and_pp10_omitted_at_zero_covered():
@@ -443,9 +446,9 @@ def test_reciprocity_scatter_fwci_line_floored_at_three_and_pp10_omitted_at_zero
     PP10_WD line at all (never a fabricated bare 0.0%)."""
     fig = X.reciprocity_scatter(reciprocity_frame(), RECIP_NAMES, RECIP_SLOTS)
     hovers = list(fig.data[0].customdata)
-    field0 = next(h for h in hovers if h.startswith("Field 0<"))
+    field0 = next(h for h in hovers if h.startswith("<b>Field 0</b><"))
     assert X.HOVER_FWCI_LABEL not in field0
-    field1 = next(h for h in hovers if h.startswith("Field 1<"))
+    field1 = next(h for h in hovers if h.startswith("<b>Field 1</b><"))
     assert X.HOVER_RECIP_PP10 not in field1
 
 
@@ -474,7 +477,11 @@ def test_thematic_profile_hover_matches_the_spec_label_order(spec):
     fig = X.two_tab_bars(df, "profile", NAMES, slots, grouped_by_field=True,
                          y0=CFG["window"][0], whole_y1=CFG["bonus_year"])
     hover = _real_bars(fig)[0].customdata[0]
-    assert_labels_in_order(hover, _spec_labels(spec, "compare_thematic_profile"))
+    assert_labels_in_order(
+        hover, [l for l in _spec_labels(spec, "compare_thematic_profile") if l != "caution"])
+    # "caution" (low_volume) is mutually exclusive with this row-0 fixture,
+    # deliberately chosen to CLEAR every floor -- a low-volume row is, by
+    # definition, not one of those.
 
 
 def test_thematic_impact_hover_matches_the_spec_label_order(spec):
@@ -486,7 +493,8 @@ def test_thematic_impact_hover_matches_the_spec_label_order(spec):
     # row 0's fixture clears every floor (n_covered=80, n_covered_fwci=81) --
     # every conditional line draws for it.
     hover = next(h for tr in real for h in tr.customdata if "Row 0" in h)
-    assert_labels_in_order(hover, _spec_labels(spec, "compare_thematic_impact"))
+    assert_labels_in_order(
+        hover, [l for l in _spec_labels(spec, "compare_thematic_impact") if l != "caution"])
 
 
 def test_sdg_hover_matches_the_spec_label_order(spec):
@@ -500,14 +508,15 @@ def test_sdg_hover_matches_the_spec_label_order(spec):
     fig = X.two_tab_bars(df, "profile", NAMES, slots, grouped_by_field=False,
                          y0=CFG["window"][0], y1=CFG["window"][1])
     hover = _real_bars(fig)[0].customdata[0]
-    assert_labels_in_order(hover, _spec_labels(spec, "compare_sdg"))
+    assert_labels_in_order(
+        hover, [l for l in _spec_labels(spec, "compare_sdg") if l != "caution"])
 
 
 def test_reciprocity_scatter_hover_matches_the_spec_label_order(spec):
     fig = X.reciprocity_scatter(reciprocity_frame(with_ranks=True), RECIP_NAMES, RECIP_SLOTS)
     # field 2's fixture clears every floor (n_fwci=14, n_covered=22) -- every
     # conditional line draws for it.
-    hover = next(h for h in fig.data[0].customdata if h.startswith("Field 2<"))
+    hover = next(h for h in fig.data[0].customdata if h.startswith("<b>Field 2</b><"))
     # share_a/share_b share ONE spec label template ("share of A's own
     # publications") -- this builder fills {name} with the real institution
     # name for EACH of the two lines, so both are checked against the same

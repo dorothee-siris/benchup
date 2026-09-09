@@ -45,6 +45,8 @@ sentence can be bolded without the sentence itself living here.
 """
 from __future__ import annotations
 
+from typing import Sequence
+
 import streamlit as st
 
 from lib import palette as P
@@ -75,6 +77,41 @@ VALUE2_CLASS = "benchup-kpi-value2"
 # token, never rendered: `note_html` splits on it instead of formatting, which
 # is what lets the figure be bolded inside the sentence.
 NOTE_SLOT = "{n}"
+
+
+def help_line(label: str, value) -> str | None:
+    """The tile-help mirror of `lib.charts.hover_line`: one markdown
+    `**label**: value` line for a `kpi_tile`/`_card_html` `help=` block
+    (Streamlit's own `help=` renders markdown, so bold there is `**...**`,
+    never `<b>`). `value is None` means the line is not drawn at all -- the
+    same convention `hover_line` uses."""
+    if value is None:
+        return None
+    return f"**{label}**: {value}"
+
+
+def help_entity(name) -> str:
+    """The tile-help mirror of `lib.charts.hover_entity`: bold, no label --
+    used only where a help block's first line names the thing the tile is
+    ABOUT (most tiles have no such line; the card's own visible name plays
+    that role already, see `views_compare._render_cards`'s institution-name
+    line above each card)."""
+    return f"**{name}**"
+
+
+def bold_label_clauses(text: str, labels: Sequence[str]) -> str:
+    """Upgrades an already-built '{Label}: {value}' clause inside `text` to
+    the house `**{label}**: {value}` help form, for a caller whose
+    prose was assembled elsewhere (a template string this module does not
+    own) but already states its own label with a literal colon -- lets a
+    call site apply the bold-colon rule without rewriting that prose.
+    Longest label first, so a label that is a PREFIX of another (e.g.
+    "European median" inside "European median of the mean") never gets
+    double-wrapped by a shorter match running first."""
+    out = text
+    for lb in sorted(labels, key=len, reverse=True):
+        out = out.replace(f"{lb}:", f"**{lb}**:")
+    return out
 
 
 def _esc(value) -> str:

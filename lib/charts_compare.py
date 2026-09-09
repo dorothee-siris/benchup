@@ -286,6 +286,12 @@ HOVER_FWCI_LABEL = "FWCI_EU, same window"
 # own spec-mandated wording is kept here instead of edited there.
 HOVER_SI_LABEL = "specialisation index"
 HOVER_FIELD_LABEL = "field"
+# (`docs/tooltip_spec.yaml`'s `label_style: bold_colon`): every hover line
+# past line 1 carries a label, including the two lines that used to have
+# none at all -- the institution name (line 3 of `_metric_hover`, today's
+# `label: ""`) and the low-volume caution line (today a bare dagger phrase).
+HOVER_INSTITUTION_LABEL = "institution"
+HOVER_CAUTION_LABEL = "caution"
 HOVER_SHARE_OF_YEAR = "share of that year's joint output"
 HOVER_LOW_VOLUME_SHARE = "rests on few publications a year, read with care"
 HOVER_LOW_VOLUME_IMPACT = "fewer than {floor} articles and reviews behind the share, read with care"
@@ -479,16 +485,16 @@ def _metric_hover(r, iid, names, label_col, value_col, metric, ref_col,
     explanatory sentence differs the same way (few publications a year, on
     Profile; fewer than the covered-works floor, on Impact)."""
     index = list(getattr(r, "index", []))
-    parts = [str(r[label_col])]                                     # 1. the entity
+    parts = [C.hover_entity(str(r[label_col]))]                      # 1. the entity
     if "group_label" in index and pd.notna(r["group_label"]):
-        parts.append(f"{HOVER_FIELD_LABEL}{C.THIN_SPACE}{r['group_label']}")   # 2. its field
-    parts.append(_name_of(names, iid))                               # 3. the institution
+        parts.append(C.hover_line(HOVER_FIELD_LABEL, r["group_label"]))   # 2. its field
+    parts.append(C.hover_line(HOVER_INSTITUTION_LABEL, _name_of(names, iid)))  # 3. the institution
     title = (metric_label or _METRIC_AXIS[metric]).lower()
-    parts.append(f"{title}{C.THIN_SPACE}{_fmt_metric(r[value_col], metric)}")  # 4. the metric's own value
+    parts.append(C.hover_line(title, _fmt_metric(r[value_col], metric)))  # 4. the metric's own value
 
     if ref_col in index and metric in REF_METRICS and pd.notna(r.get(ref_col)):
         ref_label = HOVER_REF_PP if metric == "pp" else HOVER_REF_SHARE
-        parts.append(f"{ref_label}{C.THIN_SPACE}{_fmt_metric(r[ref_col], metric)}")
+        parts.append(C.hover_line(ref_label, _fmt_metric(r[ref_col], metric)))
 
     if metric == "share":
         if gutter_col and gutter_col in index and pd.notna(r.get(gutter_col)) and "vol_frac" in index:
@@ -506,21 +512,21 @@ def _metric_hover(r, iid, names, label_col, value_col, metric, ref_col,
                 vol_label = f"{HOVER_VOL_PAIR_SDG}, {y0}-{y1}"
             else:
                 vol_label = HOVER_VOL_PAIR_SUBFIELD if level == "subfield" else HOVER_VOL_PAIR_SDG
-            parts.append(f"{vol_label}{C.THIN_SPACE}{_fmt_vol_pair(r[gutter_col], r['vol_frac'])}")
+            parts.append(C.hover_line(vol_label, _fmt_vol_pair(r[gutter_col], r["vol_frac"])))
         if level == "subfield" and "si" in index and pd.notna(r["si"]):
-            parts.append(f"{HOVER_SI_LABEL}{C.THIN_SPACE}{_fmt_si(r['si'])}")
+            parts.append(C.hover_line(HOVER_SI_LABEL, _fmt_si(r["si"])))
     else:
         if denom_value_col in index and pd.notna(r.get(denom_value_col)):
-            parts.append(f"{HOVER_DENOMINATOR}{C.THIN_SPACE}{_fmt_vol(_num(r[denom_value_col]))}")
+            parts.append(C.hover_line(HOVER_DENOMINATOR, _fmt_vol(_num(r[denom_value_col]))))
         fwci_line = _fmt_fwci_pair(r.get("fwci_mean"), r.get("fwci_median"), r.get("n_covered_fwci"))
         if fwci_line:
-            parts.append(f"{HOVER_FWCI_LABEL}{C.THIN_SPACE}{fwci_line}")
+            parts.append(C.hover_line(HOVER_FWCI_LABEL, fwci_line))
 
     if low:
         reason = (HOVER_LOW_VOLUME_IMPACT.format(floor=_fmt_vol(P.RATIO_HATCH_FLOOR)) if metric != "share"
                  else HOVER_LOW_VOLUME_SHARE)
-        parts.append(f"{LOW_VOLUME_GLYPH}{C.THIN_SPACE}{reason}")
-    return "<br>".join(parts)
+        parts.append(C.hover_line(HOVER_CAUTION_LABEL, f"{LOW_VOLUME_GLYPH} {reason}"))
+    return "<br>".join(p for p in parts if p is not None)
 
 
 def _ref_line(fig: go.Figure, x: float) -> None:
@@ -916,9 +922,9 @@ def yearly_domain_stack(frame: pd.DataFrame) -> go.Figure:
         year_totals = d.groupby("_year")["vol"].sum()
         shares = [(v / t) if (t := float(year_totals.get(y, 0.0))) > 0 else float("nan")
                  for y, v in zip(years, vals)]
-        hovers = [f"{dname}<br>{C.AX_YEAR.lower()}{C.THIN_SPACE}{y}"
-                 f"<br>{C.AX_WORKS.lower()}{C.THIN_SPACE}{_fmt_vol(v)}"
-                 f"<br>{HOVER_SHARE_OF_YEAR}{C.THIN_SPACE}{_fmt_pct(s)}"
+        hovers = [f"{C.hover_entity(dname)}<br>{C.hover_line(C.AX_YEAR.lower(), y)}"
+                 f"<br>{C.hover_line(C.AX_WORKS.lower(), _fmt_vol(v))}"
+                 f"<br>{C.hover_line(HOVER_SHARE_OF_YEAR, _fmt_pct(s))}"
                  for y, v, s in zip(years, vals, shares)]
         fig.add_trace(go.Bar(
             x=years, y=vals, name=dname,
@@ -969,6 +975,8 @@ HOVER_RECIP_SHARE = "share of {name}'s own publications"
 HOVER_RECIP_JOINT = "joint publications"
 HOVER_RECIP_PP10 = "joint papers in the world top decile"
 HOVER_RECIP_STARS = "joint star papers in this field"
+HOVER_PARTNER_RANK_LABEL = "partner rank"    # the partner-rank sentence(s)
+                                              # had no label at all before
 
 
 def reciprocity_scatter(frame: pd.DataFrame, names: Sequence, colors: Sequence) -> go.Figure:
@@ -1031,21 +1039,21 @@ def reciprocity_scatter(frame: pd.DataFrame, names: Sequence, colors: Sequence) 
     hovers = []
     for i in range(n):
         r = d.iloc[i]
-        parts = [str(r["field_name"]),
-                f"{HOVER_RECIP_SHARE.format(name=name_a)}{C.THIN_SPACE}{_fmt_pct(r['share_a'])}",
-                f"{HOVER_RECIP_SHARE.format(name=name_b)}{C.THIN_SPACE}{_fmt_pct(r['share_b'])}",
-                f"{HOVER_RECIP_JOINT}{C.THIN_SPACE}{_fmt_vol(r['vol_joint'])}"]
+        parts = [C.hover_entity(str(r["field_name"])),
+                C.hover_line(HOVER_RECIP_SHARE.format(name=name_a), _fmt_pct(r["share_a"])),
+                C.hover_line(HOVER_RECIP_SHARE.format(name=name_b), _fmt_pct(r["share_b"])),
+                C.hover_line(HOVER_RECIP_JOINT, _fmt_vol(r["vol_joint"]))]
         fwci_line = _fmt_fwci_pair(r.get("fwci_mean"), r.get("fwci_median"), r.get("n_fwci"))
         if fwci_line:
-            parts.append(f"{HOVER_FWCI_LABEL}{C.THIN_SPACE}{fwci_line}")
+            parts.append(C.hover_line(HOVER_FWCI_LABEL, fwci_line))
         n_cov, n_top = _num(r.get("n_covered")), _num(r.get("n_top10"))
         if np.isfinite(n_cov) and n_cov >= 1:
             pp10 = (n_top / n_cov) if n_cov > 0 else float("nan")
             dagger = LOW_VOLUME_GLYPH if n_cov < 10 else ""
-            parts.append(f"{HOVER_RECIP_PP10}{C.THIN_SPACE}{_fmt_pct(pp10)}{dagger}")
+            parts.append(C.hover_line(HOVER_RECIP_PP10, f"{_fmt_pct(pp10)}{dagger}"))
         n_stars = _num(r.get("n_stars_field"))
         if np.isfinite(n_stars):
-            parts.append(f"{HOVER_RECIP_STARS}{C.THIN_SPACE}{_fmt_vol(n_stars)}")
+            parts.append(C.hover_line(HOVER_RECIP_STARS, _fmt_vol(n_stars)))
         if has_rank:
             rank_lines = []
             if pd.notna(r.get("rank_in_a")):
@@ -1053,8 +1061,8 @@ def reciprocity_scatter(frame: pd.DataFrame, names: Sequence, colors: Sequence) 
             if pd.notna(r.get("rank_in_b")):
                 rank_lines.append(f"{name_a} is {name_b}'s partner #{int(r['rank_in_b'])} here")
             if rank_lines:
-                parts.append(". ".join(rank_lines) + ".")
-        hovers.append("<br>".join(parts))
+                parts.append(C.hover_line(HOVER_PARTNER_RANK_LABEL, ". ".join(rank_lines) + "."))
+        hovers.append("<br>".join(p for p in parts if p is not None))
 
     fig = go.Figure(go.Scatter(
         x=x, y=y, mode="markers",

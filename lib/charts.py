@@ -405,6 +405,37 @@ FRONTIER_ORIGIN_PX = 2      # : bold-ink width for the quadrant split lines
 THIN_SPACE = "\N{NARROW NO-BREAK SPACE}"
 
 # ---------------------------------------------------------------------------
+# the hover-line contract (`docs/tooltip_spec.yaml`'s `label_style:
+# bold_colon`): every hover line is `<b>indicator</b>: value`, EXCEPT line 1,
+# which is the entity the mark stands for -- bold, no label, no colon. ONE
+# formatter, used by every builder in this module and in `charts_compare.py`
+# / `charts_topics.py` (`import lib.charts as C`, `C.hover_line`/
+# `C.hover_entity`), replaces the earlier `f"{label}{THIN_SPACE}{value}"`
+# idiom everywhere it separated a label from a value (THIN_SPACE itself
+# stays -- `_fmt_vol`/`_fmt_dec1`/`_fmt_si`/`_fmt_fwci_pair` still use it as
+# the thousands separator INSIDE a formatted number, an unrelated job).
+# ---------------------------------------------------------------------------
+def hover_entity(name, suffix: str | None = None) -> str:
+    """Line 1 of every hover: the entity in bold, no label, no colon.
+    `suffix` (e.g. a catch-all-topic flag clause) is appended OUTSIDE the
+    bold span -- the flag text is not part of the entity's own name."""
+    line = f"<b>{name}</b>"
+    if suffix:
+        line += suffix
+    return line
+
+
+def hover_line(label: str, value) -> str | None:
+    """One `<b>label</b>: value` hover line. `value is None` means the line
+    is not drawn at all -- callers that already gate a line on a `when`
+    condition keep gating on that condition; this only ever formats,
+    never decides whether to draw."""
+    if value is None:
+        return None
+    return f"<b>{label}</b>: {value}"
+
+
+# ---------------------------------------------------------------------------
 # Axis + hover vocabulary. Digit-free by construction. A caller that wants
 # different wording passes it in; nothing here is a sentence, only a label.
 # ---------------------------------------------------------------------------
@@ -854,7 +885,7 @@ def _base_layout(fig: go.Figure, height: int, *, margin: dict, bargap: float = B
         plot_bgcolor=P.SURFACE,
         margin=margin,
         font=dict(color=P.INK, size=FONT_PX),
-        hoverlabel=dict(bgcolor=P.SURFACE, font=dict(color=P.INK, size=FONT_PX)),
+        hoverlabel=dict(bgcolor=P.SURFACE, font=dict(color=P.INK, size=FONT_PX), align="left"),
     )
     return fig
 
@@ -1019,24 +1050,24 @@ def fig_share_si(
 
     bar_hover = []
     for i in range(n):
-        parts = [names[i]]
+        parts = [hover_entity(names[i])]
         if parent_field is not None:
-            parts.append(f"{HOVER_FIELD}{THIN_SPACE}{parent_field[i]}")
-        parts.append(f"{share_hover_label}{THIN_SPACE}{_fmt_pct(share[i])}")
+            parts.append(hover_line(HOVER_FIELD, parent_field[i]))
+        parts.append(hover_line(share_hover_label, _fmt_pct(share[i])))
         if have_vol_pair:
-            parts.append(f"{HOVER_VOL_PAIR_RUN}{THIN_SPACE}"
-                         f"{_fmt_vol_pair(vol_full_arr[i], vol_frac_arr[i])}")
+            parts.append(hover_line(HOVER_VOL_PAIR_RUN,
+                                    _fmt_vol_pair(vol_full_arr[i], vol_frac_arr[i])))
         elif have_mass:
-            parts.append(f"{mass_hover_label}{THIN_SPACE}{_fmt_dec1(mass_arr[i])}")
+            parts.append(hover_line(mass_hover_label, _fmt_dec1(mass_arr[i])))
         if np.isfinite(si[i]):
-            parts.append(f"{si_hover_label}{THIN_SPACE}{_fmt_si(si[i])}")
+            parts.append(hover_line(si_hover_label, _fmt_si(si[i])))
         if has_fwci and np.isfinite(n_covered_arr[i]) and n_covered_arr[i] >= FWCI_TAXA_FLOOR:
-            parts.append(f"{HOVER_FWCI_EU_CORE}{THIN_SPACE}"
-                         f"{_fmt_fwci_pair(fwci_mean_arr[i], fwci_median_arr[i], n_covered_arr[i])}")
+            parts.append(hover_line(HOVER_FWCI_EU_CORE,
+                                    _fmt_fwci_pair(fwci_mean_arr[i], fwci_median_arr[i], n_covered_arr[i])))
         if has_pp10 and np.isfinite(n_covered_pp_arr[i]) and n_covered_pp_arr[i] >= IMPACT_TAXA_FLOOR:
-            parts.append(f"{HOVER_PP10_WD_CORE}{THIN_SPACE}"
-                         f"{_fmt_pct_dagger(pp10_arr[i], n_covered_pp_arr[i])}")
-        bar_hover.append("<br>".join(parts))
+            parts.append(hover_line(HOVER_PP10_WD_CORE,
+                                    _fmt_pct_dagger(pp10_arr[i], n_covered_pp_arr[i])))
+        bar_hover.append("<br>".join(p for p in parts if p is not None))
 
     fig.add_trace(go.Bar(
         x=share, y=names, orientation="h",
@@ -1218,7 +1249,7 @@ def fig_breakdown_global(
     cats = [str(labels[i]) for i in order]
     tot = [float(totals[i]) for i in order]
     cols = [colors[i] for i in order]
-    hover = [f"{c}<br>{AX_WORKS.lower()}{THIN_SPACE}{_fmt_vol(t)}" for c, t in zip(cats, tot)]
+    hover = [f"{hover_entity(c)}<br>{hover_line(AX_WORKS.lower(), _fmt_vol(t))}" for c, t in zip(cats, tot)]
 
     fig = go.Figure(go.Bar(
         x=tot, y=cats, orientation="h",
@@ -1292,8 +1323,8 @@ def fig_breakdown_yearly(
     for k, key in enumerate(series):
         offset, bar_w = _series_offset_width(len(series), k, group_span, group_fill)
         vals = [float(v) for v in totals[key]]
-        hover = [f"{labels[key]}<br>{AX_YEAR.lower()}{THIN_SPACE}{g}"
-                 f"<br>{AX_WORKS.lower()}{THIN_SPACE}{_fmt_vol(v)}"
+        hover = [f"{hover_entity(labels[key])}<br>{hover_line(AX_YEAR.lower(), g)}"
+                 f"<br>{hover_line(AX_WORKS.lower(), _fmt_vol(v))}"
                  for g, v in zip(years, vals)]
         fig.add_trace(go.Bar(
             x=list(years), y=vals, offset=offset, width=bar_w,

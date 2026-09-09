@@ -5,6 +5,41 @@ fields of its hover string; for every KPI tile, the lines behind its `?`. This f
 *why* each chart carries what it carries. Where the two disagree, the YAML wins — it is
 the file the tests read.
 
+## Label style 
+
+Every hover line and every KPI tile's "?" help reads `<b>indicator</b>: value`
+in a hover (markdown `**indicator**: value` in a tile help, since Streamlit's
+`help=` renders markdown, not HTML) -- bold name, a colon, the plain value --
+with exactly one exception: line 1 of a hover, the entity the mark stands
+for, which is bold with NO label and no colon (a topic's catch-all flag, when
+one applies, is appended OUTSIDE the bold span, never inside the entity's own
+name). The keywords line is the one two-line format: its label sits on the
+first of its two lines only, the second line continues with no label of its
+own, and the pair still counts as two lines against the eight-line cap. One
+shared formatter does the framing -- `lib.charts.hover_line`/`hover_entity`
+for every chart, `lib.tiles.help_line`/`help_entity` for a tile help built
+locally -- so the wording of every label is exactly what it was before this
+pass; only the separator changed, from a narrow no-break space to a bold
+name and a colon. `docs/tooltip_spec.yaml`'s own `label_style: bold_colon`
+records this once, at the top of the file, rather than repeating it on every
+chart entry.
+
+A handful of lines carried no label at all before this pass because their
+own clause already read as a complete sentence (the owner clause, the
+partner-rank sentence, the topic-leader clause, the frontier-standing flag,
+the low-volume caution, and the bare institution name on Compare's own
+subfield/SDG bars). Each now carries the shortest word that names what the
+line is ("held by", "partner rank", "topic leader", "frontier standing",
+"caution", "institution") -- the value it prints is unchanged.
+
+Two Compare surfaces keep flowing prose on purpose, not a labelled-line list:
+the momentum tile's "?" and the always-visible momentum evidence line
+underneath it are each ONE sentence, built from the pair's own numbers by
+`lib.collab_data.momentum_evidence`/`lib.copy`'s own `MOMENTUM_LINE_*`
+templates -- turning a sentence into a list of bold labels would not make it
+more readable, and the evidence line's own house rule already governs its
+punctuation (a colon, never a dash, before a signed value).
+
 ## Shared conventions
 
 **A hover is not a data dump.** Each one carries, in this order: the entity, the channels

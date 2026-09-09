@@ -119,6 +119,18 @@ def _search(query: str) -> list[dict]:
 CARD_COLUMNS = ("vol_full", "vol_change", "fwci_eu_mean", "pp", "star_share",
                 "n_topics_led_fair", "frontier_top25_share", "sdg_share")
 
+# the nine card tips (`copy.COMPARE`'s own `CARD_*_TIP`/`CARD_COPUB_TIP`
+# templates, out of this stream's fence) already state several of their own
+# facts as a "Label: value" clause with a literal colon -- this call site
+# upgrades each one to the house `**label**: value` form (`tiles.
+# bold_label_clauses`) without touching that prose. Longest-first ordering
+# lives inside the helper itself.
+_CARD_TIP_LABELS = (
+    "European median of the mean", "European median", "Median of the same works",
+    "World top-decile share of the same output", "Count",
+    "In fractional counting", "International co-publication", "Company co-publication",
+)
+
 
 def _card_facts(ctx: dict, iid: str, row: pd.Series) -> list[tuple[str, str, str, str]]:
     """`[(column, label, value, tooltip)]`, this card's own nine-figure order. The
@@ -133,7 +145,7 @@ def _card_facts(ctx: dict, iid: str, row: pd.Series) -> list[tuple[str, str, str
     median-of-the-mean, per `docs/tooltip_spec.yaml`'s `compare_card_fwci_eu`
     tile verbatim."""
     Cw = copy.COMPARE
-    return [
+    facts = [
         ("vol_full", Cw["CARD_PUBLICATIONS"], _count(row["vol_full"]),
          Cw["CARD_PUBLICATIONS_TIP"].format(y0=CORE_Y0, y1=CORE_Y1, frac=_count(row["vol_frac"]),
                                             eu_median=_count(row["vol_full_eu_median"]))),
@@ -158,6 +170,11 @@ def _card_facts(ctx: dict, iid: str, row: pd.Series) -> list[tuple[str, str, str
         ("sdg_share", Cw["CARD_SDG"], _pct(row["sdg_share"]),
          Cw["CARD_SDG_TIP"].format(y0=CORE_Y0, y1=WHOLE_Y1, eu_median=_pct(row["sdg_share_eu_median"]))),
     ]
+    # (see
+    # `_CARD_TIP_LABELS`'s own comment above): bold each tip's own
+    # already-colon-labelled clause(s), the tuple's own shape unchanged.
+    return [(col, label, value, tiles.bold_label_clauses(tip, _CARD_TIP_LABELS))
+           for col, label, value, tip in facts]
 
 
 def _leaders(df: pd.DataFrame) -> dict:
@@ -201,6 +218,7 @@ def _copub_tile(row: pd.Series) -> str:
                                       company=_pct(row["company_share"]),
                                       company_eu=_pct(row["company_share_eu_median"]),
                                       y0=CORE_Y0, y1=CORE_Y1)
+    tip = tiles.bold_label_clauses(tip, _CARD_TIP_LABELS)   # see _CARD_TIP_LABELS
     value = f'{_pct(row["intl_share"])} · {_pct(row["company_share"])}'
     html = _card_html(Cw["CARD_COPUB"], value, "")
     return html, tip
