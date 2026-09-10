@@ -1,6 +1,6 @@
 BenchUp — palette validation log
 Run log begins 2026-08-29. Validator: dataviz skill scripts/validate_palette.js.
-House rule (SIRIS CLAUDE.md): --mode light ONLY, dark-mode pass skipped deliberately.
+House rule (SIRIS): --mode light ONLY, dark-mode pass skipped deliberately.
 Two runs. Run 1 is the one that SHIPS (lib/palette.py TYPE_COLORS + FOCAL).
 Run 2 documents, by design, why COMPARISON/NEUTRAL/INK are excluded from the
 categorical set (same finding class elsewhere flagging #333333 as

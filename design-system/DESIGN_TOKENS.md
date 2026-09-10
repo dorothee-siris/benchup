@@ -3,7 +3,7 @@
 Reconciles `design-system/benchup-/MASTER.md` (ui-ux-pro-max, one `--design-system`
 pass + 3 targeted `--domain ux` queries) against the SIRIS house rules and the Studio
 KB (`RULES.md`, `COMPOSITION_AND_CONTROLS.md`, `LEGIBILITY_BUDGETS.md`). Where the two
-conflict, **SIRIS wins** (CLAUDE.md: "these instructions OVERRIDE any default
+conflict, **SIRIS wins** (house rule: "these instructions OVERRIDE any default
 behavior"). Charts and colour are `dataviz` + `lib/palette.py`'s job, never
 ui-ux-pro-max's — its material is form inspiration only, queried, not adopted whole.
 

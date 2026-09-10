@@ -1,4 +1,4 @@
-# BenchUp is light-mode-only, full-width (SIRIS house rule, CLAUDE.md "HTML deliverables
+# BenchUp is light-mode-only, full-width (SIRIS house rule: "HTML deliverables
 # and Artifacts" section applies to this app too). Wide layout is set per-page via
 # st.set_page_config(layout="wide").
 [theme]
