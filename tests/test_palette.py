@@ -382,3 +382,71 @@ def test_joint_topic_color_appears_in_the_run_39_validation_log():
     run_39 = text.split("RUN 39", 1)[1]
     assert "JOINT_TOPIC_COLOR" in text
     assert run_39.upper().count("#E69F00") >= 5  # the candidate + every co-occurrence run
+
+
+# ---------------------------------------------------------------------------
+# SHARED_TOPIC_MARK -- a brighter/redder companion to SHARED_FRONTIER for the
+# owner-coloured topic-overlap SCATTER MARK only; SHARED_FRONTIER itself
+# stays exactly what it was (a TEXT/TICK colour).
+# ---------------------------------------------------------------------------
+
+def test_shared_topic_mark_is_a_real_hex_distinct_from_shared_frontier():
+    from lib import palette
+
+    assert re.fullmatch(r"#[0-9A-Fa-f]{6}", palette.SHARED_TOPIC_MARK)
+    assert palette.SHARED_TOPIC_MARK != palette.SHARED_FRONTIER
+    assert palette.SHARED_TOPIC_MARK not in palette.INSTITUTION_COLORS
+    assert palette.SHARED_TOPIC_MARK != palette.JOINT_TOPIC_COLOR
+    # SHARED_FRONTIER is UNCHANGED by this addition -- still the shipped
+    # text/tick red, still WARNING_CAPTION_COLOR's own value.
+    assert palette.SHARED_FRONTIER == "#821D13"
+    assert palette.WARNING_CAPTION_COLOR == palette.SHARED_FRONTIER
+
+
+def test_shared_topic_mark_appears_in_the_run_40_validation_log():
+    validation_path = APP_DIR / "design-system" / "palette_validation.txt"
+    text = validation_path.read_text(encoding="utf-8")
+    assert "RUN 40" in text
+    run_40 = text.split("RUN 40", 1)[1]
+    assert "SHARED_TOPIC_MARK" in text
+    assert run_40.upper().count("#C8102E") >= 5  # the candidate + every co-occurrence run
+
+
+# ---------------------------------------------------------------------------
+# tint_toward_white / CATCHALL_TINT_FRAC -- the balance bars' own catch-all
+# mute (a hex mix toward SURFACE, not a marker opacity).
+# ---------------------------------------------------------------------------
+
+def test_tint_toward_white_mixes_toward_surface_by_the_stated_fraction():
+    from lib import palette
+
+    assert 0.0 < palette.CATCHALL_TINT_FRAC < 1.0
+    tint = palette.tint_toward_white("#192C41")
+    assert re.fullmatch(r"#[0-9A-Fa-f]{6}", tint)
+    assert tint == "#818B97"
+    # every channel of the tint sits strictly between the base channel and
+    # white (255) -- a real mix, never a no-op and never a full whiteout.
+    base = (0x19, 0x2C, 0x41)
+    mixed = tuple(int(tint[i:i + 2], 16) for i in (1, 3, 5))
+    assert all(b < m < 255 for b, m in zip(base, mixed))
+
+
+def test_tint_toward_white_is_idempotent_on_hash_prefix_and_case():
+    from lib import palette
+
+    assert palette.tint_toward_white("#e69f00") == palette.tint_toward_white("E69F00")
+
+
+def test_tint_toward_white_appears_in_the_run_40_validation_log():
+    """Every hue the balance bars can ever tint (the institution trio +
+    JOINT_TOPIC_COLOR) is validated at its OWN tinted value, not merely
+    eyeballed -- the derived hexes must appear in the same run 40 log."""
+    from lib import palette
+
+    validation_path = APP_DIR / "design-system" / "palette_validation.txt"
+    text = validation_path.read_text(encoding="utf-8").upper()
+    run_40 = text.split("RUN 40", 1)[1]
+    for base in (palette.INSTITUTION_COLORS[0], palette.INSTITUTION_COLORS[1],
+                palette.INSTITUTION_COLORS[2], palette.JOINT_TOPIC_COLOR):
+        tinted = palette.tint_toward_white(base)
+        assert tinted.upper() in run_40, f"{base} -> {tinted} not validated in run 40"

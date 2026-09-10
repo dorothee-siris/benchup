@@ -2925,7 +2925,7 @@ only one of them).
 the SAME builder Find's own Frontier plane uses in `color_by="domain"`
 mode (one module, two colour channels, built and tested together so a
 later Find-side change cannot silently break Compare's reuse or vice
-versa). Colour: `palette.SHARED_FRONTIER` for a shared topic (with the
+versa). Colour: `palette.SHARED_TOPIC_MARK` (a brighter red than `SHARED_FRONTIER`, chosen for contrast against the navy slots) for a shared topic (with the
 `FRONTIER_SHARED_HALO` ring), each institution's own colour otherwise;
 area = combined volume; a top-quartile-frontier topic still keeps its own
 ink outline. Unscored topics (no expansion/acceleration) are dropped from
@@ -2939,7 +2939,7 @@ chart's own floating three-segment geometry (A-only | joint | B-only,
 displayed metric," the user's own words) rather than a fixed rule, and a
 genuine gutter column (`mirror_frontier` never had one). The joint segment
 is `palette.JOINT_TOPIC_COLOR` — a hue DEDICATED to this one segment
-(§ below), never `palette.SHARED_FRONTIER` (the plane's own "shared"
+(§ below), never `palette.SHARED_TOPIC_MARK` (the plane's own "shared"
 red) and never `palette.MOMENTUM_COLORS["up"]` (the relationship
 section's own "momentum: up" green, on the same page).
 

@@ -1140,15 +1140,17 @@ def legend_strip(ids: Sequence, *, slots: Mapping, names: Mapping | None = None,
     mandatory ABOVE EVERY Compare chart (CHROME_CONTRACT.md SS4): it is
     the secondary encoding the palette's own accessibility validation obliges.
 
-    `shared=True` appends the `palette.SHARED_FRONTIER` chip -- Compare's
+    `shared=True` appends the `palette.SHARED_TOPIC_MARK` chip -- Compare's
     topic-overlap legend, above its owner-coloured scatter and balance
-    bars, is the caller. `extra` takes further `(label, hex)`
-    chips; the hex must still come from `lib.palette`."""
+    bars, is the caller (the MARK's own colour, not `SHARED_FRONTIER`, which
+    stays a text/tick colour everywhere else -- see that constant's own
+    docstring). `extra` takes further `(label, hex)` chips; the hex must
+    still come from `lib.palette`."""
     order = sorted(dict.fromkeys(ids), key=lambda i: (_slot_of(slots, i), str(i)))
     items = [(_name_of(names, i), P.institution_color(_slot_of(slots, i)),
               P.institution_ink(_slot_of(slots, i))) for i in order]
     if shared:
-        items.append((shared_label, P.SHARED_FRONTIER, P.SHARED_FRONTIER))
+        items.append((shared_label, P.SHARED_TOPIC_MARK, P.SHARED_TOPIC_MARK))
     items.extend([(str(a), str(b), P.INK_SECONDARY) for a, b in (extra or [])])
     return _chip_strip(items)
 

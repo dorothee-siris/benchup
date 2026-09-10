@@ -20,9 +20,8 @@ This module imports ONLY `lib.charts` (the bar-layout contract: constants,
 never `lib.charts_compare` or anything under Compare's own module, so a
 topic-plane change here can never collide with independent work on that
 file. Every field/subfield/domain constant it needs (`FRONTIER_ORIGIN`,
-`BUBBLE_MIN_PX`/`MAX_PX`, `AX_EXPANSION`/`ACCELERATION`,
-`HOVER_EXPANSION`/`ACCELERATION`) is already exported by `lib/charts.py`
-for exactly this reuse.
+`BUBBLE_MIN_PX`/`MAX_PX`, `AX_EXPANSION`/`ACCELERATION`) is already exported
+by `lib/charts.py` for exactly this reuse.
 
 TOOLTIP CONTRACT (`docs/tooltip_spec.yaml`): `fig_plane_impact` implements
 `find_plane_impact`; `fig_plane_frontier` implements `find_plane_frontier`
@@ -30,22 +29,24 @@ TOOLTIP CONTRACT (`docs/tooltip_spec.yaml`): `fig_plane_impact` implements
 `balance_bars` implements `compare_balance_bars`. Field order, labels and
 formats are taken from that file verbatim -- `tests/test_charts_topics.py`
 loads it and asserts each builder's customdata carries the spec's labels,
-in order.
+in order. Both `find_plane_frontier` and `compare_topic_overlay` fold
+expansion, acceleration AND the frontier score they combine into into ONE
+hover line (`HOVER_FRONTIER`, `_fmt_frontier_triplet`) -- the balance bars'
+own emergence mode carries the same line.
 
 THE JOINT-SEGMENT COLOUR (`balance_bars` needs a distinct colour for
 "shared" in the scatter and for copublications in the bars): the scatter's
-"shared" mark is `palette.SHARED_FRONTIER` (the dark red every pooled-
-frontier view already uses); the bar chart's "joint" segment is
+"shared" mark is `palette.SHARED_TOPIC_MARK` (a brighter, redder red than
+`palette.SHARED_FRONTIER`, which stays a TEXT/TICK colour everywhere else --
+see that constant's own docstring); the bar chart's "joint" segment is
 `palette.JOINT_TOPIC_COLOR` -- a hue DEDICATED to this one segment,
 distinct from `palette.MOMENTUM_COLORS["up"]` (an earlier pass reused that
 green, and review rejected it: one colour, one meaning, and this section's
 own legend sits right beside the scatter above it, so the bars' centre
 segment must never read as "momentum: up" restated). Full validation
-(`design-system/palette_validation.txt` run 39): comfortably clear of both
-institution navy slots, of SHARED_FRONTIER, and of the momentum hue it
-replaces as a candidate, on the SAME co-occurrence screen SHARED_FRONTIER
-itself was measured against (`palette.JOINT_TOPIC_COLOR`'s own docstring
-carries the full per-pair numbers).
+(`design-system/palette_validation.txt` runs 39-40): comfortably clear of
+both institution navy slots, of `SHARED_TOPIC_MARK`, and of the momentum hue
+`JOINT_TOPIC_COLOR` replaces as a candidate.
 """
 from __future__ import annotations
 
@@ -131,8 +132,6 @@ HOVER_FWCI_EU = "FWCI_EU"
 HOVER_STAR_PAPERS = "star papers"
 HOVER_VOL_PAIR_RUN_ALL_TYPES = (
     f"whole run {C.RUN_WINDOW_START}-{C.RUN_WINDOW_END}, all document types")
-HOVER_EXPANSION = C.HOVER_EXPANSION
-HOVER_ACCELERATION = C.HOVER_ACCELERATION
 HOVER_PUBLICATIONS_CORE_PAIR = f"publications {C.CORE_WINDOW_START}-{C.CORE_WINDOW_END}, full counting"
 HOVER_JOINT_PUBLICATIONS = "joint publications"
 # (`docs/tooltip_spec.yaml`'s `label_style: bold_colon`): labels for the
@@ -176,6 +175,47 @@ FWCI_CLIP_TIP_ARROW = "\N{BLACK RIGHT-POINTING SMALL TRIANGLE} "  # a fwci bar c
                                            # arrow marking "runs off the visible axis"
 LED_REFERENCE_RANK = 20                   # the led mode's own red dashed tick (world #20)
 LED_REFERENCE_DISTANCE = (WORLD_LEADERBOARD_SIZE + 1) - LED_REFERENCE_RANK  # 181
+
+# The frontier SCORE itself, folded into one hover line (`compare_topic_
+# overlay`, `find_plane_frontier`, and the balance bars' own emergence mode):
+# `frontier_score_latest` ships as EXACTLY this weighted sum of expansion and
+# acceleration (manager fit over every scored topic, residual ~1e-7) -- never
+# re-derived from a separate "frontier" column, so the displayed score can
+# never drift from the one the topic was actually selected/sorted by.
+FRONTIER_SCORE_EXPANSION_WEIGHT = 0.35
+FRONTIER_SCORE_ACCELERATION_WEIGHT = 0.15
+HOVER_FRONTIER = "frontier"
+MID_DOT = "\N{MIDDLE DOT}"
+
+# The balance bars' own catch-all flag (all five modes): a cross glyph
+# appended to a catch-all topic's own y-tick label (`_tick_label`'s styled
+# output, so it inherits that label's own colour/size -- no new tick style),
+# and the caption line under the bars that spells the flag out in words (the
+# "never colour alone" rule this whole app already follows for the scatter's
+# own catch-all mute, `MUTED_OPACITY`).
+CATCHALL_TICK_GLYPH = "\N{MULTIPLICATION X}"
+CATCHALL_TICK_SUFFIX = " " + CATCHALL_TICK_GLYPH
+NOTE_CATCHALL_FLAG = (f"{CATCHALL_TICK_GLYPH} catch-all topic, outside the subject scope - "
+                     "not placed on the plane above; drawn in lighter tints")
+
+# The two daggered modes' own caption (`fwci`/`emergence`): the SAME glyph
+# `charts.DAGGER` already marks a low-N figure with, spelled out once under
+# the bars rather than left for the reader to guess from the hover alone.
+NOTE_FWCI_DAGGER = f"{C.DAGGER} FWCI_EU computed on fewer than ten covered works"
+NOTE_EMERGENCE_DAGGER = f"{C.DAGGER} change computed on fewer than ten works in the earlier window"
+
+# The gutter column's own header (one per mode, same style/size/vertical
+# position as the link column's "Joint pubs" -- the one prior exception to
+# "no header text above the gutter"): names the quantity the column, and the
+# row order itself, are actually sorted by (`_mode_gutter_text`/`_mode_sort_
+# key`'s own quantity, in words).
+GUTTER_HEADER_TEXT = {
+    BAR_MODE_VOLUME: "Publications",
+    BAR_MODE_FWCI: "Higher FWCI_EU",
+    BAR_MODE_LED: "Best rank",
+    BAR_MODE_STARS: "Star papers",
+    BAR_MODE_EMERGENCE: "Frontier score",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -234,6 +274,28 @@ def _fmt_rank_and_leader(rank, leader_name) -> str | None:
     if not _is_na(rank) and int(rank) <= FIND_LED_RANK_FLOOR:
         return f"world #{int(rank)} of {WORLD_LEADERBOARD_SIZE} - most works: {leader_name}"
     return f"most works worldwide: {leader_name}"
+
+
+def _fmt_frontier_triplet(expansion, acceleration) -> str | None:
+    """`frontier_triplet`: ONE hover line folding expansion, acceleration and
+    the frontier score they combine into -- "expansion 4.19 {MID_DOT}
+    acceleration 5.73 {MID_DOT} score 2.33" -- replacing the two separate
+    `expansion`/`acceleration` lines this hover used to draw (the axis
+    caption above the plane still names each one on its own; this is the
+    HOVER's own reading, not the axis). The score is `frontier_score_
+    latest` itself, recomputed from its own two published weights
+    (`FRONTIER_SCORE_EXPANSION_WEIGHT`/`ACCELERATION_WEIGHT`) rather than
+    read off a separate column, so it can never disagree with the value the
+    topic was actually selected or sorted by. `None` (the line omitted, same
+    as every other formatter here) when either input is missing."""
+    if _is_na(expansion) or _is_na(acceleration):
+        return None
+    expansion, acceleration = float(expansion), float(acceleration)
+    score = (FRONTIER_SCORE_EXPANSION_WEIGHT * expansion
+            + FRONTIER_SCORE_ACCELERATION_WEIGHT * acceleration)
+    return (f"expansion {C._fmt_frontier(expansion)} {MID_DOT} "
+           f"acceleration {C._fmt_frontier(acceleration)} {MID_DOT} "
+           f"score {C._fmt_frontier(score)}")
 
 
 def _fmt_pair_volumes(name_a, vol_a, name_b, vol_b, *,
@@ -451,7 +513,7 @@ def fig_plane_frontier(
     `color_by="owner"` (Compare's own future topic overlap): colour =
     the institution that exclusively holds the topic
     (`palette.institution_color`, resolved via `slots`/`ids`) or
-    `palette.SHARED_FRONTIER` when `owner` is `"shared"` (both institutions'
+    `palette.SHARED_TOPIC_MARK` when `owner` is `"shared"` (both institutions'
     top sets), bubble area proportional to `combined_vol` (`vol_a+vol_b`,
     computed here when the caller does not already carry it). A shared
     topic ALSO carries `palette.FRONTIER_SHARED_HALO` (a SURFACE-coloured
@@ -493,7 +555,7 @@ def fig_plane_frontier(
         slot_a, slot_b = int(slots.get(ids[0], -1)), int(slots.get(ids[1], -1))
         color_a, color_b = P.institution_color(slot_a), P.institution_color(slot_b)
         is_shared = (d["owner"] == OWNER_SHARED).to_numpy()
-        colors = [P.SHARED_FRONTIER if sh else (color_a if o == OWNER_A else color_b)
+        colors = [P.SHARED_TOPIC_MARK if sh else (color_a if o == OWNER_A else color_b)
                   for sh, o in zip(is_shared, d["owner"])]
         halo_color = P.FRONTIER_SHARED_HALO["color"]
         halo_w = P.FRONTIER_SHARED_HALO["width"]
@@ -511,8 +573,7 @@ def fig_plane_frontier(
         parts = [
             _hover_topic_line1(row["topic_name"], excluded[i], row.get("exclusion_reason_label")),
             _fmt_keywords_2x5(row.get("keywords")),
-            C.hover_line(HOVER_EXPANSION, C._fmt_frontier(x[i])),
-            C.hover_line(HOVER_ACCELERATION, C._fmt_frontier(y[i])),
+            C.hover_line(HOVER_FRONTIER, _fmt_frontier_triplet(x[i], y[i])),
         ]
         if color_by == COLOR_BY_DOMAIN:
             parts.append(C.hover_line(HOVER_N_AR_CORE, C._fmt_vol(row["n_ar"])))
@@ -733,8 +794,9 @@ def _mode_sort_key(mode: str, d: pd.DataFrame) -> pd.Series:
 def _mode_hover_lines(mode: str, row: pd.Series, name_a: str, name_b: str, excluded: bool) -> str:
     """One hover string for `row`, per `docs/tooltip_spec.yaml`'s
     `compare_balance_bars.modes.<mode>` -- entity, keywords, this mode's own
-    quantity, then up to two supporting lines, then "held by" (7 lines every
-    mode, well under the 8-line cap)."""
+    quantity, then up to two supporting lines, then "held by" (7 lines on
+    four modes; the emergence mode also carries the frontier line right
+    before "held by", 8 lines -- AT the cap, nothing dropped)."""
     pair_vol = _fmt_pair_volumes(
         name_a, row.get("vol_a"), name_b, row.get("vol_b"),
         under_floor_a=bool(row.get("under_floor_a", False)), under_floor_b=bool(row.get("under_floor_b", False)))
@@ -778,6 +840,8 @@ def _mode_hover_lines(mode: str, row: pd.Series, name_a: str, name_b: str, exclu
             C.hover_line(HOVER_OWN_CHANGE_PAIR, change_pair),
             C.hover_line(HOVER_PUBLICATIONS_CORE_PAIR, pair_vol),
             C.hover_line(HOVER_FWCI_EU, fwci_plain),
+            C.hover_line(HOVER_FRONTIER, _fmt_frontier_triplet(
+                row.get("expansion_latest"), row.get("acceleration_latest"))),
         ]
     parts.append(owner_line)
     return "<br>".join(p for p in parts if p is not None)
@@ -869,10 +933,17 @@ def balance_bars(
 
     On the bar-layout contract: the Compare label column
     (`charts.LABEL_COL_PX["compare"]`), one-bar row pitch (34 px,
-    `ROW_PITCH_SINGLE`) and bar thickness (20 px, `BAR_PX_SINGLE`), no
-    header text above the gutter (the link column gets its OWN header
-    annotation, "Joint pubs", the one exception). Hover per
+    `ROW_PITCH_SINGLE`) and bar thickness (20 px, `BAR_PX_SINGLE`). Both the
+    link column and the gutter now carry their own header annotation --
+    "Joint pubs" fixed, and the gutter's own `GUTTER_HEADER_TEXT[mode]`
+    (the mode's own sort quantity, in words: "Publications", "Higher
+    FWCI_EU", "Best rank", "Star papers", "Frontier score"). Hover per
     `compare_balance_bars.modes.<mode>` (<=8 lines every mode).
+
+    A catch-all topic (`is_excluded`) carries `CATCHALL_TICK_GLYPH` appended
+    to its own y-tick label and draws its segments in `palette.
+    tint_toward_white` of their ordinary hue -- see the module-level notes
+    above `CATCHALL_TICK_GLYPH`/`NOTE_CATCHALL_FLAG`.
 
     INPUT FRAME CONTRACT (one row per topic, `topic_data.pair_topics`'
     shape): `topic_id`, `topic_name`, `keywords`, `is_excluded`,
@@ -881,7 +952,9 @@ def balance_bars(
     needs (`fwci_a`/`fwci_b`/`n_covered_a`/`n_covered_b` for "fwci",
     `rank_a`/`rank_b` for "led", `stars_a`/`stars_b`/`stars_joint`/
     `star_ids_joint` for "stars", `change_a`/`change_b`/`low_base_a`/
-    `low_base_b`/`frontier_score_latest` for "emergence").
+    `low_base_b`/`frontier_score_latest`/`expansion_latest`/
+    `acceleration_latest` for "emergence" -- the last two feed the hover's
+    own frontier line, `_fmt_frontier_triplet`).
 
     `ids`/`slots`/`names`: the two compared institutions, in slot order --
     `ids=[id_a, id_b]` matching `vol_a`/`vol_b`'s own order."""
@@ -895,7 +968,8 @@ def balance_bars(
     elif mode == BAR_MODE_STARS:
         required += ["stars_a", "stars_b", "stars_joint", "star_ids_joint", "url_stars_joint"]
     elif mode == BAR_MODE_EMERGENCE:
-        required += ["change_a", "change_b", "frontier_score_latest"]
+        required += ["change_a", "change_b", "frontier_score_latest",
+                    "expansion_latest", "acceleration_latest"]
     for col in required:
         if col not in rows.columns:
             raise ValueError(f"missing column {col!r}")
@@ -940,11 +1014,26 @@ def balance_bars(
 
     excluded = (d["is_excluded"].fillna(False).to_numpy(dtype=bool)
                 if "is_excluded" in d.columns else np.zeros(n, dtype=bool))
+    has_excluded = bool(excluded.any())
+    # A catch-all row's own segments draw in a LIGHTER TINT of the same hue
+    # (`palette.tint_toward_white`) -- never a fourth colour, a muted version
+    # of whichever hue the row would otherwise draw in (an institution's own,
+    # or the joint amber). Kept a SCALAR per trace (Plotly's own single-
+    # colour shorthand) whenever NOTHING in this frame is excluded -- the
+    # common case, and the one every pre-existing scalar-colour test in this
+    # module's own test file already asserts against.
 
     hover = [_mode_hover_lines(mode, d.iloc[i], name_a, name_b, bool(excluded[i])) for i in range(n)]
 
     fig = go.Figure()
     if geo["kind"] == "three_segment":
+        if has_excluded:
+            color_a_row = [P.tint_toward_white(color_a) if excluded[i] else color_a for i in range(n)]
+            color_b_row = [P.tint_toward_white(color_b) if excluded[i] else color_b for i in range(n)]
+            joint_color_row = [P.tint_toward_white(joint_color) if excluded[i] else joint_color
+                               for i in range(n)]
+        else:
+            color_a_row, color_b_row, joint_color_row = color_a, color_b, joint_color
         joint, joint_valid = geo["joint"], geo["joint_valid"]
         half = np.where(joint_valid, joint / 2.0, 0.0)
         a_only = np.maximum(0.0, left - np.where(joint_valid, joint, 0.0))
@@ -953,22 +1042,26 @@ def balance_bars(
         right_extent = half + b_only
         fig.add_trace(go.Bar(
             x=list(a_only), y=list(range(n)), base=list(-left_extent), orientation="h",
-            marker=dict(color=color_a, line=dict(color=color_a, width=C.HAIRLINE_PX)),
+            marker=dict(color=color_a_row, line=dict(color=color_a_row, width=C.HAIRLINE_PX)),
             customdata=hover, hovertemplate="%{customdata}<extra></extra>", showlegend=False))
         joint_idx = [i for i in range(n) if joint_valid[i]]
+        joint_marker_color = ([joint_color_row[i] for i in joint_idx] if has_excluded else joint_color)
         fig.add_trace(go.Bar(
             x=[2.0 * half[i] for i in joint_idx], y=joint_idx,
             base=[-half[i] for i in joint_idx], orientation="h",
-            marker=dict(color=joint_color, line=dict(color=joint_color, width=C.HAIRLINE_PX)),
+            marker=dict(color=joint_marker_color, line=dict(color=joint_marker_color, width=C.HAIRLINE_PX)),
             customdata=[hover[i] for i in joint_idx],
             hovertemplate="%{customdata}<extra></extra>", showlegend=False))
         fig.add_trace(go.Bar(
             x=list(b_only), y=list(range(n)), base=list(half), orientation="h",
-            marker=dict(color=color_b, line=dict(color=color_b, width=C.HAIRLINE_PX)),
+            marker=dict(color=color_b_row, line=dict(color=color_b_row, width=C.HAIRLINE_PX)),
             customdata=hover, hovertemplate="%{customdata}<extra></extra>", showlegend=False))
     else:  # "paired" -- one bar per side, no joint segment, an optional tip
         left_extent, right_extent = left, right
         color_left, color_right = geo["color_left"], geo["color_right"]
+        if has_excluded:
+            color_left = [P.tint_toward_white(c) if excluded[i] else c for i, c in enumerate(color_left)]
+            color_right = [P.tint_toward_white(c) if excluded[i] else c for i, c in enumerate(color_right)]
         tip_left, tip_right = geo["tip_left"], geo["tip_right"]
         # A mode whose tip can be CLIPPED (fwci) supplies its own per-row
         # position/colour (a clipped bar's tip moves inside the bar, see
@@ -1034,7 +1127,11 @@ def balance_bars(
             fig.add_vline(x=x0, line=dict(color=P.WARNING_CAPTION_COLOR, width=C.LINE_PX, dash="dash"))
 
     pairs = [C._tick_label(str(d.at[i, "topic_name"]), wrap_px=C.WRAP_PX["compare"]) for i in range(n)]
-    styled = [s for _, s in pairs]
+    # A catch-all row's own tick carries the SAME cross glyph its bars are
+    # tinted for -- appended AFTER the (possibly two-line) wrapped label, in
+    # the tick's own colour/size (no separate styling: it is plain text
+    # inside the same styled string every other tick already draws).
+    styled = [(s + CATCHALL_TICK_SUFFIX) if excluded[i] else s for i, (_, s) in enumerate(pairs)]
     fig.update_yaxes(tickmode="array", tickvals=names_ids, ticktext=styled,
                      range=[n - 0.5, -0.5], showgrid=False, automargin=True,
                      tickfont=dict(size=C.TICK_FONT_PX))
@@ -1081,6 +1178,22 @@ def balance_bars(
         xref="paper", x=1.0, xanchor="left", xshift=8,
         yref="paper", y=1.0, yanchor="bottom", yshift=2,
         text=LINK_COL_HEADER_TEXT, showarrow=False, align="left",
+        font=dict(size=LINK_COL_FONT_PX, color=P.INK_SECONDARY),
+    ))
+    # The gutter column's own header, one per mode (`GUTTER_HEADER_TEXT`):
+    # same style, size and vertical position as "Joint pubs" above (paper
+    # coordinates, above the plot area -- a y-axis position past the first
+    # row would fall outside the axis range and clip, the SAME fix the link
+    # header itself already needed), right-aligned at the gutter's own `x`
+    # (`xref="x"`, a DATA coordinate -- this column's position varies with
+    # the data range, unlike the link column's fixed page-relative margin)
+    # so its right edge lines up with the numbers' own right edge (the
+    # gutter's phantom bar draws its "outside" text growing further LEFT
+    # of `gutter_x`, so `gutter_x` is the numbers' own right edge too).
+    annotations.append(dict(
+        xref="x", x=gutter_x, xanchor="right",
+        yref="paper", y=1.0, yanchor="bottom", yshift=2,
+        text=GUTTER_HEADER_TEXT[mode], showarrow=False, align="right",
         font=dict(size=LINK_COL_FONT_PX, color=P.INK_SECONDARY),
     ))
     fig.update_layout(annotations=annotations)

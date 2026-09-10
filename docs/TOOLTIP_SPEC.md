@@ -191,3 +191,8 @@ view one toggle away.
 - **A second FWCI reference.** Impact against the world is the top-decile share, everywhere.
 - **Any figure at pair-and-topic grain beyond joint volume.** Nothing else exists at that
   grain, and a hover that invents one would be worse than a hover that says the floor.
+
+## Frontier line (planes and overlay)
+
+The two frontier plane hovers (Find's plane B, Compare's overlay) and the balance bars in the emergence mode carry ONE frontier line instead of separate expansion and acceleration lines:
+`frontier: expansion 4.19 · acceleration 5.73 · score 2.33` (format `frontier_triplet` in the yaml). The score is the shipped frontier score, 0.35 × expansion + 0.15 × acceleration; the line is omitted when the topic carries no score. Merging the three figures keeps the eight-line cap.

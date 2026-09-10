@@ -1569,3 +1569,119 @@ disclosed per this file's own "never suppress a finding" rule, and relieved
 the same way every other WARN-band or cross-family hue in this file already
 is: the segment is never colour-alone, and always sits beside its own
 hover line, its named legend chip, and the table/workbook export.
+
+RUN 40 (2026-09-10) -- two independent additions from the same user pass:
+(A) SHARED_TOPIC_MARK, a brighter/redder companion to SHARED_FRONTIER for the
+owner-coloured topic-overlap SCATTER MARK only (SHARED_FRONTIER itself is
+UNCHANGED -- it stays the TEXT/TICK colour, WARNING_CAPTION_COLOR and the red
+dashed reference ticks); (B) CATCHALL_TINT_FRAC / tint_toward_white, the
+balance bars' own catch-all mute (a hex mix toward white, not an opacity).
+Method: dataviz skill's own validate_palette.js (the canonical script this
+skill ships; earlier runs in this file transliterated it through a local
+python port, not reproduced this session), --mode light --surface #FFFFFF
+--pairs all, run directly via node.
+
+--- (A) SHARED_TOPIC_MARK -----------------------------------------------
+
+Three brighter/redder candidates, screened against the hard co-occurrence
+set (the institution navy trio -- the scatter's OWN other marks -- and
+JOINT_TOPIC_COLOR, which shares this mark's own legend strip,
+views_compare._render_topic_overlap's one legend_strip call for both the
+plane and the bars):
+
+$ node validate_palette.js "#192C41,#5A6883,#B5C0D4,#E69F00,#D0312D" --mode light --surface "#FFFFFF" --pairs all
+Palette (light, surface #FFFFFF, categorical): 5 slots
+  [FAIL] Lightness band         outside band: [["#192C41",0.288],["#B5C0D4",0.806]]
+  [FAIL] Chroma floor           below floor (reads gray): [["#192C41",0.046],["#5A6883",0.046],["#B5C0D4",0.031]]
+  [PASS] CVD separation         worst all-pairs #5A6883<->#D0312D dE 12.7 (protan) . tritan 16.7
+  [PASS] Normal-vision floor    worst all-pairs #E69F00<->#B5C0D4 dE 19.6 (normal)
+  [WARN] Contrast vs surface    below 3:1: [["#B5C0D4",1.83],["#E69F00",2.25]]
+  DISPOSITION: both FAILs and the WARN are PRE-EXISTING (institution-
+  monochrome exemption, run 9/37; the amber's own WARN-band contrast, run
+  39). #D0312D itself never appears in either failing/warning line.
+
+$ node validate_palette.js "#192C41,#5A6883,#B5C0D4,#E69F00,#D7263D" --mode light --surface "#FFFFFF" --pairs all
+Palette (light, surface #FFFFFF, categorical): 5 slots
+  [FAIL] Lightness band         outside band: [["#192C41",0.288],["#B5C0D4",0.806]]
+  [FAIL] Chroma floor           below floor (reads gray): [["#192C41",0.046],["#5A6883",0.046],["#B5C0D4",0.031]]
+  [PASS] CVD separation         worst all-pairs #5A6883<->#D7263D dE 10.8 (protan) . tritan 16.7
+  [PASS] Normal-vision floor    worst all-pairs #E69F00<->#B5C0D4 dE 19.6 (normal)
+  [WARN] Contrast vs surface    below 3:1: [["#B5C0D4",1.83],["#E69F00",2.25]]
+  DISPOSITION: same as above -- #D7263D itself is never the worst pair.
+
+$ node validate_palette.js "#192C41,#5A6883,#B5C0D4,#E69F00,#C8102E" --mode light --surface "#FFFFFF" --pairs all
+Palette (light, surface #FFFFFF, categorical): 5 slots
+  [FAIL] Lightness band         outside band: [["#192C41",0.288],["#B5C0D4",0.806]]
+  [FAIL] Chroma floor           below floor (reads gray): [["#192C41",0.046],["#5A6883",0.046],["#B5C0D4",0.031]]
+  [PASS] CVD separation         worst all-pairs #5A6883<->#C8102E dE 14.2 (protan) . tritan 16.7
+  [PASS] Normal-vision floor    worst all-pairs #E69F00<->#B5C0D4 dE 19.6 (normal)
+  [WARN] Contrast vs surface    below 3:1: [["#B5C0D4",1.83],["#E69F00",2.25]]
+  DISPOSITION: same as above -- #C8102E itself is never the worst pair, and
+  its own worst-case margin (14.2 CVD vs institution slot 2) is the WIDEST
+  of the three candidates (12.7 for #D0312D, 10.8 for #D7263D).
+
+Per-pair screen (candidate vs each hard-set member individually, OKLab dE
+x100, floors 15 normal / 8 CVD target):
+                    vs slot1 #192C41      vs slot2 #5A6883      vs slot3 #B5C0D4      vs JOINT #E69F00
+  #D0312D  L=0.564  normal 36.0 CVD 19.5  normal 23.0 CVD 12.7  normal 32.3 CVD 26.1  normal 24.2 CVD 19.1
+  #D7263D  L=0.571  normal 37.1 CVD 18.2  normal 24.0 CVD 10.8  normal 32.5 CVD 24.8  normal 25.4 CVD 18.8
+  #C8102E  L=0.530  normal 34.1 CVD 14.8  normal 23.4 CVD 14.2  normal 35.5 CVD 28.5  normal 28.2 CVD 22.6
+(all three PASS every pair, both floors, with real margin; #C8102E ships --
+widest CVD margin on the pairing every candidate's own worst case shares,
+institution slot 2 -- and its hue, OKLCH H=22.3 (candidates ranged H=21.1-
+27.3), sits clear of the H<=15 deutan-collapses-toward-navy zone
+SHARED_FRONTIER's own derivation, run 37, already found and warned against.
+Contrast vs surface, candidate alone: #D0312D/#D7263D/#C8102E all >= 3:1,
+individually never in a WARN line above; #C8102E measured 5.88:1.)
+
+--- (B) catch-all tint (CATCHALL_TINT_FRAC = 0.45, tint_toward_white) ----
+
+The four hues the balance bars can ever tint (the institution trio +
+JOINT_TOPIC_COLOR), mixed 45% toward white (#FFFFFF):
+  #192C41 (slot 1) -> #818B97
+  #5A6883 (slot 2) -> #A4ACBB
+  #B5C0D4 (slot 3) -> #D6DCE7
+  #E69F00 (JOINT_TOPIC_COLOR) -> #F1CA73
+
+$ node validate_palette.js "#818B97,#A4ACBB,#D6DCE7,#F1CA73" --mode light --surface "#FFFFFF" --pairs all
+Palette (light, surface #FFFFFF, categorical): 4 slots
+  [FAIL] Lightness band         outside band: [["#D6DCE7",0.893],["#F1CA73",0.855]]
+  [FAIL] Chroma floor           below floor (reads gray): [["#818B97",0.021],["#A4ACBB",0.023],["#D6DCE7",0.016]]
+  [PASS] CVD separation         worst all-pairs #A4ACBB<->#818B97 dE 10.9 (protan) . tritan 9.8
+  [FAIL] Normal-vision floor    worst all-pairs #A4ACBB<->#818B97 dE 11.0 (normal) -- below 15
+  [WARN] Contrast vs surface    below 3:1: [["#A4ACBB",2.28],["#D6DCE7",1.38],["#F1CA73",1.56]]
+
+$ node validate_palette.js "#192C41,#5A6883,#B5C0D4,#E69F00,#818B97,#A4ACBB,#D6DCE7,#F1CA73,#C8102E" --mode light --surface "#FFFFFF" --pairs all
+  (every hue this app now ships alongside a tint on the SAME chart: the
+   three bases, JOINT_TOPIC_COLOR, all four tints, and SHARED_TOPIC_MARK)
+Palette (light, surface #FFFFFF, categorical): 9 slots
+  [FAIL] Lightness band         outside band: [["#192C41",0.288],["#B5C0D4",0.806],["#D6DCE7",0.893],["#F1CA73",0.855]]
+  [FAIL] Chroma floor           below floor (reads gray): [["#192C41",0.046],["#5A6883",0.046],["#B5C0D4",0.031],["#818B97",0.021],["#A4ACBB",0.023],["#D6DCE7",0.016]]
+  [WARN] CVD separation         worst all-pairs #A4ACBB<->#B5C0D4 dE 6.3 (deutan) . tritan 6.3
+  [FAIL] Normal-vision floor    worst all-pairs #A4ACBB<->#B5C0D4 dE 6.3 (normal) -- below 15
+  [WARN] Contrast vs surface    below 3:1: [["#B5C0D4",1.83],["#E69F00",2.25],["#A4ACBB",2.28],["#D6DCE7",1.38],["#F1CA73",1.56]]
+
+DISPOSITION: every FAIL/WARN above is a REAL, disclosed finding, not
+suppressed -- and every one of them is the DESIGN, not a defect. A tint is
+built to sit close to its own base hue (a slot-3 tint is barely
+distinguishable from slot 3 itself, dE 6.3, the worst line in the 9-slot
+run) and to sit low-contrast, low-chroma against white -- that IS "read as
+backed off". This is NOT a new categorical identity a reader must tell
+apart from six others by hue alone: a tinted row and its own base-colour
+row never appear TOGETHER as two peer identities needing separation -- a
+given topic row is EITHER a normal row (full hue) OR a catch-all row (that
+SAME hue's tint), never both, and the row is flagged FIRST by its own y-tick
+cross glyph and by this chart's own caption line naming the tint in words,
+the identical "never colour alone" relief every WARN-band hue in this file
+already carries (institution slot 3, JOINT_TOPIC_COLOR itself, both above).
+Same disposition class as run 39's own amber-on-amber worst case: the
+closest pair in a run is not automatically the pair that matters most to a
+real reader.
+
+OVERALL DISPOSITION: SHARED_TOPIC_MARK = #C8102E and CATCHALL_TINT_FRAC =
+0.45 (tint_toward_white) both ship. The scatter mark clears every real
+co-occurrence with margin, chosen for the WIDEST safety margin among three
+otherwise-legal candidates; the tint mechanism trades categorical
+separation for the deliberately muted read a catch-all row asks for, relief
+satisfied the same way every other muted/low-contrast tone in this file
+already is -- a glyph and a caption, never colour alone.

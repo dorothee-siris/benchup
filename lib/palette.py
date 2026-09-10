@@ -582,6 +582,50 @@ OUTLINE_WIDTH = 2
 # "2px surface ring on overlapping marks" spacer from the dataviz mark specs).
 
 
+CATCHALL_TINT_FRAC = 0.45
+# The balance bars' OWN catch-all mute (Compare's topic-overlap bar chart):
+# a catch-all topic's segments -- an institution's own hue, or
+# `JOINT_TOPIC_COLOR` -- drawn `CATCHALL_TINT_FRAC` of the way toward SURFACE
+# (white) rather than at `MUTED_OPACITY` (the scatter's own mechanism, a
+# marker OPACITY). A Plotly BAR fill has no equivalent "composited over the
+# plot background" concept a marker's opacity gets for free -- two adjacent
+# bar segments (the a-only fill and the joint fill) sit flush against each
+# other with no background showing through the seam, so an opacity would
+# read as a translucent SHEET over both, not a lighter version of each hue on
+# its own. Mixing the hex directly keeps one flat fill per segment, in every
+# renderer and in the CSV/xlsx colour swatch alike, and is a DERIVATION of
+# the row's own hue rather than a fourth colour to learn: the reader's read
+# stays "the same institution (or the same joint segment), just backed off",
+# exactly the shape/glyph-first-not-colour-first house rule already applies
+# to a catch-all topic on the scatter (the y-tick's own cross glyph is the
+# PRIMARY flag; the tint is the secondary, shape-first reinforcement).
+
+
+def tint_toward_white(hex_color: str, frac: float = CATCHALL_TINT_FRAC) -> str:
+    """Mix `hex_color` `frac` of the way toward SURFACE (white) -- see
+    `CATCHALL_TINT_FRAC` above for why this exists and why it is a literal
+    hex mix, not an opacity. Validated in light mode against the surface,
+    alongside the institution/joint hues it derives from
+    (`design-system/palette_validation.txt` run 40): the RESULT is
+    deliberately a pale, low-contrast, low-chroma tone (that IS the point --
+    a catch-all row must read as visually backed off), so the run's own
+    lightness-band/chroma-floor/contrast FAILs on these derived tones are
+    disclosed, not suppressed, the same "never colour alone" relief every
+    other WARN-band hue in this file already carries: a catch-all row is
+    NEVER identified by its tint alone -- the y-tick's own cross glyph and
+    this chart's own caption line say so in words every time."""
+    hex_color = str(hex_color).lstrip("#")
+    r, g, b = (int(hex_color[i:i + 2], 16) for i in (0, 2, 4))
+    frac = float(frac)
+    # round-half-UP, not Python's own built-in banker's rounding (round-half-
+    # to-even) -- every channel here is >= 0, so `int(x + 0.5)` is a plain,
+    # unambiguous "round half away from zero" and matches the validator
+    # script's own (JS) rounding, which is how every hex in the validation
+    # log below was actually computed.
+    mix = lambda c: int(c * (1.0 - frac) + 255.0 * frac + 0.5)
+    return f"#{mix(r):02X}{mix(g):02X}{mix(b):02X}"
+
+
 # ---------------------------------------------------------------------------
 # FAMILY 5 -- INSTITUTION IDENTITY. **COMPARE ONLY**.
 # ---------------------------------------------------------------------------
@@ -728,6 +772,47 @@ SHARED_FRONTIER = "#821D13"
 # frontier map's chip legend carries a "shared" chip beside the institution
 # chips (`charts_compare.legend_strip`), every bubble's hover names its owner
 # in words, and the map's own export column carries the owner as text.
+
+
+SHARED_TOPIC_MARK = "#C8102E"
+# **THE MARK ITSELF, on the owner-coloured topic-overlap scatter
+# (`charts_topics.fig_plane_frontier(color_by="owner")`) and on that chart's
+# own "shared" legend chip ONLY.** `SHARED_FRONTIER` above stays exactly what
+# it always was -- a TEXT/TICK colour (`WARNING_CAPTION_COLOR`, the red
+# dashed reference lines on the ratio charts and the balance bars) -- and is
+# UNCHANGED by this hex. The user's own complaint, reported directly against
+# the shipped scatter: `SHARED_FRONTIER` (#821D13, a dark brick red) reads too
+# close in weight to the dark institution navies on that same plane, so the
+# "who holds this topic" read was slower than it should be. The user
+# explicitly accepted OVERRULING this file's own one-hue-per-role convention
+# for this ONE mark (a second red, not a re-tuned `SHARED_FRONTIER`) rather
+# than chase a single hex that serves both a bright scatter mark and a small
+# warning caption equally well -- the two jobs pull in opposite directions on
+# lightness, as the `SHARED_FRONTIER` derivation above already found.
+#
+# Three brighter, redder candidates were screened (`validate_palette.js
+# --mode light --surface #FFFFFF`, the same OKLab/Machado-Oliveira-Fernandes
+# CVD simulation every other hex in this file is measured against) against
+# every hue this mark can co-occur with on the SAME chart or the SAME legend
+# strip: the three institution slots (the scatter's own other marks) and
+# `JOINT_TOPIC_COLOR` (the balance bars' amber sits in the SAME legend strip
+# as this mark, `views_compare._render_topic_overlap`'s one shared
+# `legend_strip` call for both charts) -- full log
+# `design-system/palette_validation.txt` run 40:
+#   #D0312D  L=0.564 C=0.196 H=27.3  worst normal-vision 23.0 (vs slot 2) worst CVD 12.7 protan (vs slot 2)
+#   #D7263D  L=0.571 C=0.209 H=21.1  worst normal-vision 24.0 (vs slot 2) worst CVD 10.8 protan (vs slot 2)
+#   #C8102E  L=0.530 C=0.207 H=22.3  worst normal-vision 23.4 (vs slot 2) worst CVD 14.2 protan (vs slot 2) <- SHIPPED
+# `#C8102E` clears every pair with the WIDEST margin of the three on the
+# pairing that matters most (institution slot 2, the mid navy every
+# candidate's own worst case), while its hue (H=22.3) stays clear of the
+# H<=15 deutan-collapse-toward-navy zone this file's own `SHARED_FRONTIER`
+# derivation already measured and warned against -- so this candidate keeps
+# the LARGEST safety margin on the one axis a future edit could accidentally
+# erode. Contrast on white 5.88:1 (own check, individually >= 3:1, unlike
+# `B5C0D4`/`JOINT_TOPIC_COLOR` which both carry a pre-existing WARN-band
+# relief in this file already). Both normal-vision and CVD floors clear >= 15
+# / >= 8 against every institution slot and against `JOINT_TOPIC_COLOR`
+# itself -- never suppressed, recorded in full in the validation log.
 
 
 FRONTIER_SHARED_HALO = {"color": SURFACE, "width": 1.5}

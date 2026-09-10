@@ -329,7 +329,7 @@ def test_fig_plane_frontier_owner_colour_channel_red_if_shared():
     owners = list(df["owner"])
     for c, o in zip(colors, owners):
         if o == "shared":
-            assert c == P.SHARED_FRONTIER
+            assert c == P.SHARED_TOPIC_MARK
         elif o == "A":
             assert c == P.institution_color(0)
         else:
@@ -384,10 +384,40 @@ def test_fig_plane_frontier_invalid_color_by_raises():
 
 
 # ---------------------------------------------------------------------------
+# the frontier line -- ONE hover line folding expansion, acceleration and the
+# score they combine into, replacing the two separate lines this hover used
+# to draw (`fig_plane_frontier`, both colour modes, and the balance bars'
+# own emergence mode below).
+# ---------------------------------------------------------------------------
+def test_fig_plane_frontier_hover_carries_one_frontier_line_not_two():
+    df = _impact_frame()
+    fig = X.fig_plane_frontier(df, color_by="domain")
+    for i, h in enumerate(fig.data[0].customdata):
+        assert "<b>expansion</b>" not in h and "<b>acceleration</b>" not in h
+        exp, acc = df.iloc[i]["expansion_latest"], df.iloc[i]["acceleration_latest"]
+        score = (X.FRONTIER_SCORE_EXPANSION_WEIGHT * exp
+                + X.FRONTIER_SCORE_ACCELERATION_WEIGHT * acc)
+        assert f"<b>frontier</b>: expansion {C._fmt_frontier(exp)}" in h
+        assert f"score {C._fmt_frontier(score)}" in h
+
+
+def test_fig_plane_frontier_owner_hover_carries_frontier_line():
+    df = _overlay_frame()
+    fig = X.fig_plane_frontier(df, color_by="owner", slots=SLOTS, names=NAMES, ids=IDS)
+    for h in fig.data[0].customdata:
+        assert "<b>frontier</b>: expansion" in h
+        assert "<b>expansion</b>" not in h
+
+
+# ---------------------------------------------------------------------------
 # balance_bars -- one synthetic frame carrying every column any of the five
 # modes needs (a superset of `topic_data.pair_topics`' own shape).
 # ---------------------------------------------------------------------------
-def _balance_rows(n: int = 10, seed: int = 2) -> pd.DataFrame:
+def _balance_rows(n: int = 10, seed: int = 2, n_excluded: int = 0) -> pd.DataFrame:
+    """`n_excluded` (default 0, so every pre-existing call site and its own
+    exact random sequence are untouched): marks the FIRST `n_excluded` rows
+    `is_excluded=True` with a real catch-all reason, for the tint/glyph
+    tests below."""
     rng = np.random.default_rng(seed)
     owners = ["shared", "A", "B"]
     vol_a = rng.integers(0, 100, n)
@@ -412,12 +442,21 @@ def _balance_rows(n: int = 10, seed: int = 2) -> pd.DataFrame:
     low_base_a = np.array([i == 0 for i in range(n)])
     low_base_b = np.zeros(n, dtype=bool)
     frontier_score_latest = rng.uniform(-1, 1, n)
+    # Appended AFTER every rng call above -- so the existing columns' own
+    # values stay bit-identical to every pre-existing test's expectations.
+    expansion_latest = rng.uniform(-1, 1, n)
+    acceleration_latest = rng.uniform(-1, 1, n)
+    excluded = [False] * n
+    reason = [None] * n
+    for i in range(min(max(n_excluded, 0), n)):
+        excluded[i] = True
+        reason[i] = "Applied S&T"
     return pd.DataFrame({
         "topic_id": [f"T{i:05d}" for i in range(n)],
         "topic_name": [f"Topic {i}" for i in range(n)],
         "keywords": ["Kw1|Kw2|Kw3|Kw4|Kw5|Kw6|Kw7|Kw8|Kw9|Kw10" for _ in range(n)],
-        "is_excluded": [False] * n,
-        "exclusion_reason_label": [None] * n,
+        "is_excluded": excluded,
+        "exclusion_reason_label": reason,
         "vol_a": vol_a, "vol_b": vol_b, "vol_joint": vol_joint,
         "under_floor_a": [False] * n, "under_floor_b": [False] * n,
         "owner": [owners[i % 3] for i in range(n)],
@@ -430,6 +469,7 @@ def _balance_rows(n: int = 10, seed: int = 2) -> pd.DataFrame:
         "change_a": change_a, "change_b": change_b,
         "low_base_a": low_base_a, "low_base_b": low_base_b,
         "frontier_score_latest": frontier_score_latest,
+        "expansion_latest": expansion_latest, "acceleration_latest": acceleration_latest,
     })
 
 
@@ -506,6 +546,85 @@ def test_balance_bars_stars_three_traces_joint_centred_and_matches_column():
     assert np.allclose(list(joint_trace.x), [float(sorted_rows.at[i, "stars_joint"]) for i in drawn_rows])
 
 
+# ---------------------------------------------------------------------------
+# balance_bars -- the catch-all flag (all five modes): a cross glyph on the
+# y-tick, lighter tints on the segments, OTHER rows unchanged.
+# ---------------------------------------------------------------------------
+def test_balance_bars_no_excluded_rows_keeps_scalar_colours():
+    """VACUITY / non-regression: with nothing excluded (the default fixture),
+    a three-segment trace's own `marker.color` stays a single SCALAR hex --
+    never a per-point list -- exactly as every pre-existing test above
+    already assumes."""
+    rows = _balance_rows()
+    fig = X.balance_bars(rows, IDS, slots=SLOTS, names=NAMES, mode=X.BAR_MODE_VOLUME)
+    bar_traces = [t for t in fig.data if isinstance(t, go.Bar) and t.hoverinfo != "skip"]
+    assert bar_traces[0].marker.color == P.institution_color(0)
+    assert bar_traces[2].marker.color == P.institution_color(1)
+    assert bar_traces[1].marker.color == P.JOINT_TOPIC_COLOR
+
+
+def test_balance_bars_catchall_tick_gets_the_cross_glyph_others_dont():
+    rows = _balance_rows(n=10, n_excluded=2)
+    fig = X.balance_bars(rows, IDS, slots=SLOTS, names=NAMES, mode=X.BAR_MODE_VOLUME)
+    key = _expected_sort_key(X.BAR_MODE_VOLUME, rows)
+    sorted_rows = rows.assign(_k=key.to_numpy()).sort_values(
+        ["_k", "topic_id"], ascending=[False, True]).reset_index(drop=True)
+    ticktext = list(fig.layout.yaxis.ticktext)
+    assert any(sorted_rows["is_excluded"]), "fixture must produce at least one excluded row"
+    for i in range(len(sorted_rows)):
+        if sorted_rows.at[i, "is_excluded"]:
+            assert ticktext[i].endswith(X.CATCHALL_TICK_GLYPH), ticktext[i]
+        else:
+            assert not ticktext[i].endswith(X.CATCHALL_TICK_GLYPH), ticktext[i]
+
+
+def test_balance_bars_catchall_volume_segments_are_tinted_others_are_not():
+    rows = _balance_rows(n=10, n_excluded=2)
+    fig = X.balance_bars(rows, IDS, slots=SLOTS, names=NAMES, mode=X.BAR_MODE_VOLUME)
+    key = _expected_sort_key(X.BAR_MODE_VOLUME, rows)
+    sorted_rows = rows.assign(_k=key.to_numpy()).sort_values(
+        ["_k", "topic_id"], ascending=[False, True]).reset_index(drop=True)
+    bar_traces = [t for t in fig.data if isinstance(t, go.Bar) and t.hoverinfo != "skip"]
+    a_colors, joint_trace, b_colors = list(bar_traces[0].marker.color), bar_traces[1], list(bar_traces[2].marker.color)
+    tint_a = P.tint_toward_white(P.institution_color(0))
+    tint_b = P.tint_toward_white(P.institution_color(1))
+    tint_joint = P.tint_toward_white(P.JOINT_TOPIC_COLOR)
+    for i in range(len(sorted_rows)):
+        if sorted_rows.at[i, "is_excluded"]:
+            assert a_colors[i] == tint_a
+            assert b_colors[i] == tint_b
+        else:
+            assert a_colors[i] == P.institution_color(0)
+            assert b_colors[i] == P.institution_color(1)
+    joint_colors = list(joint_trace.marker.color)
+    for pos, row_i in enumerate(joint_trace.y):
+        expected = tint_joint if sorted_rows.at[row_i, "is_excluded"] else P.JOINT_TOPIC_COLOR
+        assert joint_colors[pos] == expected
+
+
+def test_balance_bars_catchall_emergence_segments_are_tinted():
+    """The paired family (fwci/led/emergence) tints too -- generic over
+    WHATEVER colour a row would otherwise draw (an institution hue, or
+    emergence's own decline grey)."""
+    rows = _balance_rows(n=10, n_excluded=2)
+    fig = X.balance_bars(rows, IDS, slots=SLOTS, names=NAMES, mode=X.BAR_MODE_EMERGENCE)
+    key = _expected_sort_key(X.BAR_MODE_EMERGENCE, rows)
+    sorted_rows = rows.assign(_k=key.to_numpy()).sort_values(
+        ["_k", "topic_id"], ascending=[False, True]).reset_index(drop=True)
+    bar_traces = [t for t in fig.data if isinstance(t, go.Bar) and t.hoverinfo != "skip"]
+    left_colors = list(bar_traces[0].marker.color)
+    for i in range(len(sorted_rows)):
+        if sorted_rows.at[i, "is_excluded"]:
+            base = P.COMPARISON if sorted_rows.at[i, "change_a"] < 0 else P.institution_color(0)
+            assert left_colors[i] == P.tint_toward_white(base)
+
+
+def test_balance_bars_catchall_note_constants_carry_the_glyph_and_dagger():
+    assert X.CATCHALL_TICK_GLYPH in X.NOTE_CATCHALL_FLAG
+    assert X.NOTE_FWCI_DAGGER.startswith(C.DAGGER)
+    assert X.NOTE_EMERGENCE_DAGGER.startswith(C.DAGGER)
+
+
 @pytest.mark.parametrize("mode,ref", [(X.BAR_MODE_FWCI, X.FWCI_REFERENCE_TICK),
                                       (X.BAR_MODE_LED, float(X.LED_REFERENCE_DISTANCE))])
 def test_balance_bars_paired_modes_two_traces_no_joint_segment(mode, ref):
@@ -566,6 +685,15 @@ def test_balance_bars_emergence_tip_text_signed_pct_and_dagger():
     low_base_pos = sorted_rows.index[sorted_rows["low_base_a"]][0]
     assert left_text[low_base_pos].endswith(C.DAGGER)
     assert left_text[low_base_pos].startswith("+") or left_text[low_base_pos].startswith("-")
+
+
+def test_balance_bars_emergence_hover_carries_the_frontier_line():
+    rows = _balance_rows()
+    fig = X.balance_bars(rows, IDS, slots=SLOTS, names=NAMES, mode=X.BAR_MODE_EMERGENCE)
+    for h in fig.data[0].customdata:
+        assert "<b>frontier</b>: expansion" in h
+        assert h.rsplit("<br>", 1)[-1].startswith("<b>held by</b>"), \
+            "owner stays the LAST line even with the frontier line added"
 
 
 def test_balance_bars_gutter_matches_mode_and_led_is_best_rank():
@@ -802,16 +930,29 @@ def test_balance_bars_caps_at_a_hundred_rows_without_error():
 # ---------------------------------------------------------------------------
 # balance_bars -- the right-margin "Joint pubs" link column
 # ---------------------------------------------------------------------------
+_NON_ROW_HEADER_TEXTS = {X.LINK_COL_HEADER_TEXT} | set(X.GUTTER_HEADER_TEXT.values())
+
+
 def _link_annotations(fig) -> list:
-    return [a for a in fig.layout.annotations if a.text != X.LINK_COL_HEADER_TEXT]
+    return [a for a in fig.layout.annotations if a.text not in _NON_ROW_HEADER_TEXTS]
 
 
 def test_balance_bars_link_column_one_annotation_per_row_plus_header():
     rows = _balance_rows(n=7)
     fig = X.balance_bars(rows, IDS, slots=SLOTS, names=NAMES, mode=X.BAR_MODE_VOLUME)
-    assert len(fig.layout.annotations) == len(rows) + 1
+    # one link-column annotation per row, plus the link header AND the
+    # gutter's own mode header.
+    assert len(fig.layout.annotations) == len(rows) + 2
     headers = [a for a in fig.layout.annotations if a.text == X.LINK_COL_HEADER_TEXT]
     assert len(headers) == 1
+
+
+@pytest.mark.parametrize("mode", X.BAR_MODES)
+def test_balance_bars_gutter_header_matches_mode(mode):
+    rows = _balance_rows()
+    fig = X.balance_bars(rows, IDS, slots=SLOTS, names=NAMES, mode=mode)
+    headers = [a for a in fig.layout.annotations if a.text == X.GUTTER_HEADER_TEXT[mode]]
+    assert len(headers) == 1, (mode, [a.text for a in fig.layout.annotations])
 
 
 def test_balance_bars_link_column_hrefs_equal_url_joint_except_under_floor():

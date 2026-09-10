@@ -563,6 +563,15 @@ def _render_topic_overlap(ctx: dict, ids: list[str], names: dict, slots: dict) -
         "fig_topic_overlap_bars", overlap_key,
         lambda: XT.balance_bars(pairs, ids, slots=slots, names=names, mode=mode))
     st.plotly_chart(fig, width="stretch", key="fig_topic_overlap_bars")
+    # The bars' own two housekeeping notes: the catch-all flag (every mode --
+    # a catch-all row's tick carries a cross glyph and its segments draw in a
+    # lighter tint) and, on the two modes whose tip labels can carry a
+    # dagger, what that dagger means.
+    st.markdown(X.chart_note(XT.NOTE_CATCHALL_FLAG), unsafe_allow_html=True)
+    if mode == TD.MODE_FWCI:
+        st.markdown(X.chart_note(XT.NOTE_FWCI_DAGGER), unsafe_allow_html=True)
+    elif mode == TD.MODE_EMERGENCE:
+        st.markdown(X.chart_note(XT.NOTE_EMERGENCE_DAGGER), unsafe_allow_html=True)
 
     return mode, n, fwci_stat
 

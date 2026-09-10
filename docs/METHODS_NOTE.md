@@ -200,7 +200,7 @@ Compare places both institutions' topics on the same two planes Find uses, under
 selector, applied to each institution separately and then combined: the union of each
 institution's own top 50 (`lib.topic_data.PAIR_N_MAX`), so the chart never carries more than 100
 topics in all. A topic held by both institutions' own top sets is drawn in one shared colour on
-the chart (`lib.palette.SHARED_FRONTIER`), whichever side it came from; a topic held by one
+the chart (`lib.palette.SHARED_TOPIC_MARK`, a bright red), whichever side it came from; a topic held by one
 institution only keeps that institution's own colour. The perimeter is the same as Find's topic
 planes: articles and reviews, 2020 to 2024, full counting, primary topic.
 

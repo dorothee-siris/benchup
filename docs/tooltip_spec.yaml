@@ -51,6 +51,7 @@ formats:
   star_pair: "one star-paper count per institution, in slot order: '{name A} 3 - {name B} 5'"
   joint_star_count: "the pair's joint star-paper count on this topic (0 is a real count here, never a floor phrase -- star_works.parquet carries no joint-publication floor)"
   change_pair_dagger: "one signed percentage change per institution, in slot order: '{name A} +18% - {name B} -7%', a dagger after a side's own value when that side's 2020-22 volume is a low base"
+  frontier_triplet: "'expansion 4.19 · acceleration 5.73 · score 2.33' - expansion and acceleration, two decimals each, plus the frontier score they combine into (0.35*expansion + 0.15*acceleration, the SAME weights frontier_score_latest itself ships with); the whole line is omitted when either input is missing"
   keywords_2x5: "'<b>keywords</b>: ' on the topic's 10 comma-separated keywords, as TWO lines of five - the label sits on line 1 of the pair only; counts as 2 lines against the 8-line cap"
   topic_name_flagged: "the topic name, followed by ' - catch-all topic: {exclusion label}' when the topic is on the catch-all list"
   frontier_flag: "the fixed phrase 'in the global top quarter of emergence'"
@@ -149,8 +150,8 @@ charts:
     lines:
       - {field: topic_name, label: "", format: topic_name_flagged}
       - {field: keywords, label: "keywords", format: keywords_2x5}
-      - {field: expansion, label: "expansion", format: score_2dp, note: "expansion_latest - the horizontal axis"}
-      - {field: acceleration, label: "acceleration", format: score_2dp, note: "acceleration_latest - the vertical axis"}
+      - {field: frontier, label: "frontier", format: frontier_triplet,
+         note: "expansion_latest (the horizontal axis) and acceleration_latest (the vertical axis), plus the score they combine into"}
       - {field: n_ar, label: "articles and reviews 2020-2024, full counting", format: int_thousands,
          note: "inst_topic_impact n_ar - the bubble area, the same measure the other plane puts on its horizontal axis"}
       - {field: frontier_standing, label: "frontier standing", format: frontier_flag, when: "top25pct_frontier is true",
@@ -236,8 +237,8 @@ charts:
     lines:
       - {field: topic_name, label: "", format: topic_name_flagged}
       - {field: keywords, label: "keywords", format: keywords_2x5}
-      - {field: expansion, label: "expansion", format: score_2dp}
-      - {field: acceleration, label: "acceleration", format: score_2dp}
+      - {field: frontier, label: "frontier", format: frontier_triplet,
+         note: "expansion_latest and acceleration_latest, plus the score they combine into"}
       - {field: pair_volumes, label: "publications 2020-2024, full counting", format: pair_volumes,
          note: "vol_a and vol_b; their sum is the bubble area"}
       - {field: vol_joint, label: "joint publications", format: joint_or_floor,
@@ -304,6 +305,8 @@ charts:
              note: "this mode's own quantity, paired bars from the centre; a dagger under a low 2020-22 base"}
           - {field: pair_volumes, label: "publications 2020-2024, full counting", format: pair_volumes}
           - {field: fwci_pair, label: "FWCI_EU", format: fwci_pair_plain}
+          - {field: frontier, label: "frontier", format: frontier_triplet,
+             note: "expansion_latest and acceleration_latest, plus the score this mode's own row order is sorted by"}
           - {field: owner, label: "held by", format: owner_clause}
 
   # {A}/{B} in the labels below render as each institution's own SHORT
