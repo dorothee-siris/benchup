@@ -47,7 +47,7 @@ it only partway through and it is left out of every impact figure (`app/config.y
 
 An institution is credited with a publication when the publication's own record names it
 directly, never through OpenAlex's own parent-child organisation graph, which would graft a
-partner's whole output onto a shared institution (SIRIS `CLAUDE.md`, OpenAlex gotchas).
+partner's whole output onto a shared institution.
 
 Full counting credits the whole publication to every institution named on it. Fractional counting
 instead splits the publication across the institutions an author declares, by that author's own
@@ -358,7 +358,6 @@ one-directional and fully traced, never a broad drift.
 World leaders and star papers are pulled from OpenAlex on the day they were built, a different
 moment from the harvest snapshot behind every other figure on the page, so the two can drift a
 little apart. OpenAlex itself keeps changing: a rerun on a later date, against a fresh OpenAlex
-pull, will not reproduce this snapshot's exact counts, even from the same code (SIRIS `CLAUDE.md`,
-vintage churn).
+pull, will not reproduce this snapshot's exact counts, even from the same code.
 
 Candidates for review, not a verdict.

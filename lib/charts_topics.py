@@ -1063,7 +1063,7 @@ def balance_bars(
     # as a real SVG anchor (a y-tick label carrying `<a href>` markup
     # renders the same way, an established Plotly behaviour), no new
     # dependency. A header annotation ("Joint
-    # pubs") sits above the column, and `margin.r` is WIDENED to
+    # pubs") sits above the plot area in paper coordinates (a y-axis position past the first row would fall outside the axis range and be clipped), and `margin.r` is WIDENED to
     # `LINK_COL_PX` (a fixed px width, not a fraction of the plot area) so
     # the column never overlaps the last tick label.
     annotations = list(fig.layout.annotations or ())
@@ -1079,7 +1079,7 @@ def balance_bars(
         ))
     annotations.append(dict(
         xref="paper", x=1.0, xanchor="left", xshift=8,
-        yref="y", y=-1.0, yanchor="middle",
+        yref="paper", y=1.0, yanchor="bottom", yshift=2,
         text=LINK_COL_HEADER_TEXT, showarrow=False, align="left",
         font=dict(size=LINK_COL_FONT_PX, color=P.INK_SECONDARY),
     ))
@@ -1087,4 +1087,4 @@ def balance_bars(
 
     margin_l = C.LABEL_COL_PX["compare"] + C.GUTTER_COL_PX["compare"] + C.COL_PAD_PX
     return C._base_layout(fig, C.row_height_single(n), bargap=C.BAR_GAP_SINGLE,
-                          margin=dict(t=C.BASE_PX // 2, l=margin_l, r=LINK_COL_PX, b=C.BASE_PX))
+                          margin=dict(t=C.BASE_PX + LINK_COL_FONT_PX, l=margin_l, r=LINK_COL_PX, b=C.BASE_PX))
