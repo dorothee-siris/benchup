@@ -110,7 +110,7 @@ a position: how far the topic's world volume in the latest bin sits above or bel
 baseline, standardised across topics, so zero means the topic has expanded no more than science
 as a whole over the long run. Acceleration is momentum: the topic's growth against that baseline
 from 2019-21 to 2022-23, again standardised, so zero means it is moving with science as a whole,
-and the frontier score weighs the two at 0.7 expansion plus 0.3 acceleration. A topic at expansion
+and the frontier score is 0.35 × expansion + 0.15 × acceleration, a 0.7 to 0.3 weighting halved (a topic at expansion 4.19 with acceleration 5.73 scores 2.33). A topic at expansion
 0.01 with acceleration 0.5 therefore reads as an average long-run position that gained momentum in
 2022-23. A well-established, foundational topic can carry a low score simply because the world's
 attention to it is no longer expanding.

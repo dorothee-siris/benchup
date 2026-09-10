@@ -149,7 +149,7 @@ def test_both_definitions_name_both_bins_and_the_weighting():
         t = H.methods(key)
         assert "2022" in t and "2019" in t, key
     frontier = H.methods("frontier_scores")
-    assert "0.7" in frontier and "0.3" in frontier
+    assert "0.35" in frontier and "0.15" in frontier
     assert "0.01" in frontier and "0.5" in frontier, "the worked example is missing"
 
 
