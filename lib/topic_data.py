@@ -471,6 +471,23 @@ PAIR_COLS = [
     "fwci_a", "fwci_b",
     "url_a", "url_b", "url_joint",
 ]
+# `PAIR_COLS` above is the WORKBOOK's own export contract, unchanged by this
+# pass (`views_compare._workbook_sheets` slices back to exactly these 33
+# columns, in this order, before writing the "Topic overlap" sheet -- the
+# stream that added the four columns below keeps that sheet byte-identical
+# to what it shipped before). `PAIR_EXTRA_COLS` are the fields the balance
+# bars' star mode and its FWCI-dagger floor need that were not already on
+# the export contract: appended by `pair_topics` AFTER `PAIR_COLS`, read by
+# the chart layer, never written to the workbook.
+PAIR_EXTRA_COLS = [
+    "stars_joint",       # leaders_data.pair_stars_by_topic -- joint STAR count, this topic
+    "star_ids_joint",    # leaders_data.pair_star_ids_by_topic -- the exact work ids behind it
+    "url_stars_joint",   # links.star_ids_url(star_ids_joint), None when stars_joint == 0 --
+                         # built HERE (not in the chart layer) so charts_topics.py keeps its
+                         # own "imports only lib.charts/lib.palette" house rule intact
+    "n_covered_a",       # each institution's OWN n_covered on this topic (0 under the floor) --
+    "n_covered_b",       # the fwci-mode bars' "dagger under 10 covered works" gate
+]
 
 _PAIR_DIM_COLS = [
     "topic_name", "keywords", "domain_id", "domain_name", "field_name",
@@ -547,6 +564,32 @@ def pair_topics(ctx: dict, a: str, b: str, mode: str, n: int,
                        bars`/`compare_topic_table`) do not surface it.
       url_a, url_b, url_joint -- `lib.links.topic_url`/`joint_topic_url`.
 
+    `PAIR_EXTRA_COLS` (appended after `PAIR_COLS`, see that constant's own
+    note -- NOT part of the workbook export):
+      stars_joint -- `leaders_data.pair_stars_by_topic`, the pair's JOINT
+                       star-paper count on this topic (0 when neither shares
+                       a star work here -- no floor concept, unlike
+                       vol_joint: star_works.parquet is a direct fact table,
+                       never gated by the 5-joint-publication privacy floor).
+      star_ids_joint -- `leaders_data.pair_star_ids_by_topic`, the exact work
+                       ids behind `stars_joint` (empty list, never None, when
+                       0).
+      url_stars_joint -- `links.star_ids_url(star_ids_joint)`, or None when
+                       `stars_joint` is 0 (no ids to link) -- built here so
+                       the chart layer (`charts_topics.py`) never has to
+                       import `lib.links` itself, matching its own "imports
+                       only lib.charts/lib.palette" house rule.
+      n_covered_a, n_covered_b -- each institution's OWN `n_covered` from its
+                       own full topic frame (`institution_topics`), 0 when
+                       the topic is outside that institution's own n_ar>=3
+                       population (the SAME `under_floor_a`/`under_floor_b`
+                       case `vol_a`/`vol_b` already flag) -- the FWCI-mode
+                       bars' own "dagger under 10, no bar under 3" gate reads
+                       this (a bar itself is already suppressed by construction
+                       whenever `fwci_a`/`fwci_b` is NaN, since FWCI needs
+                       n_covered>=3 to exist at all; this column is only for
+                       the DAGGER threshold in between, 3..9).
+
     Empty (right columns) when the union is empty (neither institution has
     any topic clearing its own n_ar>=3 floor)."""
     from . import collab_data as COL  # local import: this module sits below
@@ -564,7 +607,7 @@ def pair_topics(ctx: dict, a: str, b: str, mode: str, n: int,
     ids_a, ids_b = set(sel_a["topic_id"]), set(sel_b["topic_id"])
     union_ids = sorted(ids_a | ids_b)
     if not union_ids:
-        return pd.DataFrame(columns=PAIR_COLS)
+        return pd.DataFrame(columns=PAIR_COLS + PAIR_EXTRA_COLS)
 
     idx_a = full_a.set_index("topic_id")
     idx_b = full_b.set_index("topic_id")
@@ -593,6 +636,8 @@ def pair_topics(ctx: dict, a: str, b: str, mode: str, n: int,
     out["combined_vol"] = out["vol_a"] + out["vol_b"]
     out["fwci_a"] = idx_a[fwci_col].reindex(union_idx)
     out["fwci_b"] = idx_b[fwci_col].reindex(union_idx)
+    out["n_covered_a"] = idx_a["n_covered"].reindex(union_idx).fillna(0.0).astype("int64")
+    out["n_covered_b"] = idx_b["n_covered"].reindex(union_idx).fillna(0.0).astype("int64")
 
     change_a = _topic_yearly_change_df(ctx, a).set_index("topic_id")
     change_b = _topic_yearly_change_df(ctx, b).set_index("topic_id")
@@ -612,6 +657,13 @@ def pair_topics(ctx: dict, a: str, b: str, mode: str, n: int,
     stars_map_b = LD.stars_for_topics(ctx, b, union_ids)
     out["stars_a"] = [int(stars_map_a.get(t, 0)) for t in union_ids]
     out["stars_b"] = [int(stars_map_b.get(t, 0)) for t in union_ids]
+
+    joint_stars_map = LD.pair_stars_by_topic(ctx, a, b, union_ids)
+    joint_star_ids_map = LD.pair_star_ids_by_topic(ctx, a, b, union_ids)
+    out["stars_joint"] = [int(joint_stars_map.get(t, 0)) for t in union_ids]
+    star_ids_lists = [list(joint_star_ids_map.get(t, [])) for t in union_ids]
+    out["star_ids_joint"] = star_ids_lists
+    out["url_stars_joint"] = [links.star_ids_url(ids) if ids else None for ids in star_ids_lists]
 
     joint_slice = COL._collab_pair_slice(ctx, "collab_topic_vols", a, b)
     pair_row = COL._load_collab_pairs(ctx, a, b)
@@ -633,7 +685,7 @@ def pair_topics(ctx: dict, a: str, b: str, mode: str, n: int,
     out = out.reset_index()
     out = out.sort_values(["combined_vol", "topic_id"], ascending=[False, True],
                           kind="mergesort").reset_index(drop=True)
-    return out.reindex(columns=PAIR_COLS)
+    return out.reindex(columns=PAIR_COLS + PAIR_EXTRA_COLS)
 
 
 def pair_topic_set_caption(pairs: pd.DataFrame) -> dict:

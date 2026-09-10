@@ -44,7 +44,10 @@ Covers:
      really frees, so no `streamlit run` subprocess was needed).
   5. test_compare_pairs_sweep -- NEW (a concurrency fix, found via a stress
      test, phase B): 40 distinct qualifying pairs through
-     Compare's six frame functions, sequentially, in one process; RSS
+     Compare's frame functions (six, plus the subfield-grain reciprocity
+     pair `subfield_breakdown`/`reciprocity_frame(grain="subfields")` --
+     the same style of per-pair duckdb slice + bounded LRU this sweep exists
+     to gate), sequentially, in one process; RSS
      growth from pair 10 to pair 40 must stay under
      COMPARE_SWEEP_GROWTH_BUDGET_MB -- the gate that would have caught the
      unbounded per-pair `ctx[key] = df` caches in `lib/collab_data.py`/
@@ -70,7 +73,7 @@ collect test functions in file definition order (no reordering plugin in
 this suite, confirmed against conftest.py) -- `test_full_loader_sweep_
 rss_delta` is therefore defined FIRST; `test_scenario_cycle` and
 `test_compare_pairs_sweep` are the two most expensive (6 full scenario
-loads, then 40 pairs x 6 frame functions) and both deliberately run against
+loads, then 40 pairs x 8 frame functions) and both deliberately run against
 an already-warm ctx/bundle, matching how the real app hits it: a page never
 requests a scenario before the process-wide bundle exists. `test_scenario_
 cycle` is defined LAST BUT ONE and `test_compare_pairs_sweep` LAST OF ALL --
@@ -376,10 +379,11 @@ def test_scenario_cycle():
 
 def test_compare_pairs_sweep():
     """NEW (a concurrency fix). Runs Compare's frame functions
-    (`cards`, `top_subfields`, `sdg_frame`, `relationship`, and this version's
+    (`cards`, `top_subfields`, `sdg_frame`, `relationship`, this version's
     `topic_data.pair_topics`, which replaces the retired `frontier_
-    positioning`/`shared_frontier` pair in this sweep) over 40 distinct
-    qualifying pairs
+    positioning`/`shared_frontier` pair in this sweep, and the subfield-grain
+    reciprocity pair `collab_data.subfield_breakdown`/`collab_data.
+    reciprocity_frame(grain="subfields")`) over 40 distinct qualifying pairs
     SEQUENTIALLY in this already-warm process -- reuses
     `scenario_cache.bundle()`/`get("bestfit", "full")`, the exact scenario
     Compare pins and the one `test_scenario_cycle` just above leaves
@@ -402,6 +406,7 @@ def test_compare_pairs_sweep():
 
     from lib import compare_data as CD  # local import: keeps this file's module-load order untouched elsewhere
     from lib import topic_data as TD
+    from lib import collab_data as CDL  # subfield reciprocity's own per-pair slices/frames
 
     r10 = r_end = None
     for i, (a, b) in enumerate(pairs, 1):
@@ -410,6 +415,8 @@ def test_compare_pairs_sweep():
         CD.sdg_frame(ctx, subs, [a, b])
         TD.pair_topics(ctx, a, b, TD.MODE_VOLUME, 50, "mean")
         CD.relationship(ctx, [a, b], subs)
+        CDL.subfield_breakdown(ctx, a, b)
+        CDL.reciprocity_frame(ctx, subs, a, b, grain="subfields")
         if i == 10:
             r10 = process_rss_mb()
             assert r10 is not None, "could not read process RSS at pair 10"
@@ -583,7 +590,7 @@ def test_figure_cache_ram_bound():
     for i in range(FC.FIG_CACHE_MAX_ENTRIES):
         FC.cached_figure(
             "ram_test_heaviest_figure", (a, b, i),  # 16 DISTINCT keys, same heavy content each time
-            lambda: XT.balance_bars(bars_df, ids, slots=slots, names=names, sort_col="combined_vol"))
+            lambda: XT.balance_bars(bars_df, ids, slots=slots, names=names, mode=XT.BAR_MODE_VOLUME))
 
     gc.collect()
     after = process_rss_mb()

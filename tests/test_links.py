@@ -8,7 +8,8 @@ from urllib.parse import unquote
 
 import pytest
 
-from lib.links import copubs_taxon_url, copubs_url, joint_stars_url, joint_topic_url, ror_url, topic_url, works_url
+from lib.links import (MAX_STAR_IDS_PER_URL, copubs_taxon_url, copubs_url, joint_stars_url,
+                       joint_topic_url, ror_url, star_ids_url, topic_url, works_url)
 
 
 def test_works_url_contains_all_four_filters_and_no_raw_pipe():
@@ -151,6 +152,37 @@ def test_joint_topic_url_sort_appended():
 
 
 # ------------------------------------------------------------ joint_stars ---
+
+# --------------------------------------------------------------- star_ids_url
+# The balance bars' star-mode link column -- a concatenated OpenAlex
+# work-id list, percent-encoded the SAME way every other builder in this
+# module does.
+
+def test_star_ids_url_shape_and_no_raw_pipe():
+    url = star_ids_url(["W1", "W2", "W3"])
+    assert "|" not in url, "raw pipe leaked into the URL unencoded"
+    decoded = unquote(url)
+    assert decoded == "https://openalex.org/works?filter=ids.openalex:W1|W2|W3"
+    assert url.startswith("https://openalex.org/works?filter=")
+
+
+def test_star_ids_url_strips_full_urls_to_bare_ids():
+    url = star_ids_url(["https://openalex.org/W1", "W2"])
+    decoded = unquote(url)
+    assert decoded == "https://openalex.org/works?filter=ids.openalex:W1|W2"
+
+
+def test_star_ids_url_sort_appended():
+    url = star_ids_url(["W1"], sort="cited_by_count:desc")
+    assert url.endswith("&sort=cited_by_count:desc")
+
+
+def test_star_ids_url_cap_is_a_hundred():
+    ok = star_ids_url([f"W{i}" for i in range(MAX_STAR_IDS_PER_URL)])
+    assert ok  # exactly at the cap: no error
+    with pytest.raises(ValueError):
+        star_ids_url([f"W{i}" for i in range(MAX_STAR_IDS_PER_URL + 1)])
+
 
 def test_joint_stars_url_core_ar_and_sort():
     """Joint-stars link: the joint filter, CORE-AR types (never the

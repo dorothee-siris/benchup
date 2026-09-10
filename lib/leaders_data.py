@@ -344,6 +344,44 @@ def pair_stars_by_topic(ctx: dict, a: str, b: str, topic_ids: list[str]) -> dict
     return ctx[key]
 
 
+def pair_star_ids_by_topic(ctx: dict, a: str, b: str, topic_ids: list[str]) -> dict[str, list[str]]:
+    """Joint star-paper WORK IDS for the (a, b) pair, one list per requested
+    topic (empty list when absent) -- `star_works.parquet`, the SAME token-
+    match join `pair_stars_by_topic` uses, but returning the underlying
+    `work_id` values (deduplicated, sorted for a deterministic order) rather
+    than a count: the exact ids the balance bars' star-mode link column (and
+    the live count check that verifies it) both need. Symmetric like
+    `pair_stars_by_topic`: `pair_star_ids_by_topic(ctx, a, b, X) ==
+    pair_star_ids_by_topic(ctx, b, a, X)`, re-oriented to a fixed lo/hi pair
+    before the cache key/lookup, same convention. `len(ids)` for a topic
+    always equals `pair_stars_by_topic(ctx, a, b, [topic])[topic]`."""
+    lo, hi = (a, b) if a < b else (b, a)
+    topic_key = tuple(sorted(set(topic_ids)))
+    if not topic_key:
+        return {}
+    key = f"leaders::pair_star_ids_by_topic::{lo}::{hi}::{topic_key}"
+    if key not in ctx:
+        path = _posix(_data_dir(ctx) / "star_works.parquet")
+        t_ph = ",".join(["?"] * len(topic_key))
+        con = _duck(ctx)
+        try:
+            df = con.execute(
+                f"SELECT DISTINCT topic_id, work_id FROM read_parquet('{path}') "
+                f"WHERE topic_id IN ({t_ph}) AND {_TOKEN_LIKE} AND {_TOKEN_LIKE}",
+                list(topic_key) + [lo, hi],
+            ).df()
+        finally:
+            con.close()
+        ids_map: dict[str, list[str]] = {t: [] for t in topic_key}
+        for t, w in zip(df["topic_id"], df["work_id"]):
+            ids_map[str(t)].append(str(w))
+        for t in ids_map:
+            ids_map[t].sort()
+        ctx[key] = ids_map
+    _lru_touch(ctx, key, "leaders_pair_star_ids_by_topic")
+    return ctx[key]
+
+
 def pair_stars_by_field(ctx: dict, a: str, b: str) -> dict[int, int]:
     """Joint star-paper counts for the (a, b) pair, grouped by field via
     each star work's own PRIMARY topic mapped through `topics_dim.parquet`
@@ -373,4 +411,38 @@ def pair_stars_by_field(ctx: dict, a: str, b: str) -> dict[int, int]:
             con.close()
         ctx[key] = {int(f): int(n) for f, n in zip(df["field_id"], df["n"])}
     _lru_touch(ctx, key, "leaders_pair_stars_by_field")
+    return ctx[key]
+
+
+def pair_stars_by_subfield(ctx: dict, a: str, b: str) -> dict[int, int]:
+    """Joint star-paper counts for the (a, b) pair, grouped by BESTFIT
+    subfield via each star work's own PRIMARY topic mapped through
+    `topics_dim.parquet` (topic -> bestfit_subfield_id) -- the same join
+    `pair_stars_by_field` runs one level coarser. Symmetric like
+    `pair_stars_by_topic`/`pair_stars_by_field`, re-oriented to a fixed
+    lo/hi pair before the cache key/lookup. A subfield absent from the
+    result holds zero joint stars (never a fabricated 0 row -- callers that
+    need every subfield present fill from their own subfield list)."""
+    lo, hi = (a, b) if a < b else (b, a)
+    key = f"leaders::pair_stars_by_subfield::{lo}::{hi}"
+    if key not in ctx:
+        star_path = _posix(_data_dir(ctx) / "star_works.parquet")
+        dim_path = _posix(_data_dir(ctx) / "topics_dim.parquet")
+        con = _duck(ctx)
+        try:
+            df = con.execute(
+                f"""
+                SELECT d.bestfit_subfield_id AS subfield_id, COUNT(DISTINCT s.work_id) AS n
+                FROM read_parquet('{star_path}') s
+                JOIN read_parquet('{dim_path}') d ON s.topic_id = d.topic_id
+                WHERE {_TOKEN_LIKE.replace('inst_ids', 's.inst_ids')}
+                  AND {_TOKEN_LIKE.replace('inst_ids', 's.inst_ids')}
+                GROUP BY d.bestfit_subfield_id
+                """,
+                [lo, hi],
+            ).df()
+        finally:
+            con.close()
+        ctx[key] = {int(f): int(n) for f, n in zip(df["subfield_id"], df["n"])}
+    _lru_touch(ctx, key, "leaders_pair_stars_by_subfield")
     return ctx[key]

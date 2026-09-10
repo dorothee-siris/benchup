@@ -91,7 +91,10 @@ def test_every_c1_builder_runs_and_agrees_internally(ctx, subs, a, b):
     from lib import topic_data as TD
 
     ov = TD.pair_topics(ctx, ids[0], ids[1], TD.MODE_VOLUME, 50, "mean")
-    assert list(ov.columns) == TD.PAIR_COLS
+    # `pair_topics` now also returns `PAIR_EXTRA_COLS` (the balance bars'
+    # star/FWCI-coverage fields, chart-layer-only, never exported to the
+    # workbook -- `PAIR_COLS` alone stays the 33-column export contract)
+    assert list(ov.columns) == TD.PAIR_COLS + TD.PAIR_EXTRA_COLS
     assert len(ov) <= 100
     if len(ov):
         assert np.isclose(ov["combined_vol"].to_numpy(), (ov["vol_a"] + ov["vol_b"]).to_numpy()).all()

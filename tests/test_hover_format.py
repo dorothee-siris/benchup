@@ -152,8 +152,11 @@ def _hovers_topic_planes() -> list[str]:
     out += _customdata_of(XT.fig_plane_frontier(
         overlay, color_by=XT.COLOR_BY_OWNER, slots=TOPIC_SLOTS, names=TOPIC_NAMES, ids=TOPIC_IDS))
     rows = _balance_rows()
+    # `balance_bars` retired its external `sort_col` argument for a `mode`
+    # (five per-mode encodings) -- a minimal call-site update to the new
+    # signature, kept to what this file needs to stay green.
     out += _customdata_of(XT.balance_bars(rows, TOPIC_IDS, slots=TOPIC_SLOTS, names=TOPIC_NAMES,
-                                          sort_col="n_ar_combined"))
+                                          mode=XT.BAR_MODE_VOLUME))
     return out
 
 

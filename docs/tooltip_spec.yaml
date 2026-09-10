@@ -45,6 +45,12 @@ formats:
   partner_rank: "'{other institution} is {this institution}'s partner #7 here'"
   owner_clause: "'in both top sets' when the topic is held by both, otherwise '{institution} only'"
   joint_or_floor: "the joint publication count, or the fixed phrase 'joint count not available under 5 joint publications'"
+  fwci_pair_plain: "one FWCI_EU value per institution, in slot order: '{name A} 1.31 - {name B} 0.98', 'n/a' when a side has fewer than 3 covered works"
+  fwci_pair_dagger: "as fwci_pair_plain, with a dagger after a side's own value when that side's covered-work count is under 10"
+  rank_pair: "one world rank per institution, in slot order: '{name A} #4 - {name B} #57', 'not ranked' past the world top 200"
+  star_pair: "one star-paper count per institution, in slot order: '{name A} 3 - {name B} 5'"
+  joint_star_count: "the pair's joint star-paper count on this topic (0 is a real count here, never a floor phrase -- star_works.parquet carries no joint-publication floor)"
+  change_pair_dagger: "one signed percentage change per institution, in slot order: '{name A} +18% - {name B} -7%', a dagger after a side's own value when that side's 2020-22 volume is a low base"
   keywords_2x5: "'<b>keywords</b>: ' on the topic's 10 comma-separated keywords, as TWO lines of five - the label sits on line 1 of the pair only; counts as 2 lines against the 8-line cap"
   topic_name_flagged: "the topic name, followed by ' - catch-all topic: {exclusion label}' when the topic is on the catch-all list"
   frontier_flag: "the fixed phrase 'in the global top quarter of emergence'"
@@ -239,19 +245,66 @@ charts:
       - {field: owner, label: "held by", format: owner_clause,
          note: "the colour channel: held by both top sets, or by one institution alone"}
 
+  # `compare_balance_bars` -- ONE chart, FIVE modes ("Topics shown"), each
+  # drawing a different quantity: the hover for a given mode leads
+  # with THAT mode's own quantity (never expansion/acceleration -- those
+  # stayed on the overlay plane above these bars, `compare_topic_overlay`),
+  # then up to two supporting lines, then "held by" -- every mode's hover is
+  # 7 lines (entity + keywords pair + quantity + one supporting line + one
+  # more supporting line + held by), comfortably under the 8-line cap.
+  # `tests/test_charts_topics.py::_spec_labels` reads `modes.<mode>.lines`
+  # exactly like a flat chart's own `lines` -- same label-order checker,
+  # dispatched per mode.
   compare_balance_bars:
     view: compare
     kind: bars
     entity: topic
-    lines:
-      - {field: topic_name, label: "", format: topic_name_flagged}
-      - {field: keywords, label: "keywords", format: keywords_2x5}
-      - {field: pair_volumes, label: "publications 2020-2024, full counting", format: pair_volumes,
-         note: "vol_a and vol_b - the two outer segments"}
-      - {field: vol_joint, label: "joint publications", format: joint_or_floor, note: "the middle segment"}
-      - {field: expansion, label: "expansion", format: score_2dp}
-      - {field: acceleration, label: "acceleration", format: score_2dp}
-      - {field: owner, label: "held by", format: owner_clause}
+    modes:
+      volume:
+        lines:
+          - {field: topic_name, label: "", format: topic_name_flagged}
+          - {field: keywords, label: "keywords", format: keywords_2x5}
+          - {field: pair_volumes, label: "publications 2020-2024, full counting", format: pair_volumes,
+             note: "vol_a and vol_b - the two outer segments, this mode's own quantity"}
+          - {field: vol_joint, label: "joint publications", format: joint_or_floor, note: "the middle segment"}
+          - {field: fwci_pair, label: "FWCI_EU", format: fwci_pair_plain}
+          - {field: owner, label: "held by", format: owner_clause}
+      fwci:
+        lines:
+          - {field: topic_name, label: "", format: topic_name_flagged}
+          - {field: keywords, label: "keywords", format: keywords_2x5}
+          - {field: fwci_pair, label: "FWCI_EU", format: fwci_pair_dagger,
+             note: "this mode's own quantity, paired bars from the centre; a dagger under 10 covered works, no bar under 3"}
+          - {field: pair_volumes, label: "publications 2020-2024, full counting", format: pair_volumes}
+          - {field: rank_pair, label: "world rank", format: rank_pair}
+          - {field: owner, label: "held by", format: owner_clause}
+      led:
+        lines:
+          - {field: topic_name, label: "", format: topic_name_flagged}
+          - {field: keywords, label: "keywords", format: keywords_2x5}
+          - {field: rank_pair, label: "world rank", format: rank_pair,
+             note: "this mode's own quantity, drawn as distance to world number one"}
+          - {field: pair_volumes, label: "publications 2020-2024, full counting", format: pair_volumes}
+          - {field: fwci_pair, label: "FWCI_EU", format: fwci_pair_plain}
+          - {field: owner, label: "held by", format: owner_clause}
+      stars:
+        lines:
+          - {field: topic_name, label: "", format: topic_name_flagged}
+          - {field: keywords, label: "keywords", format: keywords_2x5}
+          - {field: star_pair, label: "star papers", format: star_pair,
+             note: "this mode's own quantity, the two outer segments"}
+          - {field: stars_joint, label: "joint star papers", format: joint_star_count, note: "the middle segment"}
+          - {field: pair_volumes, label: "publications 2020-2024, full counting", format: pair_volumes}
+          - {field: owner, label: "held by", format: owner_clause}
+      emergence:
+        lines:
+          - {field: topic_name, label: "", format: topic_name_flagged}
+          - {field: keywords, label: "keywords", format: keywords_2x5}
+          - {field: change_pair, label: "change 2020-2022 to 2023-2024", format: change_pair_dagger,
+             note: "this mode's own quantity, paired bars from the centre; a dagger under a low 2020-22 base"}
+          - {field: pair_volumes, label: "publications 2020-2024, full counting", format: pair_volumes}
+          - {field: fwci_pair, label: "FWCI_EU", format: fwci_pair_plain}
+          - {field: owner, label: "held by", format: owner_clause}
 
   # {A}/{B} in the labels below render as each institution's own SHORT
   # name, never the bare letter: index.display_name_acronyms' first entry
@@ -308,6 +361,31 @@ charts:
          note: "collab_pair_fields n_top10 over n_covered"}
       - {field: n_stars_field, label: "joint star papers in this field", format: int_thousands}
       - {field: partner_rank, label: "partner rank", format: partner_rank, when: "rank_in_a or rank_in_b is not null"}
+
+  # The subfield-grain sibling of compare_reciprocity (the toggle's second
+  # option, top 30 subfields by joint publication volume): one extra
+  # unconditional line naming the subfield's PARENT field, right after the
+  # bold subfield name. The partner_rank line is DROPPED at this grain (not
+  # merely omitted when absent, as above) -- it is a pair-level fact,
+  # unchanged across every row, and adding a mandatory field-name line while
+  # keeping every optional line already reaches the 8-line hover cap on a
+  # row that clears every floor at once.
+  compare_reciprocity_subfields:
+    view: compare
+    kind: scatter
+    entity: pair_subfield
+    lines:
+      - {field: subfield_name, label: "", format: text}
+      - {field: field_name, label: "field", format: text, note: "the subfield's parent field"}
+      - {field: share_a, label: "share of A's own publications", format: pct_1dp, note: "the vertical axis"}
+      - {field: share_b, label: "share of B's own publications", format: pct_1dp, note: "the horizontal axis"}
+      - {field: vol_joint, label: "joint publications, articles and reviews 2020-2024", format: int_thousands,
+         note: "collab_pair_subfields vol - the bubble area"}
+      - {field: fwci_eu, label: "FWCI_EU of the joint papers", format: fwci_pair_2dp, when: "n_fwci >= 3",
+         note: "collab_pair_subfields fwci_mean, fwci_median, n_fwci (works carrying an FWCI; n_covered counts the top-decile-eligible works, a slightly narrower set)"}
+      - {field: pp10_wd, label: "joint papers in the world top decile", format: pct_1dp_dagger,
+         note: "collab_pair_subfields n_top10 over n_covered"}
+      - {field: n_stars_field, label: "joint star papers in this subfield", format: int_thousands}
 
 tiles:
 

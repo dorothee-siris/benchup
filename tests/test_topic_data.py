@@ -365,7 +365,55 @@ def test_pair_topics_owner_shared_iff_in_both_selected_sets(ctx, a, b, mode):
 
 def test_pair_topics_columns_are_pair_cols(ctx):
     out = TD.pair_topics(ctx, STRASBOURG, CNRS, TD.MODE_VOLUME, 50, "mean")
-    assert list(out.columns) == TD.PAIR_COLS
+    assert list(out.columns) == TD.PAIR_COLS + TD.PAIR_EXTRA_COLS
+    # the WORKBOOK's own 33-column export contract stays exactly `PAIR_COLS`
+    # (`views_compare._workbook_sheets` slices back to it) -- the four new
+    # columns below are additive, read only by the chart layer.
+    assert out[TD.PAIR_COLS].shape[1] == len(TD.PAIR_COLS)
+
+
+def test_bar_modes_match_charts_topics():
+    """`charts_topics.BAR_MODES` duplicates `TD.MODES` on purpose (the same
+    cross-check `test_pair_owner_constants_match_charts_topics` above already
+    runs for the owner constants)."""
+    from lib import charts_topics as XT
+
+    assert XT.BAR_MODES == TD.MODES
+
+
+def test_pair_topics_stars_joint_matches_leaders_data(ctx):
+    from lib import leaders_data as LD
+
+    out = TD.pair_topics(ctx, STRASBOURG, CNRS, TD.MODE_STARS, 50, "mean")
+    if out.empty:
+        pytest.skip("no starred topic in the union for this anchor pair under this mode")
+    topic_ids = out["topic_id"].tolist()
+    want = LD.pair_stars_by_topic(ctx, STRASBOURG, CNRS, topic_ids)
+    want_ids = LD.pair_star_ids_by_topic(ctx, STRASBOURG, CNRS, topic_ids)
+    for _, row in out.iterrows():
+        assert int(row["stars_joint"]) == want.get(row["topic_id"], 0)
+        assert sorted(row["star_ids_joint"]) == sorted(want_ids.get(row["topic_id"], []))
+        assert len(row["star_ids_joint"]) == int(row["stars_joint"])
+        if row["stars_joint"] > 0:
+            assert row["url_stars_joint"] is not None
+            assert "ids.openalex:" in row["url_stars_joint"]
+        else:
+            assert row["url_stars_joint"] is None
+
+
+def test_pair_topics_n_covered_a_b_zero_under_the_floor(ctx):
+    out = TD.pair_topics(ctx, STRASBOURG, CNRS, TD.MODE_VOLUME, 50, "mean")
+    flagged_a = out[out["under_floor_a"]]
+    if len(flagged_a):
+        assert (flagged_a["n_covered_a"] == 0).all()
+    flagged_b = out[out["under_floor_b"]]
+    if len(flagged_b):
+        assert (flagged_b["n_covered_b"] == 0).all()
+    known = out[~out["under_floor_a"]]
+    if len(known):
+        full_a = TD.institution_topics(ctx, STRASBOURG, "bestfit").set_index("topic_id")
+        for tid, n_cov in zip(known["topic_id"], known["n_covered_a"]):
+            assert int(n_cov) == int(full_a.loc[tid, "n_covered"])
 
 
 def test_pair_topics_n_clamped_to_10_50(ctx):
@@ -461,7 +509,7 @@ def test_pair_topics_empty_when_neither_institution_has_any_qualifying_topic(ctx
     empty `institution_topics`-shaped frame via a nonsense id."""
     out = TD.pair_topics(ctx, "I_does_not_exist", "I_also_does_not_exist", TD.MODE_VOLUME, 50, "mean")
     assert out.empty
-    assert list(out.columns) == TD.PAIR_COLS
+    assert list(out.columns) == TD.PAIR_COLS + TD.PAIR_EXTRA_COLS
 
 
 def test_pair_topic_set_caption_counts_match_owner_and_catchall(ctx):

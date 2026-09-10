@@ -152,6 +152,37 @@ def joint_stars_url(institution_a: str, institution_b: str, *,
     return f"{url}&sort=cited_by_count:desc"
 
 
+MAX_STAR_IDS_PER_URL = 100   # live-verified cap: `ids.openalex:` returns HTTP 400
+                             # "Decrease values to 100 or below" above this
+
+
+def star_ids_url(work_ids, *, sort: str | None = None) -> str:
+    """`https://openalex.org/works?filter=ids.openalex:W1|W2|...` -- the
+    balance bars' star-mode link column, and the workbook's own future use:
+    a concatenated OpenAlex work-id list, `|`-joined and percent-encoded the
+    SAME way every other builder in this module does
+    (`quote(filt, safe=':,-')`). Accepts bare ids (`'W123'`) or already-full
+    `https://openalex.org/W123` URLs (stripped to the bare id before
+    joining) -- `star_works.parquet`'s own `work_id` column ships bare ids,
+    but this stays a tolerant passthrough for either shape, matching
+    `ror_url`'s own precedent. Raises `ValueError` above
+    `MAX_STAR_IDS_PER_URL` ids (live-verified: the API itself rejects a
+    longer list with HTTP 400) -- callers with zero ids build no URL at all
+    (the "0, no link" case is the caller's own branch, not this function's)."""
+    ids = []
+    for w in work_ids:
+        w = str(w).strip()
+        if "/" in w:
+            w = w.rsplit("/", 1)[-1]
+        ids.append(w)
+    if len(ids) > MAX_STAR_IDS_PER_URL:
+        raise ValueError(
+            f"star_ids_url: {len(ids)} ids exceeds the {MAX_STAR_IDS_PER_URL}-id cap")
+    filt = f"ids.openalex:{'|'.join(ids)}"
+    url = f"{WORKS_BASE}?filter={quote(filt, safe=':,-')}"
+    return f"{url}&sort={sort}" if sort else url
+
+
 def ror_url(ror_id: str) -> str:
     """Accepts a bare ROR id (e.g. `03xyz1234`) or an already-full
     `https://ror.org/.` URL (index.parquet ships the full URL -- this stays
