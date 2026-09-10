@@ -485,7 +485,9 @@ FAMILIES = ("oa", "erc", "sdg", "doctype")
 SORTS = ("volume", "taxonomy")
 
 _PCT_FMT = f".{SHARE_DECIMALS}%"
-_AXIS_PCT_FMT = f".{AXIS_DECIMALS}%"
+_AXIS_PCT_FMT = f".{AXIS_DECIMALS}%"
+_AXIS_PCT_FMT_1DP = f".{AXIS_DECIMALS + 1}%"   # shares under ten percent: one decimal, or ticks repeat
+RECIP_ONE_DECIMAL_BELOW = 0.10  # axis maximum (share) under which the reciprocity ticks take one decimal
 _SI_FMT = f".{SI_DECIMALS}f"
 _FRONTIER_FMT = f".{FRONTIER_DECIMALS}f"
 

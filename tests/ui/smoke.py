@@ -27,17 +27,14 @@ against this exact build before writing a single assertion below (kept as
 comments at each call site too):
   * URLs: Streamlit derives clean slugs from the emoji-prefixed page files --
     `/Find`, `/Compare`, `/Methods` (confirmed live, not assumed).
-  * `st.dataframe`'s glide-data-grid canvas DOES carry a real, hidden
-    accessibility mirror: `[role="grid"]` with `aria-rowcount`/
-    `aria-colcount`, `[role="columnheader"]`/`[role="gridcell"]` -- but only
-    for the columns currently scrolled into the canvas viewport (a
-    horizontal scroll via `scrollLeft` or a synthetic wheel event over the
-    canvas did not bring the three link columns into that mirror in a live
-    trial). `aria-colcount` itself is NOT virtualized, so the topic-overlap
-    table's link-column check below reads `aria-colcount` (== 18, the full
-    column list including the 3 link columns) plus a static source-grep for
-    exactly 3 `LinkColumn(` calls, rather than reading rendered header text
-    -- see `check_compare` and this file's own SOFTENED list at the bottom.
+  * The topic-overlap RECAP TABLE is gone -- Compare's own
+    `st.dataframe` no longer renders anywhere on this page, so `check_compare`
+    now asserts its ABSENCE (`[role="grid"]` count == 0) rather than probing
+    a glide-data-grid a11y mirror. The one OpenAlex link a reader needs
+    on-page moved INTO the balance bars themselves: a right-margin "Joint
+    pubs" column, a real `<a href>` inside the rendered Plotly SVG
+    (`svg a`, confirmed live) -- checked for presence/href shape, never
+    clicked (openalex.org serves headless browsers a bot wall).
   * `st.tabs` renders `[data-testid="stTab"]` (not `[role="tab"]` on this
     Streamlit build).
   * A single search hit auto-selects (no `seed_pick` selectbox appears);
@@ -191,6 +188,22 @@ def _wait_for(page, predicate, timeout_ms: int = 15_000, interval_ms: int = 300)
 
 def _full_page_text(page) -> str:
     return page.evaluate("document.body.textContent") or ""
+
+
+def _chart_attached(page, selector: str, timeout: int = 90_000) -> bool:
+    """True once `selector`'s Plotly SVG (`.js-plotly-plot`) is ATTACHED to
+    the DOM -- waited for, never read with a synchronous `.count()` (which
+    can race a chart that has not mounted yet: a live Playwright trial on
+    this exact page measured 0 charts at 5s, all 7 by 10s, once the page
+    grew by the how-to-read lines and the link column). False (never an
+    exception) on a genuine timeout, so a chart that truly never renders
+    still reports FAIL through the caller's own `check()`, not a silent
+    pass-by-exception."""
+    try:
+        page.locator(f"{selector} .js-plotly-plot").first.wait_for(state="attached", timeout=timeout)
+        return True
+    except Exception:
+        return False
 
 
 def _no_exception(page, label: str) -> bool:
@@ -446,8 +459,29 @@ def check_compare_deeplink(page) -> None:
     for label in COMPARE_TILE_LABELS:
         check(label in body_text, f"Compare: relationship tile {label!r} renders")
     check("joint articles" in body_text, "Compare: the momentum evidence line renders (every state says so)")
-    check(page.locator('[class*="st-key-fig_reciprocity"] .js-plotly-plot').count() >= 1,
+    check(_chart_attached(page, '[class*="st-key-fig_reciprocity"]'),
           "Compare: the reciprocity scatter renders")
+
+    # --- reciprocity field/subfield grain toggle: both options click
+    #     through and each leaves a Plotly chart mounted under the same key
+    #     -- the chart REBUILDS in place (same DOM node), so this only checks
+    #     attachment before/after the click rather than a fresh mount. -------
+    recip_grain_options = page.locator(".st-key-compare_recip_grain button[data-variant='segmented_control']")
+    check(recip_grain_options.count() == 2,
+          f"Compare: the reciprocity 'Grain' toggle offers 2 options (found {recip_grain_options.count()})")
+    subfields_option = recip_grain_options.filter(has_text="Top 30 subfields")  # unambiguous substring
+    fields_option = recip_grain_options.filter(has_text=re.compile(r"^Fields$"))  # exact: avoids
+                                                                                  # matching "subfields"
+    if subfields_option.count():
+        subfields_option.first.click(timeout=ACTION_TIMEOUT_MS)
+        _settle(page, 2000)
+        check(_chart_attached(page, '[class*="st-key-fig_reciprocity"]'),
+              "Compare: the reciprocity scatter renders at the subfield grain")
+        _no_exception(page, "Compare (reciprocity subfield grain)")
+        fields_option.first.click(timeout=ACTION_TIMEOUT_MS)
+        _settle(page, 2000)
+        check(_chart_attached(page, '[class*="st-key-fig_reciprocity"]'),
+              "Compare: the reciprocity scatter renders back at the field grain")
 
     # --- Profile/Impact tabs present and switchable (Thematic shape) -------
     # DOM FACT: Compare renders TWO separate st.tabs() widgets with the SAME
@@ -484,36 +518,52 @@ def check_compare_deeplink(page) -> None:
     check(page.locator(".st-key-compare_topic_fwci_stat").count() == 1, "Compare: the FWCI mean/median radio renders")
     overlap_plane_sel = '[class*="st-key-fig_topic_overlap_plane"]'
     overlap_bars_sel = '[class*="st-key-fig_topic_overlap_bars"]'
-    page.wait_for_selector(f"{overlap_bars_sel} .js-plotly-plot", state="attached", timeout=60_000)
+    check(_chart_attached(page, overlap_plane_sel), "Compare: the topic-overlap owner-coloured plane renders")
+    check(_chart_attached(page, overlap_bars_sel), "Compare: the topic-overlap balance bars render")
     _settle(page, 1500)
-    check(page.locator(overlap_plane_sel).count() >= 1, "Compare: the topic-overlap owner-coloured plane renders")
-    check(page.locator(overlap_bars_sel).count() >= 1, "Compare: the topic-overlap balance bars render")
     check("Joint" in _full_page_text(page), "Compare: the topic-overlap legend names the 'Joint' chip")
     _no_exception(page, "Compare (topic overlap)")
 
-    # --- the topic-overlap table: 18 columns (the retired shared-frontier
-    #     table's own 17, plus "Held by") -- SOFTENED to a structural proof
-    #     (see module docstring: glide-data-grid's a11y mirror only ever
-    #     exposed the first 3 (of N) columnheaders live, even after a
-    #     scrollLeft write and a synthetic wheel scroll over the canvas --
-    #     the LEFT columns, never the link columns at the right, came back).
-    page.wait_for_selector('[role="grid"]', state="attached", timeout=30_000)
-    _settle(page, 800)
-    grid = page.locator('[role="grid"]').first
-    check(grid.count() >= 1, "Compare: the topic-overlap table renders as an accessible grid")
-    if grid.count():
-        colcount = grid.get_attribute("aria-colcount")
-        check(colcount == "18",
-              f"Compare table: aria-colcount == 18 (topic..url_joint, the 3 link columns included) (got {colcount})")
-    src = (APP_DIR / "lib" / "views_compare.py").read_text(encoding="utf-8")
-    n_link_cols = src.count("st.column_config.LinkColumn(")
-    check(n_link_cols == 3, f"Compare table (source proof): exactly 3 LinkColumn columns are configured "
-                            f"(institution A, institution B, joint) (found {n_link_cols})")
-    soften("Compare table 3-link-column check reads aria-colcount (18, live) + a LinkColumn( source "
-          "count (3, static) rather than live column-header text: glide-data-grid's accessibility "
-          "mirror only exposes the columns scrolled into the canvas viewport, and neither scrollLeft "
-          "nor a synthetic wheel event over the canvas brought the 3 rightmost (link) columns into it "
-          "in a live trial")
+    # --- the recap table is GONE: no accessible grid renders on this
+    #     page any more -- the ONE OpenAlex link a reader needs on-page now
+    #     lives IN the bars themselves, the right-margin "Joint pubs"
+    #     column (Plotly annotations, a real `<a href>` inside the
+    #     rendered SVG -- `svg a[*|href]` below, no live navigation:
+    #     openalex.org serves headless browsers a bot wall, so this never
+    #     clicks through, only checks the anchor exists with the right href
+    #     shape).
+    check(page.locator('[role="grid"]').count() == 0,
+          "Compare: the topic-overlap recap table no longer renders")
+    link_col_anchors = page.locator(f"{overlap_bars_sel} svg a")
+    check(link_col_anchors.count() >= 1,
+          f"Compare: the balance bars' link column renders at least one <a> in the SVG "
+          f"(found {link_col_anchors.count()})")
+    if link_col_anchors.count():
+        href = link_col_anchors.first.get_attribute("xlink:href") or link_col_anchors.first.get_attribute("href")
+        check(bool(href) and href.startswith("https://openalex.org/works?filter="),
+              f"Compare: a link-column anchor's href is a well-formed OpenAlex works filter URL (got {href!r})")
+
+    # --- cycle the five "Topics shown" modes: the bars must re-render (a
+    #     different mode = a different encoding, `charts_topics.balance_bars`'
+    #     own `mode` argument) without an exception, and the link column must
+    #     still carry at least one anchor in EVERY mode.
+    MODE_LABELS = ("Top by volume", "Top by FWCI_EU", "Topics led",
+                  "Topics with star papers", "Top decile of emergence")
+    for label in MODE_LABELS:
+        opt = overlap_mode_options.filter(has_text=label)
+        if not opt.count():
+            continue
+        opt.first.click(timeout=ACTION_TIMEOUT_MS)
+        _settle(page, 2000)
+        _no_exception(page, f"Compare (topic overlap, mode={label!r})")
+        page.wait_for_selector(f"{overlap_bars_sel} .js-plotly-plot", state="attached", timeout=60_000)
+        mode_anchors = page.locator(f"{overlap_bars_sel} svg a")
+        check(mode_anchors.count() >= 1, f"Compare: the link column still renders in mode {label!r}")
+    # back to the default before the rest of the checks below read this page
+    volume_opt = overlap_mode_options.filter(has_text="Top by volume")
+    if volume_opt.count():
+        volume_opt.first.click(timeout=ACTION_TIMEOUT_MS)
+        _settle(page, 1500)
 
     # --- one workbook, 6 sheets ----------------------------------------------
     dl_btn = page.locator('button').filter(has_text=re.compile(r"^Download this view"))

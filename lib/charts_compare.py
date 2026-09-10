@@ -1109,11 +1109,14 @@ def reciprocity_scatter(frame: pd.DataFrame, names: Sequence, colors: Sequence,
     fig.add_shape(type="line", x0=0, y0=0, x1=axis_max, y1=axis_max,
                  line=dict(color=P.INK_SECONDARY, width=C.HAIRLINE_PX, dash=RECIP_DIAGONAL_DASH))
     ax_share_tmpl = AX_RECIPROCITY_SHARE_SUBFIELD if subfield_grain else AX_RECIPROCITY_SHARE
-    fig.update_xaxes(range=[0, axis_max], tickformat=C._AXIS_PCT_FMT,
+    # Shares under 10 % (the subfield grain) need one decimal or the ticks
+    # repeat the same rounded label twice.
+    pct_fmt = C._AXIS_PCT_FMT_1DP if axis_max < C.RECIP_ONE_DECIMAL_BELOW else C._AXIS_PCT_FMT
+    fig.update_xaxes(range=[0, axis_max], tickformat=pct_fmt,
                      title_text=ax_share_tmpl.format(name=name_b),
                      gridcolor=P.GRID, zerolinecolor=P.GRID, linecolor=P.BORDER,
                      constrain="domain")
-    fig.update_yaxes(range=[0, axis_max], tickformat=C._AXIS_PCT_FMT,
+    fig.update_yaxes(range=[0, axis_max], tickformat=pct_fmt,
                      title_text=ax_share_tmpl.format(name=name_a),
                      gridcolor=P.GRID, zerolinecolor=P.GRID, linecolor=P.BORDER,
                      # `constrain="domain"`, not the "range" default -- a

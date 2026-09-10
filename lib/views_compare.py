@@ -11,7 +11,8 @@ PAGE ORDER (top to bottom): title + the pin caption -> two search slots
 (`lib.selection.render_slots`) -> Key figures (nine cards per pair)
 -> Thematic shape (Profile/Impact tabs) -> SDG profile (same tab shape)
 -> Topic overlap (the shared selector, the owner-coloured plane, the
-balance bars, the shared table) -> The relationship (momentum,
+balance bars -- five per-mode encodings, a right-margin OpenAlex link
+column, no on-page table any more) -> The relationship (momentum,
 yearly-by-domain, strategic reciprocity, joint star papers) -> one Excel
 download -> the share-link box.
 
@@ -40,11 +41,12 @@ from lib import copy
 from lib import charts_compare as X
 from lib import charts_topics as XT
 from lib import fig_cache
+from lib import how_to_read
 from lib import palette as P
 from lib import selection, state, tiles
 from lib import topic_data as TD
 from lib.app_config import CFG
-from lib.charts_compare import _esc, _fmt_frontier, _fmt_pct as _pct, _fmt_si, _fmt_vol as _count
+from lib.charts_compare import _esc, _fmt_pct as _pct, _fmt_si, _fmt_vol as _count
 from lib.engine import scenario_cache as SC
 from lib.exports_xlsx import XLSX_MIME, workbook_bytes, workbook_filename
 from lib.palette import NA_MARK
@@ -59,15 +61,14 @@ PVAL_FLOOR = 0.001          # below this, the significance line reads "< 0.001"
 
 TOPIC_N_DEFAULT = 50        # the "Topics per institution" slider's own default
 TOPIC_N_STEP = 10
-TOPIC_TABLE_CAP = 200       # no topic table ever shows more than this many rows
 
 TAB_KEYS = {"profile": ("share_full", "eu_mean_share"), "impact": ("pp10_wd", "eu_mean_pp10_wd")}
 
 
 # ---------------------------------------------------------------------------
 # formatting / identity helpers -- reuses charts_compare's own formatters
-# (`_fmt_pct`/`_fmt_vol`/`_fmt_si`/`_fmt_frontier`/`_esc`) rather than a
-# second implementation of the same NA_MARK-safe rules.
+# (`_fmt_pct`/`_fmt_vol`/`_fmt_si`/`_esc`) rather than a second
+# implementation of the same NA_MARK-safe rules.
 # ---------------------------------------------------------------------------
 
 def _window(bounds: tuple[int, int]) -> str:
@@ -79,17 +80,6 @@ def _pval(p) -> str:
         return NA_MARK
     p = float(p)
     return f"< {PVAL_FLOOR}" if p < PVAL_FLOOR else f"{p:.3f}"
-
-
-def _pct_signed_0dp(v) -> str:
-    """`pct_signed_0dp`: a signed percentage, no decimal, e.g. "+18%" /
-    "-7%" -- the topic-overlap table's own `change_a`/`change_b` (a
-    genuine ratio, `topic_data.pair_topics`' `change_w1_w2`, unlike the
-    retired shared-frontier table's absolute-delta reading of the same
-    name)."""
-    if v is None or pd.isna(v):
-        return NA_MARK
-    return format(float(v), "+.0%")
 
 
 def _names_and_slots(ctx: dict, ids: list[str]) -> tuple[dict, dict]:
@@ -361,8 +351,9 @@ def _render_sdg(ctx: dict, subs: dict, ids: list[str], names: dict, slots: dict)
 
 # ---------------------------------------------------------------------------
 # 4. Topic overlap -- the shared selector, the owner-coloured plane, the
-#    balance bars, and their shared table (this version; absorbs the earlier
-#    Frontier positioning + "who holds the shared frontier" pair).
+#    balance bars (five per-mode encodings + a right-margin OpenAlex link
+#    column; the on-page recap table this section once carried is gone,
+#    its columns live on in the workbook sheet only).
 # ---------------------------------------------------------------------------
 
 _PAIR_TOPIC_MODE_BY_LABEL: dict[str, str] = {}   # filled just below, once copy.FIND exists
@@ -428,6 +419,38 @@ def _relationship_frame(a: str, b: str) -> dict:
     return CD.relationship(SC.bundle()["ctx"], [a, b], SC.get("bestfit", "full"))
 
 
+@st.cache_data(show_spinner=False, max_entries=8, ttl=1800)
+def _reciprocity_subfields_frame(a: str, b: str) -> pd.DataFrame:
+    """The subfield-grain sibling of `_relationship_frame`'s own `reciprocity`
+    block: renames `collab_data.reciprocity_frame(..., grain="subfields")`'s
+    raw x/y/joint_vol columns into the SAME share_a/share_b/vol_joint wide
+    contract `compare_data.relationship` already builds for the field grain
+    (mirrors that rename verbatim, minus rank_in_a/rank_in_b -- a pair-level
+    fact the chart already drops at this grain), so `charts_compare.
+    reciprocity_scatter` reads either grain through one shape. Cached
+    separately, keyed on (a, b) alone -- the grain is fixed to "subfields" by
+    construction, so this can never collide with `_relationship_frame`'s own
+    (a, b)-only key for the field grain."""
+    from lib import collab_data as COL  # local import, same reasoning as compare_data's own
+
+    ctx = SC.bundle()["ctx"]
+    subs = SC.get("bestfit", "full")
+    recip = COL.reciprocity_frame(ctx, subs, a, b, grain="subfields")
+    cols = ["subfield_id", "subfield_name", "field_id", "field_name", "domain_id",
+           "vol_joint", "share_a", "share_b", "fwci_mean", "fwci_median", "n_fwci",
+           "n_top10", "n_covered", "n_stars_field"]
+    if not len(recip):
+        return pd.DataFrame(columns=cols)
+    return pd.DataFrame({
+        "subfield_id": recip["subfield_id"], "subfield_name": recip["subfield_name"],
+        "field_id": recip["field_id"], "field_name": recip["field_name"], "domain_id": recip["domain_id"],
+        "vol_joint": recip["joint_vol"], "share_a": recip["y"], "share_b": recip["x"],
+        "fwci_mean": recip["fwci_mean"], "fwci_median": recip["fwci_median"], "n_fwci": recip["n_fwci"],
+        "n_top10": recip["n_top10"], "n_covered": recip["n_covered"],
+        "n_stars_field": recip["n_stars_field"],
+    }).reset_index(drop=True)
+
+
 # ---------------------------------------------------------------------------
 # The topic-overlap table's own per-institution column headers -- a SHORT
 # name per slot (`index.display_name_acronyms`' first entry when present,
@@ -469,7 +492,14 @@ def _render_topic_overlap(ctx: dict, ids: list[str], names: dict, slots: dict) -
     """Returns `(mode, n, fwci_stat)` -- the resolved control state, so
     `render()` can thread the SAME selection into the workbook download
     (JOB 3: the "Topic overlap" sheet reflects the CURRENT mode, not a
-    fixed default)."""
+    fixed default).
+
+    The recap table this section used to render below the charts is GONE:
+    it was a strict subset of the workbook's own uncapped "Topic overlap"
+    sheet, and the right-margin link column the balance bars now carry
+    restores the one thing the table alone offered on-page -- an OpenAlex
+    link per row. `_workbook_sheets` below is untouched: the export keeps
+    its own 33-column `PAIR_COLS` shape regardless."""
     Cw, Fw = copy.COMPARE, copy.FIND
     st.subheader(Cw["TOPIC_OVERLAP_HEADER"])
 
@@ -495,6 +525,7 @@ def _render_topic_overlap(ctx: dict, ids: list[str], names: dict, slots: dict) -
         return mode, n, fwci_stat
 
     name_a, name_b = names[a], names[b]
+    short_a, short_b = _short_institution_name(ctx, a), _short_institution_name(ctx, b)
     st.markdown(X.legend_strip(ids, slots=slots, names=names, shared=True,
                                extra=[(Cw["LEGEND_JOINT"], P.JOINT_TOPIC_COLOR)]),
                unsafe_allow_html=True)
@@ -510,7 +541,11 @@ def _render_topic_overlap(ctx: dict, ids: list[str], names: dict, slots: dict) -
     # both are built from this SAME `pairs` frame (itself already
     # `_pair_topics_frame`'s own cache hit on a repeat visit), so both
     # figures skip their own rebuild on an unrelated rerun of this page.
+    # `mode` is already part of the key (a mode change picks a different
+    # `pairs` set AND a different bar encoding).
     overlap_key = (a, b, mode, n, fwci_stat)
+
+    st.caption(how_to_read.text("compare_topic_overlay", mode, a=short_a, b=short_b))
 
     scored = pairs[np.isfinite(pd.to_numeric(pairs["expansion_latest"], errors="coerce"))
                   & np.isfinite(pd.to_numeric(pairs["acceleration_latest"], errors="coerce"))]
@@ -523,108 +558,34 @@ def _render_topic_overlap(ctx: dict, ids: list[str], names: dict, slots: dict) -
         st.plotly_chart(fig, width="stretch", key="fig_topic_overlap_plane")
     st.caption(Fw["AXIS_DEF_TOPIC_PLANES"])
 
-    bars_df = pairs.rename(columns={"expansion_latest": "expansion", "acceleration_latest": "acceleration"})
+    st.caption(how_to_read.text("compare_balance_bars", mode, a=short_a, b=short_b))
     fig = fig_cache.cached_figure(
         "fig_topic_overlap_bars", overlap_key,
-        lambda: XT.balance_bars(bars_df, ids, slots=slots, names=names, sort_col="combined_vol"))
+        lambda: XT.balance_bars(pairs, ids, slots=slots, names=names, mode=mode))
     st.plotly_chart(fig, width="stretch", key="fig_topic_overlap_bars")
-    st.markdown(X.chart_note(
-        Cw["TOPIC_OVERLAP_BARS_NOTE"],
-        Cw["TOPIC_OVERLAP_BARS_TIP"].format(floor=int(TD.PAIR_JOINT_FLOOR))),
-        unsafe_allow_html=True)
 
-    _render_topic_overlap_table(ctx, pairs, ids, names)
     return mode, n, fwci_stat
-
-
-def _join_keywords(raw) -> str:
-    """`topics_dim.parquet`'s own `keywords` column ships '|'-joined (the
-    same convention `topic_name`/other taxonomy fields use internally),
-    but a reader-facing column reads that
-    delimiter as a literal pipe character, not a list separator. Reused for
-    BOTH the on-page table and the workbook's "Shared frontier" sheet --
-    one keywords convention throughout beats a table that reads differently
-    from its own downloaded twin."""
-    if raw is None or (isinstance(raw, float) and pd.isna(raw)):
-        return NA_MARK
-    return ", ".join(str(raw).split("|"))
-
-
-def _render_topic_overlap_table(ctx: dict, pairs: pd.DataFrame, ids: list[str], names: dict) -> None:
-    """`compare_topic_table` (`docs/tooltip_spec.yaml`), exactly: 18
-    columns in the spec's own order, sorted like the bars (`pairs` already
-    arrives sorted by combined volume descending -- `topic_data.
-    pair_topics`' own return order), capped at `TOPIC_TABLE_CAP` rows.
-    The per-institution column headers carry each institution's own SHORT
-    name (`_short_institution_name`), never the bare letter "A"/"B" -- the
-    caller passes `ctx` only for this lookup, `pairs` itself never keys on
-    it."""
-    Cw = copy.COMPARE
-    a, b = ids
-    name_a, name_b = names[a], names[b]
-    short_a, short_b = _short_institution_name(ctx, a), _short_institution_name(ctx, b)
-    n_total = len(pairs)
-    capped = pairs.head(TOPIC_TABLE_CAP) if n_total > TOPIC_TABLE_CAP else pairs
-    disp = pd.DataFrame({
-        "topic": [XT._fmt_topic_name_flagged(t, e, r) for t, e, r in
-                 zip(capped["topic_name"], capped["is_excluded"], capped["exclusion_reason_label"])],
-        "held_by": [XT._fmt_owner_clause(o, name_a, name_b) for o in capped["owner"]],
-        "keywords": [_join_keywords(v) for v in capped["keywords"]],
-        "frontier_score": [_fmt_frontier(v) for v in capped["frontier_score_latest"]],
-        "expansion": [_fmt_frontier(v) for v in capped["expansion_latest"]],
-        "acceleration": [_fmt_frontier(v) for v in capped["acceleration_latest"]],
-        "vol_a": capped["vol_a"],
-        "vol_b": capped["vol_b"],
-        "vol_joint": [XT._fmt_joint_or_floor(v) for v in capped["vol_joint"]],
-        "change_a": [_pct_signed_0dp(v) for v in capped["change_a"]],
-        "change_b": [_pct_signed_0dp(v) for v in capped["change_b"]],
-        "rank_a": [_count(v) for v in capped["rank_a"]],
-        "rank_b": [_count(v) for v in capped["rank_b"]],
-        "stars_a": capped["stars_a"],
-        "stars_b": capped["stars_b"],
-        "url_a": capped["url_a"],
-        "url_b": capped["url_b"],
-        "url_joint": capped["url_joint"],
-    })
-    st.dataframe(
-        disp, hide_index=True, width="stretch", key="tbl_topic_overlap",
-        column_config={
-            "topic": st.column_config.TextColumn(Cw["COL_TOPIC"]),
-            "held_by": st.column_config.TextColumn(Cw["COL_HELD_BY"]),
-            "keywords": st.column_config.TextColumn(Cw["COL_KEYWORDS"]),
-            "frontier_score": st.column_config.TextColumn(Cw["COL_FRONTIER_SCORE"]),
-            "expansion": st.column_config.TextColumn(Cw["COL_EXPANSION"]),
-            "acceleration": st.column_config.TextColumn(Cw["COL_ACCELERATION"]),
-            "vol_a": st.column_config.NumberColumn(_COL_PUBLICATIONS_TMPL.format(name=short_a)),
-            "vol_b": st.column_config.NumberColumn(_COL_PUBLICATIONS_TMPL.format(name=short_b)),
-            "vol_joint": st.column_config.TextColumn(Cw["COL_JOINT"]),
-            "change_a": st.column_config.TextColumn(_COL_CHANGE_TMPL.format(name=short_a)),
-            "change_b": st.column_config.TextColumn(_COL_CHANGE_TMPL.format(name=short_b)),
-            "rank_a": st.column_config.TextColumn(_COL_WORLD_RANK_TMPL.format(name=short_a)),
-            "rank_b": st.column_config.TextColumn(_COL_WORLD_RANK_TMPL.format(name=short_b)),
-            "stars_a": st.column_config.NumberColumn(_COL_STAR_PAPERS_TMPL.format(name=short_a)),
-            "stars_b": st.column_config.NumberColumn(_COL_STAR_PAPERS_TMPL.format(name=short_b)),
-            "url_a": st.column_config.LinkColumn(_COL_ON_OPENALEX_TMPL.format(name=short_a), display_text=name_a),
-            "url_b": st.column_config.LinkColumn(_COL_ON_OPENALEX_TMPL.format(name=short_b), display_text=name_b),
-            "url_joint": st.column_config.LinkColumn(Cw["COL_JOINT_ON_OPENALEX"],
-                                                      display_text=Cw["COL_JOINT_ON_OPENALEX"]),
-        },
-    )
-    # The "A is {name}; B is {name}" caption is DROPPED -- every header
-    # that used to read the bare letter "A"/"B" now carries the
-    # institution's own short name directly, so decoding a letter into a
-    # name is no longer a real reading gap the caption needs to close.
-    # `Cw["TOPIC_OVERLAP_TABLE_AB_CAPTION"]` itself stays defined in `lib/
-    # copy.py`, simply no longer called from here.
-    n_caption = (Cw["TOPIC_OVERLAP_TABLE_CAPTION_CAPPED"].format(cap=int(TOPIC_TABLE_CAP), n=_count(n_total))
-                if n_total > TOPIC_TABLE_CAP
-                else Cw["TOPIC_OVERLAP_TABLE_CAPTION_FULL"].format(n=_count(n_total)))
-    st.caption(n_caption)
 
 
 # ---------------------------------------------------------------------------
 # 5. The relationship -- momentum, yearly-by-domain, reciprocity, stars.
 # ---------------------------------------------------------------------------
+
+# The reciprocity scatter's own field/subfield grain toggle -- persisted like
+# the topic-overlap controls above, but its own strings live here rather than
+# in `lib.copy` (a deliberate narrow exception, same reasoning `SHORT_NAME_
+# CUT`'s block already states for this module: this control belongs to the
+# relationship section alone, not the page-wide COMPARE copy set).
+RECIPROCITY_GRAIN_LABEL = "Grain"
+RECIPROCITY_GRAIN_FIELDS = "Fields"
+RECIPROCITY_GRAIN_SUBFIELDS = "Top 30 subfields (by joint volume)"
+RECIPROCITY_GRAIN_OPTIONS = [RECIPROCITY_GRAIN_FIELDS, RECIPROCITY_GRAIN_SUBFIELDS]
+_RECIPROCITY_GRAIN_BY_LABEL = {RECIPROCITY_GRAIN_FIELDS: "fields", RECIPROCITY_GRAIN_SUBFIELDS: "subfields"}
+_RECIPROCITY_SUBFIELD_CAPTION_NOTE = (
+    " This view shows the pair's 30 subfields with the most joint publications.")
+_RECIPROCITY_SUBFIELD_EMPTY_CAPTION = (
+    "This pair has no shared subfields with joint publications to show at this grain.")
+
 
 def _momentum_evidence_line(mom: dict, facts: dict) -> str:
     """the always-visible evidence sentence, filled from the pair's own
@@ -752,15 +713,33 @@ def _render_relationship(ctx: dict, subs: dict, ids: list[str], names: dict, slo
         st.caption(Cw["YEARLY_FALLBACK_CAPTION"].format(floor=int(CD.PAIR_QUALIFYING_FLOOR),
                                                         y0=CD.CORE_WINDOW[0], y1=WHOLE_Y1))
 
-    recip = rel["reciprocity"]
-    if len(recip):
+    recip_fields = rel["reciprocity"]
+    if len(recip_fields):
         st.markdown(f"##### {Cw['RECIPROCITY_HEADER']}")
-        fig = fig_cache.cached_figure(
-            "reciprocity_scatter", pair_key,
-            lambda: X.reciprocity_scatter(recip, [names[ids[0]], names[ids[1]]],
-                                          [slots[ids[0]], slots[ids[1]]]))
-        st.plotly_chart(fig, width="stretch", key="fig_reciprocity")
-        st.caption(Cw["RECIPROCITY_CAPTION"])
+        grain_label = st.segmented_control(
+            RECIPROCITY_GRAIN_LABEL, RECIPROCITY_GRAIN_OPTIONS,
+            default=RECIPROCITY_GRAIN_FIELDS, required=True,
+            key="compare_recip_grain", **state.PERSIST)
+        grain = _RECIPROCITY_GRAIN_BY_LABEL.get(grain_label or RECIPROCITY_GRAIN_FIELDS, "fields")
+
+        short_a = _short_institution_name(ctx, ids[0])
+        short_b = _short_institution_name(ctx, ids[1])
+        st.caption(how_to_read.text("compare_reciprocity", grain, a=short_a, b=short_b))
+
+        recip = recip_fields if grain == "fields" else _reciprocity_subfields_frame(ids[0], ids[1])
+        if len(recip):
+            recip_key = (ids[0], ids[1], grain)
+            fig = fig_cache.cached_figure(
+                "reciprocity_scatter", recip_key,
+                lambda: X.reciprocity_scatter(recip, [names[ids[0]], names[ids[1]]],
+                                              [slots[ids[0]], slots[ids[1]]], grain=grain))
+            st.plotly_chart(fig, width="stretch", key="fig_reciprocity")
+            caption = Cw["RECIPROCITY_CAPTION"]
+            if grain == "subfields":
+                caption += _RECIPROCITY_SUBFIELD_CAPTION_NOTE
+            st.caption(caption)
+        else:
+            st.caption(_RECIPROCITY_SUBFIELD_EMPTY_CAPTION)
 
     return rel
 
@@ -775,14 +754,16 @@ def _workbook_sheets(ctx: dict, subs: dict, ids: list[str], mode: str, n: int,
     (no Streamlit), so it is directly unit-testable and directly what
     `_workbook_bytes` (the cached wrapper) calls. `mode`/`n`/`fwci_stat`
     (JOB 3): the "Topic overlap" sheet is `topic_data.pair_topics` for the
-    CURRENT selector state, uncapped -- every row, every column, no
-    `TOPIC_TABLE_CAP` applied (that cap is the on-page table's own, not the
-    export's)."""
+    CURRENT selector state, uncapped -- every row, every column of
+    `TD.PAIR_COLS` (the 33-column export contract, UNCHANGED by the
+    balance bars' own new per-mode fields: `PAIR_EXTRA_COLS` -- `stars_joint`,
+    `star_ids_joint`, `url_stars_joint`, `n_covered_a`/`n_covered_b` -- are
+    chart-layer-only and never reach this sheet)."""
     Cw = copy.COMPARE
     cards_df = _cards_frame(ids[0], ids[1])
     subfields_df = CD.all_subfields(ctx, subs, ids)  # uncapped (all 252) -- NOT _top_subfields_frame's top-20
     sdg_df = _sdg_pair_frame(ids[0], ids[1])
-    overlap_df = _pair_topics_frame(ids[0], ids[1], mode, n, fwci_stat)
+    overlap_df = _pair_topics_frame(ids[0], ids[1], mode, n, fwci_stat)[TD.PAIR_COLS]
     rel = _relationship_frame(ids[0], ids[1])
     if rel["yearly_qualifies"] and len(rel["yearly"]):
         yearly_df = rel["yearly"].copy()

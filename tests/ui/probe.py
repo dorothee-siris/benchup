@@ -292,6 +292,28 @@ def _probe_compare(page) -> None:
     check(ok, f"Compare golden: recomputed Joint-publications figure {formatted_core!r} renders on the page")
 
     check(_n_figures(page) >= 3, f"Compare: at least 3 Plotly figures render (found {_n_figures(page)})")
+
+    # --- reciprocity grain toggle: clicking "Top 30 subfields" swaps
+    #     in `collab_data.reciprocity_frame(..., grain="subfields")`'s own
+    #     how-to-read line -- recomputed through the SAME `lib.how_to_read`
+    #     reader the page itself calls, matched against the page's own
+    #     rendered caption after the click. ---
+    from lib import how_to_read as HTR
+    from lib import views_compare as VC
+
+    short_a = VC._short_institution_name(ctx, IFREMER_ID)
+    short_b = VC._short_institution_name(ctx, NIOZ_ID)
+    subfields_option = page.locator(
+        ".st-key-compare_recip_grain button[data-variant='segmented_control']"
+    ).filter(has_text="Top 30 subfields")
+    if subfields_option.count():
+        subfields_option.first.click(timeout=ACTION_TIMEOUT_MS)
+        _settle(page, 2000)
+        expected_line = HTR.text("compare_reciprocity", "subfields", a=short_a, b=short_b)
+        ok = _wait_for(page, lambda: expected_line in _full_text(page), timeout_ms=15_000)
+        check(ok, "Compare golden: the subfield-grain how-to-read line renders after the toggle")
+        check(_n_figures(page) >= 3, "Compare: a Plotly figure still renders at the subfield grain")
+
     _no_exception(page, "Compare (end of probe)")
 
 

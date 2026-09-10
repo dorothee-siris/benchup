@@ -873,7 +873,7 @@ COMPARE = {
     "YEARLY_FALLBACK_CAPTION": ("Below {floor} joint publications this pair has too little "
                                 "co-published work for a domain breakdown; every joint "
                                 "publication, {y0} to {y1}, is shown as one series instead."),
-    "RECIPROCITY_HEADER": "Strategic reciprocity by field",
+    "RECIPROCITY_HEADER": "Strategic reciprocity",
     "RECIPROCITY_CAPTION": ("Each bubble is a field: its height is that field's share of A's "
                             "own output, its position along the bottom is the same field's "
                             "share of B's own output, and its size is the pair's joint volume "

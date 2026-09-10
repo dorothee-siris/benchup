@@ -28,6 +28,7 @@ Run from cwd `app/`: python -m pytest tests/test_pages_compare.py -q
 from __future__ import annotations
 
 import io
+import json
 import re
 from pathlib import Path
 
@@ -267,13 +268,15 @@ def test_topic_overlap_perimeter_caption_names_the_counts():
         assert _cnt(n) in text, (n, facts)
 
 
-def test_topic_overlap_plane_bars_and_table_all_render():
+def test_topic_overlap_plane_and_bars_render_no_table():
     at = _app(PAIR).run()
     assert not at.exception
     charts = at.get("plotly_chart") if hasattr(at, "get") else []
     assert len(charts) >= 2 if charts else True  # smoke: no crash reading charts (owner plane + bars)
-    dataframes = at.dataframe
-    assert len(dataframes) >= 1, "the topic-overlap table must render as an st.dataframe"
+    # The recap table is GONE -- no `st.dataframe` renders on this page any
+    # more (the workbook sheet, checked separately below, still carries
+    # every column uncapped).
+    assert len(at.dataframe) == 0, "the topic-overlap recap table must be gone"
 
 
 def test_topic_overlap_legend_names_joint_and_shared():
@@ -282,21 +285,6 @@ def test_topic_overlap_legend_names_joint_and_shared():
     Cw = copy.COMPARE
     html = _markdown_text(at)
     assert Cw["LEGEND_JOINT"] in html
-
-
-# -------------------------------------------- topic-overlap table headers --
-# The table's per-institution columns must name the institution (a short
-# name per slot), never the bare letter "A"/"B".
-
-def _table_column_labels(at) -> dict:
-    """`st.dataframe`'s `column_config` rides in the element's own proto as
-    a JSON string (`columns`) -- AppTest exposes the raw proto directly, no
-    live DOM/browser needed to read a column header's configured label."""
-    import json
-
-    df_elt = at.dataframe[0]
-    cfg = json.loads(df_elt.proto.columns)
-    return {k: (v.get("label") if isinstance(v, dict) else v) for k, v in cfg.items()}
 
 
 def test_short_institution_name_uses_the_acronym_when_present():
@@ -326,42 +314,31 @@ def test_short_institution_name_truncates_a_long_display_name_with_an_ellipsis()
     assert _short_institution_name(ctx_short, "I0") == "Short Name"
 
 
-def test_topic_overlap_table_headers_name_the_institutions_not_letters():
+# --------------------------------------------- topic-overlap how-to-read ----
+def test_topic_overlap_how_to_read_lines_render_for_every_mode():
+    """`how_to_read.text("compare_topic_overlay"/"compare_balance_bars",
+    mode, a=, b=)` renders as a visible caption under the controls, for
+    EVERY one of the five "Topics shown" modes -- clicking through all five
+    on one session, the same segmented control the balance bars' own mode
+    reads."""
+    from lib import how_to_read as HTR
+
     at = _app(["I68947357", "I1294671590"]).run()   # Strasbourg x CNRS
     assert not at.exception
-    labels = _table_column_labels(at)
-    assert labels["vol_a"] == "Publications, Université de Strasbourg"
-    assert labels["vol_b"] == "Publications, CNRS"
-    assert labels["change_a"] == "Change, Université de Strasbourg"
-    assert labels["change_b"] == "Change, CNRS"
-    assert labels["rank_a"] == "World rank, Université de Strasbourg"
-    assert labels["rank_b"] == "World rank, CNRS"
-    assert labels["stars_a"] == "Star papers, Université de Strasbourg"
-    assert labels["stars_b"] == "Star papers, CNRS"
-    assert labels["url_a"] == "Université de Strasbourg on OpenAlex"
-    assert labels["url_b"] == "CNRS on OpenAlex"
-    # the shared/joint columns carry no institution name and stay fixed
-    assert labels["vol_joint"] == "Joint"
-    assert labels["url_joint"] == "Joint on OpenAlex"
-    assert labels["held_by"] == "Held by"
-
-    # VACUITY: none of the per-institution headers is the bare letter any more.
-    for key in ("vol_a", "vol_b", "change_a", "change_b", "rank_a", "rank_b",
-               "stars_a", "stars_b", "url_a", "url_b"):
-        assert labels[key] not in ("A", "B"), (key, labels[key])
-        assert not labels[key].endswith(", A") and not labels[key].endswith(", B"), (key, labels[key])
-
-
-def test_topic_overlap_table_ab_caption_dropped_n_caption_kept():
-    """The "A is {name}; B is {name}" caption is dropped now the headers
-    themselves carry the names -- the "every topic in the union, N in all"
-    (or capped) caption survives, since it states a fact the headers do
-    not (how many rows, and whether the table is capped)."""
-    at = _app(PAIR).run()
-    assert not at.exception
-    text = _caption_text(at)
-    assert " is Ifremer" not in text and " is Royal Netherlands" not in text
-    assert "in all" in text or "First" in text
+    short_a, short_b = "Université de Strasbourg", "CNRS"
+    labels = {
+        copy.FIND["TOPIC_MODE_VOLUME"]: "volume", copy.FIND["TOPIC_MODE_FWCI"]: "fwci",
+        copy.FIND["TOPIC_MODE_LED"]: "led", copy.FIND["TOPIC_MODE_STARS"]: "stars",
+        copy.FIND["TOPIC_MODE_EMERGENCE"]: "emergence",
+    }
+    for label, mode in labels.items():
+        at.segmented_control(key="compare_topic_mode").set_value(label).run()
+        assert not at.exception, (label, at.exception)
+        text = _caption_text(at)
+        overlay_line = HTR.text("compare_topic_overlay", mode, a=short_a, b=short_b)
+        bars_line = HTR.text("compare_balance_bars", mode, a=short_a, b=short_b)
+        assert overlay_line in text, (mode, "overlay how-to-read line missing")
+        assert bars_line in text, (mode, "balance-bars how-to-read line missing")
 
 
 # --------------------------------------------------------- relationship ----
@@ -479,6 +456,86 @@ def test_reciprocity_section_renders_when_the_pair_has_qualifying_fields():
         assert copy.COMPARE["RECIPROCITY_CAPTION"] in _caption_text(at)
 
 
+# ------------------------------------------------ reciprocity grain toggle --
+
+STRASBOURG = "I68947357"
+CNRS = "I1294671590"
+RECIP_PAIR = [STRASBOURG, CNRS]  # the largest qualifying pair -- >30 fields
+                                 # AND >30 candidate subfields, so the
+                                 # subfield chart's own <=30-marks cap is
+                                 # actually exercised, not vacuously true.
+
+
+def _last_reciprocity_spec(at) -> dict:
+    """The reciprocity scatter is the LAST `st.plotly_chart` the relationship
+    section (and the whole page) renders -- confirmed by its own x-axis
+    title ("Share of {b}'s own publications"), so indexing the last chart is
+    a stable, non-flaky way to reach it without `plotly_chart` elements
+    carrying their `key=` back through AppTest's own introspection (checked
+    directly: every `.key` on this element type reads back None here)."""
+    charts = at.get("plotly_chart")
+    assert charts, "no plotly_chart elements rendered at all"
+    return json.loads(charts[-1].proto.spec)
+
+
+def test_reciprocity_grain_toggle_renders_a_chart_under_both_grains():
+    at = _app(RECIP_PAIR).run()
+    assert not at.exception
+
+    fields_spec = _last_reciprocity_spec(at)
+    assert len(fields_spec["data"]) == 1 and fields_spec["data"][0]["type"] == "scatter"
+    n_fields = len(fields_spec["data"][0]["x"])
+    assert n_fields > 0
+
+    at.segmented_control(key="compare_recip_grain").set_value(VC.RECIPROCITY_GRAIN_SUBFIELDS).run()
+    assert not at.exception
+    sub_spec = _last_reciprocity_spec(at)
+    assert len(sub_spec["data"]) == 1 and sub_spec["data"][0]["type"] == "scatter"
+    n_sub = len(sub_spec["data"][0]["x"])
+    assert 0 < n_sub <= 30, f"subfield reciprocity chart carries {n_sub} marks, expected 1-30"
+
+    at.segmented_control(key="compare_recip_grain").set_value(VC.RECIPROCITY_GRAIN_FIELDS).run()
+    assert not at.exception
+    back_spec = _last_reciprocity_spec(at)
+    assert len(back_spec["data"][0]["x"]) == n_fields, "switching back to Fields must reproduce the same chart"
+
+
+def test_reciprocity_how_to_read_line_changes_with_the_grain():
+    from lib import how_to_read as HTR
+
+    at = _app(RECIP_PAIR).run()
+    assert not at.exception
+    short_a, short_b = "Université de Strasbourg", "CNRS"
+
+    fields_line = HTR.text("compare_reciprocity", "fields", a=short_a, b=short_b)
+    assert fields_line in _caption_text(at)
+
+    at.segmented_control(key="compare_recip_grain").set_value(VC.RECIPROCITY_GRAIN_SUBFIELDS).run()
+    assert not at.exception
+    subfields_line = HTR.text("compare_reciprocity", "subfields", a=short_a, b=short_b)
+    assert subfields_line != fields_line
+    assert subfields_line in _caption_text(at)
+    assert fields_line not in _caption_text(at)
+
+
+def test_reciprocity_grain_control_carries_state_persist():
+    """Source-inspected, same reasoning `test_render_slots_selectbox_is_
+    persisted` (tests/test_selection.py) already states for the compare-slot
+    selectbox: AppTest's own widget-proto introspection carries no `persist_
+    state`-shaped field for this Streamlit distribution's `**state.PERSIST`
+    wrapper, so the real cross-page proof is `tests/ui/switchback.py`'s
+    Compare -> Find -> Compare round trip; this test pins the SOURCE contract
+    the live round trip depends on."""
+    import inspect
+
+    src = inspect.getsource(VC._render_relationship)
+    start = src.index("st.segmented_control(\n            RECIPROCITY_GRAIN_LABEL")
+    end = src.index(")", start)
+    call = src[start:end]
+    assert "state.PERSIST" in call, f"compare_recip_grain control missing **state.PERSIST:\n{call}"
+    assert 'key="compare_recip_grain"' in call
+
+
 # ------------------------------------------------------------- workbook ----
 
 def test_workbook_download_button_present_with_the_d15_filename():
@@ -504,9 +561,13 @@ def test_workbook_bytes_carry_exactly_six_named_sheets():
 
 def test_workbook_topic_overlap_sheet_is_uncapped_and_matches_the_current_selector():
     """JOB 3: the workbook's own "Topic overlap" sheet is `pair_topics` for
-    whatever selector state is passed in, EVERY row (no `TOPIC_TABLE_CAP`),
-    every column -- the on-page table's 200-row cap is a rendering concern
-    only, never applied to the export."""
+    whatever selector state is passed in, EVERY row (the on-page table --
+    and its `TOPIC_TABLE_CAP` -- is gone entirely), every column of
+    `PAIR_COLS` -- STILL 33, unchanged by this stream: `pair_topics` now
+    also returns four `PAIR_EXTRA_COLS` (`stars_joint`/`star_ids_joint`/
+    `url_stars_joint`/`n_covered_a`/`n_covered_b`, the balance bars' own
+    new fields), and `_workbook_sheets` deliberately slices back to
+    `PAIR_COLS` before writing this sheet, so those four never reach it."""
     from lib import topic_data as TD
 
     data = VC._workbook_bytes(tuple(PAIR), TD.MODE_LED, 50, "mean")
@@ -515,7 +576,11 @@ def test_workbook_topic_overlap_sheet_is_uncapped_and_matches_the_current_select
     ctx = SC.bundle()["ctx"]
     want = TD.pair_topics(ctx, PAIR[0], PAIR[1], TD.MODE_LED, 50, "mean")
     assert sheet.max_row - 1 == len(want)  # header row + one row per topic, uncapped
-    assert sheet.max_column == len(TD.PAIR_COLS)
+    assert sheet.max_column == len(TD.PAIR_COLS) == 33
+    header = [c.value for c in next(sheet.iter_rows(min_row=1, max_row=1))]
+    assert header == TD.PAIR_COLS
+    for extra in TD.PAIR_EXTRA_COLS:
+        assert extra not in header, f"{extra} must stay chart-layer-only, never exported"
 
 
 def test_workbook_still_builds_after_the_topic_mode_changes():
