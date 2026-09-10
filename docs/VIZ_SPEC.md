@@ -1347,7 +1347,7 @@ forbids relying on.
   self-describing.
 
 > **Rejected alternative:** fetch the co-publication count live and print it in
-> the page. Rejected on the standalone principle (`CLAUDE.md`): the app must
+> the page. Rejected on the standalone principle: the app must
 > re-run from its own artefacts, and a live figure would be a number in the
 > deliverable that no snapshot can reproduce.
 

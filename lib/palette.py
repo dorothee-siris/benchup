@@ -5,7 +5,7 @@ a provenance comment. No other file under app/lib/ (this one excepted),
 app/pages/ or app/Menu.py may contain a "#RRGGBB" literal -- app/tests/test_palette.py
 scans for that and fails the build if one appears.
 
-SIRIS house rule (CLAUDE.md): light mode only, full width. This file ships no
+SIRIS house rule: light mode only, full width. This file ships no
 dark-mode variants and no [data-theme] branches -- there is exactly one palette.
 
 Colour formula: `RULES.md` section 4 + COMPOSITION_AND_CONTROLS.md's
